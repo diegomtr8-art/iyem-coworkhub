@@ -1,0 +1,31 @@
+{
+  "permissions": {
+    "allow": [
+      "WebFetch(domain:www.nodico.com.mx)",
+      "Bash(php artisan *)",
+      "Bash(npm run *)",
+      "Bash(ssh *)",
+      "PowerShell(Get-Command *)",
+      "Read(//usr/**)",
+      "Read(//c/Windows/System32/OpenSSH//**)",
+      "Bash(tar czf *)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" https://lightgoldenrodyellow-locust-860513.hostingersite.com/)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" https://lightgoldenrodyellow-locust-860513.hostingersite.com/login)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" https://lightgoldenrodyellow-locust-860513.hostingersite.com/membresias)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" https://lightgoldenrodyellow-locust-860513.hostingersite.com/nosotros)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" https://lightgoldenrodyellow-locust-860513.hostingersite.com/eventos)",
+      "Bash(claude doctor *)",
+      "PowerShell(claude doctor *)",
+      "Bash(python *)",
+      "Bash(where python *)",
+      "Bash(where python3 *)",
+      "Read(//c/Users/Diego Martinez/AppData/Local/Programs/**)",
+      "Bash(find /c -maxdepth 3 -iname \"python.exe\")",
+      "Bash(/c/Users/Diego Martinez/AppData/Local/Python/bin/python.exe *)",
+      "Bash(tasklist)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\\\\n\" http://127.0.0.1:8123)",
+      "Bash(echo \"EXIT:$?\")",
+      "Bash(grep -E \"^\\\\.env$|node_modules|vendor/\")"
+    ]
+  }
+}
