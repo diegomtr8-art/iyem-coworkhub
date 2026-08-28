@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { useForm, usePage } from '@inertiajs/vue3'
-import { Clock, Facebook, Instagram, Linkedin, Loader2, Mail, MapPin, Phone } from 'lucide-vue-next'
+import { Clock, Loader2, Mail, MapPin, Phone } from 'lucide-vue-next'
 import { computed, reactive, ref, watch } from 'vue'
 import { toast } from 'vue-sonner'
 
@@ -82,12 +82,6 @@ function enviar() {
     onError: () => toast.error('Revisa los campos marcados e inténtalo de nuevo.'),
   })
 }
-
-const redes = computed(() => [
-  { label: 'Instagram', href: nodico.value.redes?.instagram, icono: Instagram },
-  { label: 'Facebook',  href: nodico.value.redes?.facebook,  icono: Facebook },
-  { label: 'LinkedIn',  href: nodico.value.redes?.linkedin,  icono: Linkedin },
-].filter((r) => r.href))
 </script>
 
 <template>
@@ -161,24 +155,20 @@ const redes = computed(() => [
             </div>
           </dl>
 
-          <ul v-if="redes.length" class="mt-10 flex gap-3">
-            <li v-for="red in redes" :key="red.label">
-              <a
-                :href="red.href"
-                target="_blank"
-                rel="noopener noreferrer"
-                :aria-label="`Nódico en ${red.label}`"
-                class="flex h-12 w-12 items-center justify-center rounded-xl border border-dark/20 text-dark
-                       transition duration-300 ease-salida hover:-translate-y-1 hover:border-dark hover:bg-dark hover:text-nodo-400"
-              >
-                <component :is="red.icono" class="h-5 w-5" aria-hidden="true" />
-              </a>
-            </li>
-          </ul>
+          <!-- Mapa de Google embebido, sin clave de API -->
+          <div v-if="nodico.mapsEmbed" class="mt-10 overflow-hidden rounded-3xl shadow-sombra ring-1 ring-dark/[.07]">
+            <iframe
+              :src="nodico.mapsEmbed"
+              title="Ubicación de Nódico en Google Maps"
+              loading="lazy"
+              referrerpolicy="no-referrer-when-downgrade"
+              class="h-[320px] w-full border-0 sm:h-[380px]"
+            />
+          </div>
         </div>
 
         <!-- Tarjeta elevada del formulario -->
-        <div class="rounded-3xl bg-white p-6 shadow-sombra-lg ring-1 ring-dark/[.07] sm:p-9">
+        <div class="self-start rounded-3xl bg-white p-6 shadow-sombra-lg ring-1 ring-dark/[.07] sm:p-9 lg:sticky lg:top-28">
           <form novalidate @submit.prevent="enviar">
             <!-- Trampa antibots: fuera de pantalla, nunca enfocable -->
             <div class="absolute left-[-9999px]" aria-hidden="true">

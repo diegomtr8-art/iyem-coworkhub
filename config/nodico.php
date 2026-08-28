@@ -26,6 +26,8 @@ return [
     'direccion'         => env('NODICO_DIRECCION', 'Avenida Principal, Industrias No Contaminantes 13613, Hacienda Sodzil Nte., 97110 Mérida, Yuc.'),
     'direccion_corta'   => env('NODICO_DIRECCION_CORTA', 'Hacienda Sodzil Nte., Mérida, Yucatán'),
     'maps_url'          => env('NODICO_MAPS_URL', 'https://maps.app.goo.gl/zRrEqEoMLohqnwEx5'),
+    // Embed sin clave de API, con las coordenadas de la ficha del lugar.
+    'maps_embed'        => env('NODICO_MAPS_EMBED', 'https://maps.google.com/maps?q=21.0527159,-89.6413298&hl=es&z=16&output=embed'),
     'horarios'          => env('NODICO_HORARIOS', 'Lunes a viernes, 9:00 a 19:00 h'),
     'horarios_detalle'  => 'Sábados y domingos cerrado',
 

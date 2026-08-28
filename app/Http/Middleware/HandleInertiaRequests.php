@@ -38,6 +38,7 @@ class HandleInertiaRequests extends Middleware
                 'direccion'       => config('nodico.direccion'),
                 'direccionCorta'  => config('nodico.direccion_corta'),
                 'mapsUrl'         => config('nodico.maps_url'),
+                'mapsEmbed'       => config('nodico.maps_embed'),
                 'horarios'        => config('nodico.horarios'),
                 'horariosDetalle' => config('nodico.horarios_detalle'),
                 'redes'           => config('nodico.redes'),

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Ajuste;
 use App\Models\Espacio;
 use App\Models\Evento;
 use App\Models\Plane;
@@ -14,9 +15,10 @@ class WelcomeController extends Controller
     {
         return Inertia::render('Welcome', [
             ...$this->authProps(),
-            'planes'  => Plane::publicos()->get(),
-            'salon'   => Espacio::salonesPublicados()->first(),
-            'eventos' => Evento::activos()->proximos()->limit(3)->get(),
+            'planes'         => Plane::publicos()->get(),
+            'salon'          => Espacio::salonesPublicados()->first(),
+            'eventos'        => Evento::activos()->proximos()->limit(3)->get(),
+            'instagramPosts' => Ajuste::obtener('instagram_posts', []),
         ]);
     }
 
@@ -47,10 +49,11 @@ class WelcomeController extends Controller
     {
         return Inertia::render('Comunidad', [
             ...$this->authProps(),
-            'proximos'  => Evento::activos()->proximos()->limit(6)->get(),
-            'pasados'   => Evento::activos()->pasados()->limit(6)->get(),
-            'salon'     => Espacio::salonesPublicados()->first(),
-            'lumaEmbed' => config('nodico.luma_embed'),
+            'proximos'       => Evento::activos()->proximos()->limit(6)->get(),
+            'pasados'        => Evento::activos()->pasados()->limit(6)->get(),
+            'salon'          => Espacio::salonesPublicados()->first(),
+            'lumaEmbed'      => config('nodico.luma_embed'),
+            'instagramPosts' => Ajuste::obtener('instagram_posts', []),
         ]);
     }
 

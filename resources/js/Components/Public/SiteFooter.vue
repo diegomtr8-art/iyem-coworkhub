@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import Boton from '@/Components/Public/Boton.vue'
-import Marquee from '@/Components/Public/Marquee.vue'
 import { Link, usePage } from '@inertiajs/vue3'
 import { ArrowUp, Clock, Facebook, Instagram, Linkedin, Mail, MapPin, Phone } from 'lucide-vue-next'
 import { computed } from 'vue'
@@ -24,12 +23,10 @@ const redes = computed(() => [
 ].filter((r) => r.href))
 
 const aliados = [
-  { nombre: 'Instituto Yucateco de Emprendedores', logo: '/img/nodico/logo-iyem.png', ancho: 452, alto: 75 },
-  { nombre: 'Herencia Viva', logo: '/img/nodico/logo-herencia-viva.png', ancho: 418, alto: 63 },
-  { nombre: 'CANIETI', logo: '/img/nodico/logo-canieti.png', ancho: 255, alto: 99 },
+  { nombre: 'Instituto Yucateco de Emprendedores', logo: '/img/nodico/logo-iyem.png', ancho: 452, alto: 75, clase: 'h-8' },
+  { nombre: 'Herencia Viva', logo: '/img/nodico/logo-herencia-viva.png', ancho: 418, alto: 63, clase: 'h-7' },
+  { nombre: 'CANIETI', logo: '/img/nodico/logo-canieti.png', ancho: 255, alto: 99, clase: 'h-9' },
 ]
-
-const palabras = ['Emprendimiento', 'Creatividad', 'Comunidad', 'Innovación', 'Coworking', 'Mérida', 'Yucatán']
 
 function volverArriba() {
   const sinMovimiento = window.matchMedia('(prefers-reduced-motion: reduce)').matches
@@ -39,34 +36,30 @@ function volverArriba() {
 
 <template>
   <footer>
-    <!-- 1 · Cierre con energía sobre amarillo -->
-    <section class="bg-nodo-400 py-16 lg:py-24">
+    <!-- Cierre: llamado final sobre amarillo -->
+    <section class="bg-nodo-400 py-16 lg:py-20">
       <div class="mx-auto max-w-7xl px-5 sm:px-8">
-        <div class="flex flex-col gap-10 lg:flex-row lg:items-end lg:justify-between">
+        <div class="flex flex-col gap-10 lg:flex-row lg:items-center lg:justify-between">
           <div>
-            <p class="etiqueta-tecnica mb-6 text-dark/60">Da el paso</p>
-            <p class="max-w-2xl font-display text-display-lg font-extrabold text-dark">
+            <h2 class="max-w-2xl font-display text-display-md font-extrabold text-dark">
               ¿Listo para empezar?
-            </p>
-            <p class="mt-5 max-w-lg font-body text-cuerpo-lg text-dark/75">
+            </h2>
+            <p class="mt-4 max-w-lg font-body text-cuerpo-lg text-dark/70">
               Elige tu membresía y trabaja desde el primer día en la comunidad emprendedora de Yucatán.
             </p>
           </div>
 
-          <Boton :href="route('membresias')" variante="oscuro" tamano="lg" flecha class="shrink-0">
+          <Boton :href="route('membresias')" variante="secundario" tamano="lg" flecha class="shrink-0">
             Ver membresías
           </Boton>
         </div>
       </div>
     </section>
 
-    <!-- 2 · Cinta de marca como separador -->
-    <Marquee :palabras="palabras" tono="oscuro" compacto />
-
-    <!-- 3 · Cuerpo oscuro -->
+    <!-- Cuerpo -->
     <div class="bg-tinta">
       <div class="mx-auto max-w-7xl px-5 py-16 sm:px-8 lg:py-20">
-        <div class="grid gap-12 sm:grid-cols-2 lg:grid-cols-4">
+        <div class="grid gap-x-10 gap-y-12 sm:grid-cols-2 lg:grid-cols-[1.4fr_1fr_1.3fr]">
           <!-- Marca -->
           <div>
             <img
@@ -77,21 +70,20 @@ function volverArriba() {
               loading="lazy"
               class="h-11 w-auto"
             />
-            <p class="mt-6 max-w-xs font-body text-sm leading-relaxed text-white/60">
+            <p class="mt-6 max-w-sm font-body text-sm leading-relaxed text-white/55">
               El coworking del Instituto Yucateco de Emprendedores en Mérida: espacio, comunidad
               y contenido para quienes están construyendo algo propio.
             </p>
 
-            <ul v-if="redes.length" class="mt-7 flex gap-3">
+            <ul v-if="redes.length" class="mt-8 flex gap-3">
               <li v-for="red in redes" :key="red.label">
                 <a
                   :href="red.href"
                   target="_blank"
                   rel="noopener noreferrer"
                   :aria-label="`Nódico en ${red.label}`"
-                  class="flex h-11 w-11 items-center justify-center rounded-xl border border-white/20 text-white
-                         transition duration-300 ease-salida hover:-translate-y-1 hover:border-nodo-400
-                         hover:bg-nodo-400 hover:text-dark"
+                  class="flex h-11 w-11 items-center justify-center rounded-xl bg-white/[.06] text-white
+                         transition duration-300 ease-salida hover:-translate-y-1 hover:bg-nodo-400 hover:text-dark"
                 >
                   <component :is="red.icono" class="h-5 w-5" aria-hidden="true" />
                 </a>
@@ -102,11 +94,11 @@ function volverArriba() {
           <!-- Navegación -->
           <nav aria-labelledby="footer-nav">
             <h2 id="footer-nav" class="etiqueta-tecnica text-nodo-400">Navegación</h2>
-            <ul class="mt-6 space-y-1">
+            <ul class="mt-6">
               <li v-for="enlace in enlaces" :key="enlace.ruta">
                 <Link
                   :href="route(enlace.ruta)"
-                  class="flex min-h-[44px] items-center font-body text-sm text-white/70 transition hover:text-nodo-400"
+                  class="flex min-h-[44px] items-center font-body text-sm text-white/65 transition hover:text-nodo-400"
                 >
                   {{ enlace.label }}
                 </Link>
@@ -116,56 +108,60 @@ function volverArriba() {
 
           <!-- Contacto -->
           <div>
-            <h2 class="etiqueta-tecnica text-nodo-400">Contacto</h2>
-            <ul class="mt-6 space-y-4">
-              <li v-if="nodico.email" class="flex gap-3">
-                <Mail class="mt-0.5 h-4 w-4 shrink-0 text-white/40" aria-hidden="true" />
-                <a :href="`mailto:${nodico.email}`" class="font-body text-sm text-white/70 transition hover:text-nodo-400">
-                  {{ nodico.email }}
-                </a>
-              </li>
-              <li v-if="nodico.telefono" class="flex gap-3">
-                <Phone class="mt-0.5 h-4 w-4 shrink-0 text-white/40" aria-hidden="true" />
-                <a :href="`tel:${nodico.telefono.replace(/\s/g, '')}`" class="font-body text-sm text-white/70 transition hover:text-nodo-400">
-                  {{ nodico.telefono }}
-                </a>
-              </li>
-              <li v-if="nodico.direccion" class="flex gap-3">
-                <MapPin class="mt-0.5 h-4 w-4 shrink-0 text-white/40" aria-hidden="true" />
+            <h2 class="etiqueta-tecnica text-nodo-400">Visítanos</h2>
+
+            <ul class="mt-6 space-y-5">
+              <li v-if="nodico.direccion" class="flex gap-3.5">
+                <MapPin class="mt-0.5 h-4 w-4 shrink-0 text-nodo-400" aria-hidden="true" />
                 <div>
-                  <p class="font-body text-sm text-white/70">{{ nodico.direccion }}</p>
+                  <p class="font-body text-sm leading-relaxed text-white/65">{{ nodico.direccion }}</p>
                   <a
                     v-if="nodico.mapsUrl"
                     :href="nodico.mapsUrl"
                     target="_blank"
                     rel="noopener noreferrer"
-                    class="mt-1 inline-flex min-h-[44px] items-center font-body text-sm text-nodo-400 underline-offset-4 hover:underline"
+                    class="mt-1.5 inline-flex min-h-[44px] items-center font-body text-sm font-medium text-nodo-400 underline-offset-4 hover:underline"
                   >
-                    Ver en el mapa
+                    Cómo llegar
                   </a>
                 </div>
               </li>
-              <li v-if="nodico.horarios" class="flex gap-3">
-                <Clock class="mt-0.5 h-4 w-4 shrink-0 text-white/40" aria-hidden="true" />
-                <p class="font-body text-sm text-white/70">{{ nodico.horarios }}</p>
+
+              <li v-if="nodico.horarios" class="flex gap-3.5">
+                <Clock class="mt-0.5 h-4 w-4 shrink-0 text-nodo-400" aria-hidden="true" />
+                <div>
+                  <p class="font-body text-sm text-white/65">{{ nodico.horarios }}</p>
+                  <p v-if="nodico.horariosDetalle" class="font-body text-sm text-white/35">
+                    {{ nodico.horariosDetalle }}
+                  </p>
+                </div>
+              </li>
+
+              <li v-if="nodico.telefono" class="flex gap-3.5">
+                <Phone class="mt-0.5 h-4 w-4 shrink-0 text-nodo-400" aria-hidden="true" />
+                <a
+                  :href="`tel:${nodico.telefonoE164 ?? nodico.telefono.replace(/\s/g, '')}`"
+                  class="font-body text-sm text-white/65 transition hover:text-nodo-400"
+                >
+                  {{ nodico.telefono }}
+                </a>
+              </li>
+
+              <li v-if="nodico.email" class="flex gap-3.5">
+                <Mail class="mt-0.5 h-4 w-4 shrink-0 text-nodo-400" aria-hidden="true" />
+                <a :href="`mailto:${nodico.email}`" class="font-body text-sm text-white/65 transition hover:text-nodo-400">
+                  {{ nodico.email }}
+                </a>
               </li>
             </ul>
           </div>
+        </div>
 
-          <!-- Facturación y aliados -->
+        <!-- Aliados + facturación -->
+        <div class="mt-16 grid gap-10 border-t border-white/10 pt-10 lg:grid-cols-[1.4fr_1fr]">
           <div>
-            <h2 class="etiqueta-tecnica text-nodo-400">Facturación</h2>
-            <p class="mt-6 font-body text-sm leading-relaxed text-white/60">
-              Para solicitar su factura, escriba a
-              <a
-                :href="`mailto:${nodico.email}?subject=Solicitud%20de%20factura`"
-                class="text-nodo-400 underline underline-offset-2 hover:text-nodo-300"
-              >{{ nodico.email }}</a>
-              con el asunto “Solicitud de factura”, incluyendo sus datos fiscales completos.
-            </p>
-
-            <h2 class="etiqueta-tecnica mt-9 text-nodo-400">Aliados</h2>
-            <ul class="mt-5 flex flex-wrap items-center gap-5">
+            <h2 class="etiqueta-tecnica text-white/35">Con el respaldo de</h2>
+            <ul class="mt-6 flex flex-wrap items-center gap-x-10 gap-y-6">
               <li v-for="aliado in aliados" :key="aliado.nombre">
                 <img
                   :src="aliado.logo"
@@ -173,44 +169,54 @@ function volverArriba() {
                   :width="aliado.ancho"
                   :height="aliado.alto"
                   loading="lazy"
-                  class="h-7 w-auto object-contain opacity-45 brightness-0 invert transition hover:opacity-80"
+                  class="w-auto object-contain opacity-50 brightness-0 invert transition duration-300 hover:opacity-90"
+                  :class="aliado.clase"
                 />
               </li>
             </ul>
           </div>
+
+          <p class="font-body text-sm leading-relaxed text-white/45">
+            Para solicitar su factura, escriba a
+            <a
+              :href="`mailto:${nodico.email}?subject=Solicitud%20de%20factura`"
+              class="text-nodo-400 underline underline-offset-2 hover:text-nodo-300"
+            >{{ nodico.email }}</a>
+            con el asunto “Solicitud de factura”, incluyendo sus datos fiscales completos.
+          </p>
         </div>
       </div>
 
-      <!-- 4 · Barra inferior -->
+      <!-- Barra inferior -->
       <div class="border-t border-white/10">
-        <div class="pb-segura mx-auto flex max-w-7xl flex-col gap-6 px-5 pt-8 sm:px-8 lg:flex-row lg:items-center lg:justify-between">
-          <p class="max-w-2xl font-body text-xs leading-relaxed text-white/45">
+        <div class="pb-segura mx-auto flex max-w-7xl flex-col gap-4 px-5 pt-6 sm:px-8 lg:flex-row lg:items-center lg:justify-between">
+          <p class="max-w-2xl font-body text-xs leading-relaxed text-white/40">
             Nódico es una marca registrada del Instituto Yucateco de Emprendedores.
             Todos los derechos reservados. © {{ anio }}
           </p>
 
-          <div class="flex flex-wrap items-center gap-x-6 gap-y-2">
+          <div class="flex flex-wrap items-center gap-x-6">
             <Link
               :href="route('privacidad')"
-              class="flex min-h-[44px] items-center font-body text-xs text-white/55 transition hover:text-nodo-400"
+              class="flex min-h-[44px] items-center font-body text-xs text-white/50 transition hover:text-nodo-400"
             >
               Aviso de privacidad
             </Link>
             <Link
               :href="route('terminos')"
-              class="flex min-h-[44px] items-center font-body text-xs text-white/55 transition hover:text-nodo-400"
+              class="flex min-h-[44px] items-center font-body text-xs text-white/50 transition hover:text-nodo-400"
             >
               Términos y condiciones
             </Link>
 
             <button
               type="button"
-              class="group flex min-h-[44px] items-center gap-2 font-body text-xs text-white/55 transition hover:text-nodo-400"
+              class="group flex min-h-[44px] items-center gap-2 font-body text-xs text-white/50 transition hover:text-nodo-400"
               @click="volverArriba"
             >
               Volver arriba
               <ArrowUp
-                class="h-4 w-4 transition-transform duration-200 ease-salida group-hover:-translate-y-1"
+                class="h-4 w-4 transition-transform duration-300 ease-salida group-hover:-translate-y-1"
                 aria-hidden="true"
               />
             </button>
