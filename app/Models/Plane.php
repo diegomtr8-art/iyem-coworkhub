@@ -15,6 +15,8 @@ class Plane extends Model
         'max_horas_sala_dia', 'personas',
         'max_reservas_mes', 'acceso_24h', 'incluye_sala_juntas',
         'color', 'destacado', 'activo',
+        'stripe_url', 'beneficios', 'descripcion_corta', 'descripcion_larga',
+        'periodo_label', 'cta_label', 'imagen', 'orden',
     ];
 
     protected $casts = [
@@ -23,7 +25,13 @@ class Plane extends Model
         'incluye_sala_juntas' => 'boolean',
         'destacado'           => 'boolean',
         'activo'              => 'boolean',
+        'beneficios'          => 'array',
     ];
+
+    public function scopePublicos($query)
+    {
+        return $query->where('activo', true)->orderBy('orden')->orderBy('precio');
+    }
 
     public function suscripciones() { return $this->hasMany(Suscripcion::class, 'plan_id'); }
 

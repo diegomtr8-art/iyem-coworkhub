@@ -135,7 +135,7 @@ class DatabaseSeeder extends Seeder
             'face_id_ok' => true,
         ]);
 
-        $planPro = Plane::where('nombre', 'Nodico PRO')->first();
+        $planPro = Plane::whereIn('nombre', ['Nodico PRO', 'Nodo Pro'])->first();
         $inicio  = Carbon::now()->startOfMonth();
         $fin     = $inicio->copy()->addMonth()->subDay();
 
@@ -205,5 +205,8 @@ class DatabaseSeeder extends Seeder
             'fecha_fin'    => Carbon::today()->addDays(30),
             'activo'       => true,
         ]);
+
+        // Contenido publico del sitio (precios, beneficios y salones).
+        $this->call(NodicoWebSeeder::class);
     }
 }

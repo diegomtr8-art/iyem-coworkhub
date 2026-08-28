@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Espacio;
 use App\Models\Evento;
 use App\Models\Plane;
 use Illuminate\Support\Facades\Route;
@@ -12,37 +13,52 @@ class WelcomeController extends Controller
     public function index()
     {
         return Inertia::render('Welcome', [
-            'canLogin'    => Route::has('login'),
-            'canRegister' => Route::has('register'),
-            'planes'      => Plane::where('activo', true)->orderBy('precio')->get(),
-            'eventos'     => Evento::activos()->proximos()->limit(3)->get(),
+            ...$this->authProps(),
+            'planes'  => Plane::publicos()->get(),
+            'salon'   => Espacio::salonesPublicados()->first(),
+            'eventos' => Evento::activos()->proximos()->limit(3)->get(),
         ]);
     }
 
     public function nosotros()
     {
-        return Inertia::render('Nosotros', [
-            'canLogin'    => Route::has('login'),
-            'canRegister' => Route::has('register'),
-        ]);
+        return Inertia::render('Nosotros', $this->authProps());
     }
 
     public function membresias()
     {
         return Inertia::render('Membresias', [
-            'canLogin'    => Route::has('login'),
-            'canRegister' => Route::has('register'),
-            'planes'      => Plane::where('activo', true)->orderBy('precio')->get(),
+            ...$this->authProps(),
+            'planes' => Plane::publicos()->get(),
         ]);
     }
 
-    public function eventos()
+    /** `/eventos` — salones para eventos (equivalente a /salones en Odoo). */
+    public function salones()
     {
-        return Inertia::render('Eventos', [
+        return Inertia::render('Salones', [
+            ...$this->authProps(),
+            'salones' => Espacio::salonesPublicados()->get(),
+        ]);
+    }
+
+    /** `/actividades` — comunidad y talleres (equivalente a /comunidad en Odoo). */
+    public function comunidad()
+    {
+        return Inertia::render('Comunidad', [
+            ...$this->authProps(),
+            'proximos'  => Evento::activos()->proximos()->limit(6)->get(),
+            'pasados'   => Evento::activos()->pasados()->limit(6)->get(),
+            'salon'     => Espacio::salonesPublicados()->first(),
+            'lumaEmbed' => config('nodico.luma_embed'),
+        ]);
+    }
+
+    private function authProps(): array
+    {
+        return [
             'canLogin'    => Route::has('login'),
             'canRegister' => Route::has('register'),
-            'proximos'    => Evento::activos()->proximos()->get(),
-            'pasados'     => Evento::pasados()->limit(6)->get(),
-        ]);
+        ];
     }
 }

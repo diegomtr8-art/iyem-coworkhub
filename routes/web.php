@@ -24,9 +24,20 @@ use Illuminate\Support\Facades\Route;
 Route::get('/',            [WelcomeController::class, 'index'])->name('home');
 Route::get('/nosotros',    [WelcomeController::class, 'nosotros'])->name('nosotros');
 Route::get('/membresias',  [WelcomeController::class, 'membresias'])->name('membresias');
-Route::get('/eventos',     [WelcomeController::class, 'eventos'])->name('eventos');
-Route::get('/actividades', [WelcomeController::class, 'eventos'])->name('actividades');
+Route::get('/eventos',     [WelcomeController::class, 'salones'])->name('eventos');
+Route::get('/actividades', [WelcomeController::class, 'comunidad'])->name('actividades');
 Route::post('/contacto',   [ContactoController::class, 'store'])->name('contacto.store');
+
+// robots.txt dinamico: en staging se bloquea la indexacion completa.
+Route::get('/robots.txt', function () {
+    $lineas = app()->environment('staging', 'local')
+        ? ['User-agent: *', 'Disallow: /']
+        : ['User-agent: *', 'Disallow: /dashboard', 'Disallow: /portal', 'Disallow: /profile'];
+
+    return response(implode(PHP_EOL, $lineas) . PHP_EOL, 200, [
+        'Content-Type' => 'text/plain; charset=UTF-8',
+    ]);
+})->name('robots');
 
 // --- ADMINISTRACIÓN ---
 Route::middleware(['auth', 'verified', 'admin'])->group(function () {
