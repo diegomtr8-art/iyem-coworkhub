@@ -28,6 +28,8 @@ const cargarFondo = ref(false)
 const modalAbierto = ref(false)
 const conSonido = ref(false)
 const enPausa = ref(false)
+/** El iframe se revela solo cuando ya pinta video, no mientras almacena en bufer. */
+const videoVisible = ref(false)
 
 let observador: IntersectionObserver | undefined
 let focoPrevio: HTMLElement | null = null
@@ -52,6 +54,15 @@ function ordenar(func: string, args: unknown[] = []) {
     JSON.stringify({ event: 'command', func, args }),
     'https://www.youtube-nocookie.com',
   )
+}
+
+/**
+ * YouTube pinta negro mientras almacena en bufer, y como el iframe va encima
+ * del poster el hero se veia en negro al entrar. Se mantiene oculto hasta que
+ * carga y se le da un margen para que empiece a reproducir.
+ */
+function alCargarVideo() {
+  window.setTimeout(() => (videoVisible.value = true), 900)
 }
 
 function alternarSonido() {
@@ -163,13 +174,15 @@ onBeforeUnmount(() => {
         tabindex="-1"
         allow="autoplay; encrypted-media"
         class="pointer-events-none absolute left-1/2 top-1/2 h-[100vh] w-[177.78vh] min-h-[56.25vw] min-w-[100vw]
-               -translate-x-1/2 -translate-y-1/2 scale-[1.35] border-0"
+               -translate-x-1/2 -translate-y-1/2 scale-[1.35] border-0 transition-opacity duration-700 ease-suave"
+        :class="videoVisible ? 'opacity-100' : 'opacity-0'"
+        @load="alCargarVideo"
       />
     </div>
 
     <!-- Velo direccional: oscuro abajo, donde va el texto; arriba deja ver el espacio -->
     <div
-      class="absolute inset-0 -z-10 bg-gradient-to-t from-tinta via-tinta/60 to-tinta/20"
+      class="absolute inset-0 -z-10 bg-gradient-to-t from-tinta via-tinta/55 to-tinta/15"
       aria-hidden="true"
     />
 
