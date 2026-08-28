@@ -240,15 +240,15 @@ const fichaSalon = computed(() => {
     <!-- ═══ SALONES — aprobado, no se modifica ═══ -->
     <section class="relative isolate overflow-hidden bg-tinta">
       <img
-        src="/img/nodico/teaser-salones.png"
+        src="/img/nodico/salon-yucatan-emprende-2.webp"
         alt="Salón de eventos de Nódico montado para una conferencia"
-        width="1600"
-        height="900"
+        width="1920"
+        height="1440"
         loading="lazy"
         decoding="async"
         class="absolute inset-0 -z-20 h-full w-full object-cover"
       />
-      <div class="absolute inset-0 -z-10 bg-gradient-to-r from-tinta via-tinta/90 to-tinta/50" aria-hidden="true" />
+      <div class="absolute inset-0 -z-10 bg-gradient-to-r from-tinta via-tinta/[.92] to-tinta/60" aria-hidden="true" />
 
       <div class="mx-auto max-w-7xl px-5 py-20 sm:px-8 lg:py-28">
         <ScrollReveal class="max-w-2xl">

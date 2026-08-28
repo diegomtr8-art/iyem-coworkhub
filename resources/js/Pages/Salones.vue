@@ -41,7 +41,7 @@ const ficha = (salon: any) => [
         decoding="async"
         class="absolute inset-0 -z-20 h-full w-full object-cover"
       />
-      <div class="absolute inset-0 -z-10 bg-gradient-to-t from-tinta via-tinta/70 to-tinta/30" aria-hidden="true" />
+      <div class="absolute inset-0 -z-10 bg-gradient-to-t from-tinta via-tinta/80 to-tinta/45" aria-hidden="true" />
 
       <div class="mx-auto w-full max-w-7xl px-5 pb-16 pt-36 sm:px-8 lg:pb-20">
         <p class="etiqueta-tecnica mb-5 flex items-center gap-3 text-nodo-400">
@@ -53,7 +53,7 @@ const ficha = (salon: any) => [
           Espacios listos para tu evento
         </h1>
 
-        <p class="mt-7 max-w-2xl font-body text-cuerpo-lg text-white/80">
+        <p class="mt-7 max-w-2xl font-body text-cuerpo-lg text-white/90">
           Nuestros salones están listos para tus talleres, conferencias o reuniones. Modernos,
           cómodos y equipados para que cada idea cobre vida.
         </p>

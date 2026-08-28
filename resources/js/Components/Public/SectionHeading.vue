@@ -45,7 +45,7 @@ withDefaults(defineProps<{
       v-if="descripcion"
       class="mt-6 max-w-2xl font-body text-cuerpo-lg"
       :class="[
-        tono === 'claro' ? 'text-white/65' : 'text-dark/65',
+        tono === 'claro' ? 'text-white/85' : 'text-dark/65',
         align === 'center' ? 'mx-auto' : '',
       ]"
     >
