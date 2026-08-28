@@ -22,11 +22,13 @@ class HandleInertiaRequests extends Middleware
                 'user' => $request->user(),
             ],
             'flash' => [
-                'success' => $request->session()->get('success'),
-                'error'   => $request->session()->get('error'),
-                'info'    => $request->session()->get('info'),
-                'warning' => $request->session()->get('warning'),
+                'success'     => $request->session()->get('success'),
+                'error'       => $request->session()->get('error'),
+                'info'        => $request->session()->get('info'),
+                'warning'     => $request->session()->get('warning'),
+                'contacto_ok' => $request->session()->get('contacto_ok'),
             ],
+            'isStaging' => app()->environment('staging'),
         ];
     }
 }
