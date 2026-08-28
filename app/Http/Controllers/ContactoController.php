@@ -14,6 +14,12 @@ class ContactoController extends Controller
 {
     public function store(Request $request)
     {
+        // Trampa antibots: el campo va oculto, si trae contenido lo llenó un robot.
+        // Se responde como si todo hubiera salido bien para no darle pistas.
+        if (filled($request->input('sitio_web'))) {
+            return back()->with('contacto_ok', true);
+        }
+
         $data = $request->validate([
             'nombre'      => 'required|string|max:100',
             'telefono'    => 'nullable|string|max:40',

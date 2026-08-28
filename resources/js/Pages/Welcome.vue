@@ -1,11 +1,15 @@
 <script setup lang="ts">
-import IconCard from '@/Components/Public/IconCard.vue'
+import AliadosSection from '@/Components/Public/AliadosSection.vue'
+import Boton from '@/Components/Public/Boton.vue'
 import ContactSection from '@/Components/Public/ContactSection.vue'
-import PlanCard from '@/Components/Public/PlanCard.vue'
+import HeroVideo from '@/Components/Public/HeroVideo.vue'
+import IconCard from '@/Components/Public/IconCard.vue'
+import Marquee from '@/Components/Public/Marquee.vue'
+import PlanesCarousel from '@/Components/Public/PlanesCarousel.vue'
 import ScrollReveal from '@/Components/Public/ScrollReveal.vue'
 import SectionHeading from '@/Components/Public/SectionHeading.vue'
 import PublicLayout from '@/Layouts/PublicLayout.vue'
-import { Head, Link } from '@inertiajs/vue3'
+import { Head } from '@inertiajs/vue3'
 import { computed } from 'vue'
 
 const props = defineProps<{
@@ -30,27 +34,23 @@ const beneficios = [
   { icono: '/img/nodico/icono-pet-friendly.svg', titulo: 'Espacio pet friendly' },
 ]
 
-const aliados = [
-  { nombre: 'Instituto Yucateco de Emprendedores', logo: '/img/nodico/logo-iyem.webp', href: 'https://iyem.yucatan.gob.mx/' },
-  { nombre: 'Herencia Viva', logo: '/img/nodico/logo-herencia-viva.webp', href: 'http://www.herenciaviva.com' },
-  { nombre: 'CANIETI', logo: '/img/nodico/logo-canieti.webp', href: 'https://canieti.org' },
-]
+const palabrasMarca = ['Emprendimiento', 'Creatividad', 'Comunidad', 'Innovación', 'Coworking', 'Pet friendly', 'Networking']
 
-/** Si la BD viene vacía, el sitio sigue mostrando los cuatro planes reales. */
+/** Si la BD viniera vacía, la portada sigue mostrando los cuatro planes reales. */
 const planesFallback = [
-  { nombre: 'Nódico Flex', color: '#FFDD00', imagen: '/img/nodico/plan-nodico-flex.webp', personas: 1,
-    descripcion_corta: 'Opción accesible para jóvenes emprendedores o estudiantes que necesitan el espacio por horas.' },
-  { nombre: 'Nodo Pro', color: '#D6E265', imagen: '/img/nodico/plan-nodo-pro.webp', personas: 1,
-    descripcion_corta: 'Perfecta para emprendedores y creadores que buscan un espacio de trabajo constante.' },
-  { nombre: 'Day-Pass', color: '#EF7E88', imagen: '/img/nodico/plan-day-pass.webp', personas: 1,
-    descripcion_corta: 'Espacio pensado para estudiantes, freelancers ocasionales o quienes necesitan trabajar por un día.' },
-  { nombre: 'Nodo Match', color: '#864B95', imagen: '/img/nodico/plan-nodo-match.webp', personas: 2,
-    descripcion_corta: 'Ideal para emprendedores, freelancers y creadores de contenido que requieren un espacio estable para trabajar.' },
+  { nombre: 'Day-Pass', precio: 79, periodo_label: 'por 1 día', color: '#EF7E88', destacado: false, personas: 1,
+    descripcion_corta: 'Espacio pensado para estudiantes, freelancers ocasionales o quienes necesitan trabajar por un día.', beneficios: [] },
+  { nombre: 'Nódico Flex', precio: 249, periodo_label: 'por 4 días', color: '#FFDD00', destacado: false, personas: 1,
+    descripcion_corta: 'Opción accesible para jóvenes emprendedores o estudiantes que necesitan el espacio por horas.', beneficios: [] },
+  { nombre: 'Nodo Pro', precio: 599, periodo_label: 'al mes', color: '#D6E265', destacado: true, personas: 1,
+    descripcion_corta: 'Perfecta para emprendedores y creadores que buscan un espacio de trabajo constante.', beneficios: [] },
+  { nombre: 'Nodo Match', precio: 799, periodo_label: 'por 1 mes', color: '#864B95', destacado: false, personas: 2,
+    descripcion_corta: 'Ideal para emprendedores, freelancers y creadores de contenido que requieren un espacio estable para trabajar.', beneficios: [] },
 ]
 
 const planesVisibles = computed(() => (props.planes?.length ? props.planes : planesFallback))
 
-/** Ficha técnica del teaser: valores reales de /eventos (ver discrepancia #2 de la auditoría). */
+/** Ficha del teaser con los valores reales de /eventos (discrepancia #2 de la auditoría). */
 const fichaSalon = computed(() => {
   const s = props.salon
   return [
@@ -75,197 +75,169 @@ const fichaSalon = computed(() => {
   </Head>
 
   <PublicLayout>
-    <!-- Hero -->
-    <section class="relative isolate overflow-hidden bg-nodo-400 pt-28 lg:pt-32">
-      <img
-        src="/img/nodico/fondo-amarillo.webp"
-        alt=""
-        aria-hidden="true"
-        class="absolute inset-0 -z-10 h-full w-full object-cover opacity-60"
-      />
+    <HeroVideo />
 
-      <div class="mx-auto grid max-w-7xl items-center gap-12 px-5 py-16 sm:px-8 lg:grid-cols-2 lg:gap-16 lg:py-24">
-        <div>
-          <h1 class="font-display text-4xl font-extrabold leading-[1.05] tracking-tight text-dark sm:text-5xl lg:text-6xl">
-            Bienvenidos al lugar
-            <span class="mt-3 block">Donde el trabajo es un pretexto para crear</span>
-          </h1>
-
-          <Link
-            :href="route('nosotros')"
-            class="mt-10 inline-flex items-center gap-2 rounded-lg border-2 border-dark bg-dark px-7 py-3
-                   font-display text-sm font-bold text-nodo-400 transition hover:bg-dark-light
-                   focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-dark"
-          >
-            Conocer más <span aria-hidden="true">→</span>
-          </Link>
-        </div>
-
-        <div>
-          <img
-            src="/img/nodico/hero-inicio.webp"
-            alt="Personas trabajando en el área de coworking de Nódico"
-            width="1000"
-            height="750"
-            fetchpriority="high"
-            decoding="async"
-            class="aspect-[4/3] w-full rounded-4xl object-cover shadow-2xl"
-          />
-        </div>
-      </div>
-    </section>
-
-    <!-- Servicios -->
-    <section class="bg-cream py-20 lg:py-28">
-      <div class="mx-auto max-w-7xl px-5 sm:px-8">
-        <ScrollReveal>
-          <SectionHeading titulo="Servicios" align="center" />
-        </ScrollReveal>
-
-        <div class="mt-14 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          <ScrollReveal v-for="(servicio, i) in servicios" :key="servicio.titulo" :delay="i * 70">
-            <IconCard :icono="servicio.icono" :titulo="servicio.titulo" />
-          </ScrollReveal>
-        </div>
-      </div>
-    </section>
-
-    <!-- Beneficios adicionales -->
-    <section class="bg-white py-20 lg:py-28">
-      <div class="mx-auto max-w-7xl px-5 sm:px-8">
-        <ScrollReveal>
-          <SectionHeading titulo="Beneficios adicionales" align="center" />
-        </ScrollReveal>
-
-        <div class="mt-14 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          <ScrollReveal v-for="(beneficio, i) in beneficios" :key="beneficio.titulo" :delay="i * 70">
-            <IconCard :icono="beneficio.icono" :titulo="beneficio.titulo" />
-          </ScrollReveal>
-        </div>
-      </div>
-    </section>
-
-    <!-- Planes -->
+    <!-- 01 · Servicios -->
     <section class="bg-cream py-20 lg:py-28">
       <div class="mx-auto max-w-7xl px-5 sm:px-8">
         <ScrollReveal>
           <SectionHeading
-            titulo="Elige tu plan ideal"
-            align="center"
-            descripcion="En nuestro coworking creemos que el éxito comienza con el entorno correcto. Nuestras membresías están diseñadas para brindarte la flexibilidad, los recursos y la comunidad que necesitas para hacer crecer tu proyecto. Ya sea que busques un espacio fijo, horas flexibles o el respaldo de una red de mentes creativas, aquí encontrarás la opción perfecta para ti."
-          >
-            <Link
-              :href="route('membresias')"
-              class="mt-8 inline-flex items-center gap-2 rounded-lg border-2 border-dark bg-nodo-400 px-7 py-3
-                     font-display text-sm font-bold text-dark transition hover:brightness-95
-                     focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-dark"
-            >
-              ¡Regístrate aquí! <span aria-hidden="true">→</span>
-            </Link>
-          </SectionHeading>
+            numero="01"
+            etiqueta="Servicios"
+            titulo="Todo lo que necesitas para trabajar en serio"
+            tamano="lg"
+          />
         </ScrollReveal>
 
-        <div class="mt-14 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-          <ScrollReveal v-for="(plan, i) in planesVisibles" :key="plan.nombre" :delay="i * 80" class="h-full">
-            <PlanCard :plan="plan" />
-          </ScrollReveal>
+        <ScrollReveal :stagger="70" class="mt-14 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+          <IconCard
+            v-for="(servicio, i) in servicios"
+            :key="servicio.titulo"
+            :icono="servicio.icono"
+            :titulo="servicio.titulo"
+            :numero="`0${i + 1}`"
+          />
+        </ScrollReveal>
+      </div>
+    </section>
+
+    <Marquee :palabras="palabrasMarca" />
+
+    <!-- 02 · Beneficios -->
+    <section class="bg-dark py-20 lg:py-28">
+      <div class="mx-auto max-w-7xl px-5 sm:px-8">
+        <ScrollReveal>
+          <SectionHeading
+            numero="02"
+            etiqueta="Beneficios"
+            titulo="Y otras cosas que solo pasan aquí"
+            tono="claro"
+            tamano="lg"
+          />
+        </ScrollReveal>
+
+        <ScrollReveal :stagger="70" class="mt-14 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+          <IconCard
+            v-for="(beneficio, i) in beneficios"
+            :key="beneficio.titulo"
+            :icono="beneficio.icono"
+            :titulo="beneficio.titulo"
+            :numero="`0${i + 1}`"
+            tono="oscuro"
+          />
+        </ScrollReveal>
+      </div>
+    </section>
+
+    <!-- 03 · Planes -->
+    <section class="overflow-hidden bg-cream-50 py-20 lg:py-28">
+      <div class="mx-auto max-w-7xl px-5 sm:px-8">
+        <ScrollReveal>
+          <SectionHeading
+            numero="03"
+            etiqueta="Membresías"
+            titulo="Elige tu plan ideal"
+            tamano="lg"
+            descripcion="Creemos que el éxito comienza con el entorno correcto. Nuestras membresías te dan la flexibilidad, los recursos y la comunidad que necesitas para hacer crecer tu proyecto."
+          />
+        </ScrollReveal>
+
+        <PlanesCarousel :planes="planesVisibles" />
+
+        <div class="mt-6 flex justify-center">
+          <Boton :href="route('membresias')" variante="secundario" flecha>
+            Comparar todas las membresías
+          </Boton>
         </div>
       </div>
     </section>
 
-    <!-- Day-pass para el interior del estado -->
-    <section class="bg-dark py-20 lg:py-24">
-      <div class="mx-auto grid max-w-7xl items-center gap-12 px-5 sm:px-8 lg:grid-cols-2">
+    <!-- 04 · Day-pass del interior del estado -->
+    <section class="border-y-2 border-dark bg-nodo-400 py-20 lg:py-24">
+      <div class="mx-auto grid max-w-7xl items-center gap-12 px-5 sm:px-8 lg:grid-cols-2 lg:gap-16">
         <ScrollReveal from="left">
-          <h2 class="font-display text-3xl font-extrabold leading-tight tracking-tight text-white sm:text-4xl">
-            ¿Eres emprendedor o artesano del Interior del Estado?
+          <p class="etiqueta-tecnica mb-6 text-dark/60">04 — Day-pass emprendedor</p>
+
+          <h2 class="font-display text-display-md font-extrabold text-dark">
+            ¿Eres emprendedor o artesano del interior del estado?
           </h2>
-          <p class="mt-5 font-display text-2xl font-bold text-nodo-400">
-            ¡Tu daypass siempre es gratuito!
+
+          <p class="mt-6 font-display text-3xl font-extrabold text-dark sm:text-4xl">
+            Tu day-pass siempre es gratuito.
           </p>
-          <p class="mt-5 font-body text-base leading-relaxed text-white/75">
-            ¿Tu negocio se encuentra en el Interior del Estado y necesitas tener una junta?
-            Conoce nuestro daypass emprendedor.
+
+          <p class="mt-6 max-w-lg font-body text-cuerpo-lg text-dark/75">
+            Si tu negocio está fuera de Mérida y necesitas un lugar para tener una junta,
+            trabajar un rato o presentar tu proyecto, el espacio es tuyo sin costo.
           </p>
-          <a
-            href="#hablemos"
-            class="mt-8 inline-flex items-center gap-2 rounded-lg border-2 border-nodo-400 px-7 py-3
-                   font-display text-sm font-bold text-nodo-400 transition hover:bg-nodo-400 hover:text-dark
-                   focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-nodo-400"
-          >
+
+          <Boton href="#hablemos" variante="oscuro" tamano="lg" class="mt-9" flecha>
             Contáctanos para más informes
-          </a>
+          </Boton>
         </ScrollReveal>
 
         <ScrollReveal from="right">
-          <img
-            src="/img/nodico/daypass-emprendedor.webp"
-            alt="Emprendedores del interior del estado trabajando en Nódico"
-            width="1000"
-            height="750"
-            loading="lazy"
-            decoding="async"
-            class="aspect-[4/3] w-full rounded-4xl object-cover"
-          />
+          <!-- La imagen se sale de su caja: profundidad por superposición. -->
+          <div class="relative">
+            <img
+              src="/img/nodico/daypass-emprendedor.webp"
+              alt="Emprendedores del interior del estado trabajando en Nódico"
+              width="1000"
+              height="750"
+              loading="lazy"
+              decoding="async"
+              class="aspect-[4/3] w-full border-2 border-dark object-cover shadow-dura-lg"
+            />
+            <p
+              class="absolute -bottom-5 -left-3 border-2 border-dark bg-white px-5 py-3 font-display text-sm font-bold text-dark shadow-dura-sm sm:-left-6"
+            >
+              Sin costo · Todo el año
+            </p>
+          </div>
         </ScrollReveal>
       </div>
     </section>
 
-    <!-- Aliados -->
-    <section class="bg-white py-20 lg:py-24">
+    <!-- 05 · Aliados -->
+    <section class="bg-cream py-20 lg:py-24">
       <div class="mx-auto max-w-7xl px-5 sm:px-8">
         <ScrollReveal>
-          <SectionHeading titulo="¿Quieres conocer más de Nódico?" align="center" />
+          <SectionHeading
+            numero="05"
+            etiqueta="Ecosistema"
+            titulo="¿Quieres conocer más de Nódico?"
+            align="center"
+          />
         </ScrollReveal>
 
-        <ul class="mt-14 flex flex-wrap items-center justify-center gap-10 sm:gap-16">
-          <li v-for="aliado in aliados" :key="aliado.nombre">
-            <a
-              :href="aliado.href"
-              target="_blank"
-              rel="noopener noreferrer"
-              class="block rounded transition hover:opacity-70
-                     focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-dark"
-            >
-              <img
-                :src="aliado.logo"
-                :alt="aliado.nombre"
-                width="220"
-                height="110"
-                loading="lazy"
-                decoding="async"
-                class="h-16 w-auto object-contain sm:h-20"
-              />
-            </a>
-          </li>
-        </ul>
+        <ScrollReveal class="mt-14">
+          <AliadosSection />
+        </ScrollReveal>
       </div>
     </section>
 
-    <!-- Teaser de salones -->
-    <section class="bg-cream py-20 lg:py-28">
+    <!-- 06 · Salones -->
+    <section class="bg-dark py-20 lg:py-28">
       <div class="mx-auto grid max-w-7xl items-center gap-12 px-5 sm:px-8 lg:grid-cols-2 lg:gap-16">
         <ScrollReveal from="left">
           <SectionHeading
-            titulo="Conoce nuestros Salones para eventos"
+            numero="06"
+            etiqueta="Salones"
+            titulo="Conoce nuestros salones para eventos"
+            tono="claro"
             descripcion="Nuestros espacios están listos para tus talleres, conferencias o reuniones. Modernos, cómodos y equipados para que cada idea cobre vida."
           />
 
-          <dl class="mt-8 divide-y divide-dark/10 border-y border-dark/10">
+          <dl class="mt-9 divide-y divide-white/10 border-y border-white/15">
             <div v-for="[etiqueta, valor] in fichaSalon" :key="etiqueta" class="flex justify-between gap-6 py-3">
-              <dt class="font-body text-sm text-dark/60">{{ etiqueta }}</dt>
-              <dd class="font-body text-sm font-semibold text-dark">{{ valor }}</dd>
+              <dt class="font-mono text-xs uppercase tracking-wider text-white/45">{{ etiqueta }}</dt>
+              <dd class="font-body text-sm font-semibold text-white">{{ valor }}</dd>
             </div>
           </dl>
 
-          <Link
-            :href="route('eventos')"
-            class="mt-8 inline-flex items-center gap-2 rounded-lg border-2 border-dark bg-nodo-400 px-7 py-3
-                   font-display text-sm font-bold text-dark transition hover:brightness-95
-                   focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-dark"
-          >
-            Ver los salones <span aria-hidden="true">→</span>
-          </Link>
+          <Boton :href="route('eventos')" variante="claro" class="mt-9" flecha>
+            Ver los salones
+          </Boton>
         </ScrollReveal>
 
         <ScrollReveal from="right">
@@ -276,7 +248,7 @@ const fichaSalon = computed(() => {
             height="750"
             loading="lazy"
             decoding="async"
-            class="aspect-[4/3] w-full rounded-4xl object-cover"
+            class="aspect-[4/3] w-full border-2 border-nodo-400 object-cover shadow-dura-nodo"
           />
         </ScrollReveal>
       </div>

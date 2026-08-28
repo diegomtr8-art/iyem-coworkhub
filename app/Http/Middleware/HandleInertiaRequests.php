@@ -29,6 +29,17 @@ class HandleInertiaRequests extends Middleware
                 'contacto_ok' => $request->session()->get('contacto_ok'),
             ],
             'isStaging' => app()->environment('staging'),
+
+            // Datos de contacto y redes que consumen el footer y "Hablemos".
+            'nodico' => [
+                'email'     => config('nodico.contacto_email'),
+                'telefono'  => config('nodico.telefono'),
+                'direccion' => config('nodico.direccion'),
+                'mapsUrl'   => config('nodico.maps_url'),
+                'horarios'  => config('nodico.horarios'),
+                'redes'     => config('nodico.redes'),
+                'instagram' => config('nodico.instagram_handle'),
+            ],
         ];
     }
 }

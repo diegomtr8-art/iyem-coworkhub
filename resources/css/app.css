@@ -66,9 +66,9 @@
   background-size: 18px 18px;
 }
 
-/* ── Smooth scroll ─── */
-html {
-  scroll-behavior: smooth;
+/* ── Smooth scroll (se apaga si el usuario pide menos movimiento) ─── */
+@media (prefers-reduced-motion: no-preference) {
+  html { scroll-behavior: smooth; }
 }
 
 /* ── Nodico underline inputs ─── */
@@ -132,4 +132,67 @@ body.cursor-click #cursor-outer { width: 24px; height: 24px; background: rgba(25
   content:''; position:absolute; inset:0; border-radius:inherit;
   background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
   pointer-events:none; z-index:1;
+}
+
+
+/* ══════════════════════════════════════════════════════════════════
+   SISTEMA «EDITORIAL TÉCNICO»
+   Reglas de uso en .claude/skills/nodico-design/SKILL.md
+   ══════════════════════════════════════════════════════════════════ */
+
+@layer base {
+  /* iOS pinta un flash gris al tocar; se sustituye por el feedback propio. */
+  html {
+    -webkit-tap-highlight-color: transparent;
+    -webkit-text-size-adjust: 100%;
+  }
+
+  /* Los anclas (#hablemos) no deben quedar debajo del nav fijo. */
+  [id] { scroll-margin-top: 6rem; }
+
+  /* Foco visible uniforme en todo el sitio público. */
+  :where(a, button, input, textarea, select, [tabindex]):focus-visible {
+    outline: 2px solid theme('colors.nodo.400');
+    outline-offset: 3px;
+    border-radius: 2px;
+  }
+
+  /* En iOS un input de menos de 16px provoca zoom automático al enfocar. */
+  input, textarea, select { font-size: max(16px, 1rem); }
+}
+
+@layer components {
+  /* Etiqueta mono numerada: «01 — SERVICIOS» */
+  .etiqueta-tecnica {
+    @apply font-mono text-etiqueta uppercase;
+  }
+
+  /* Tarjeta de borde duro con sombra sólida desplazada. */
+  .bloque-duro {
+    @apply border-2 border-dark bg-white shadow-dura;
+    transition: transform .2s cubic-bezier(.22,1,.36,1), box-shadow .2s cubic-bezier(.22,1,.36,1);
+  }
+  .bloque-duro-hover:hover {
+    transform: translate(4px, 4px);
+    box-shadow: 2px 2px 0 #2E2D2C;
+  }
+
+  /* Contenedor de carrusel sin barra de desplazamiento visible. */
+  .sin-scrollbar { scrollbar-width: none; -ms-overflow-style: none; }
+  .sin-scrollbar::-webkit-scrollbar { display: none; }
+
+  /* Respeta el notch en el borde inferior. */
+  .pb-segura { padding-bottom: calc(2rem + env(safe-area-inset-bottom, 0px)); }
+}
+
+/* ── Interruptor general de movimiento ──────────────────────────────
+   Con `reduce` no queda ninguna animación: ni marquee, ni autoplay,
+   ni apariciones, ni transiciones largas. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important;
+    scroll-behavior: auto !important;
+  }
 }

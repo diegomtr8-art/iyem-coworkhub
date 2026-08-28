@@ -26,7 +26,12 @@ Route::get('/nosotros',    [WelcomeController::class, 'nosotros'])->name('nosotr
 Route::get('/membresias',  [WelcomeController::class, 'membresias'])->name('membresias');
 Route::get('/eventos',     [WelcomeController::class, 'salones'])->name('eventos');
 Route::get('/actividades', [WelcomeController::class, 'comunidad'])->name('actividades');
-Route::post('/contacto',   [ContactoController::class, 'store'])->name('contacto.store');
+Route::post('/contacto',   [ContactoController::class, 'store'])
+    ->middleware('throttle:5,1')
+    ->name('contacto.store');
+
+Route::get('/aviso-de-privacidad', [WelcomeController::class, 'privacidad'])->name('privacidad');
+Route::get('/terminos',            [WelcomeController::class, 'terminos'])->name('terminos');
 
 // robots.txt dinamico: en staging se bloquea la indexacion completa.
 Route::get('/robots.txt', function () {

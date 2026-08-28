@@ -27,6 +27,7 @@ class NodicoWebSeeder extends Seeder
         $planes = [
             [
                 'alias'            => ['Day-Pass', 'Daypass'],
+                'destacado'        => false,
                 'nombre'           => 'Day-Pass',
                 'orden'            => 1,
                 'precio'           => 79.00,
@@ -45,6 +46,7 @@ class NodicoWebSeeder extends Seeder
             ],
             [
                 'alias'            => ['Nódico Flex', 'Nodico Flex', 'NODICO FLEX'],
+                'destacado'        => false,
                 'nombre'           => 'Nódico Flex',
                 'orden'            => 2,
                 'precio'           => 249.00,
@@ -63,6 +65,7 @@ class NodicoWebSeeder extends Seeder
             ],
             [
                 'alias'            => ['Nodo Pro', 'Nodico PRO', 'NODO PRO'],
+                'destacado'        => true,   // la recomendada
                 'nombre'           => 'Nodo Pro',
                 'orden'            => 3,
                 'precio'           => 599.00,
@@ -86,6 +89,7 @@ class NodicoWebSeeder extends Seeder
             ],
             [
                 'alias'            => ['Nodo Match', 'Nodico Match', 'NODO MATCH'],
+                'destacado'        => false,
                 'nombre'           => 'Nodo Match',
                 'orden'            => 4,
                 'precio'           => 799.00,
