@@ -42,7 +42,9 @@ onBeforeUnmount(() => {
 
     <SiteHeader />
 
-    <main id="contenido">
+    <!-- overflow-x-clip contiene el desplazamiento inicial de ScrollReveal y las
+         sombras duras, sin crear contenedor de scroll ni afectar al header fijo. -->
+    <main id="contenido" class="overflow-x-clip">
       <slot />
     </main>
 

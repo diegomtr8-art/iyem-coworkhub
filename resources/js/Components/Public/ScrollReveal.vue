@@ -18,7 +18,6 @@ const props = withDefaults(defineProps<{
 
 const el = ref<HTMLElement | null>(null)
 const visible = ref(false)
-let observer: IntersectionObserver | undefined
 
 const desplazamientos = {
   bottom: 'translateY(36px)',
@@ -27,7 +26,7 @@ const desplazamientos = {
   scale: 'scale(0.94)',
 }
 
-/** Prepara los hijos para el escalonado antes de que se vean. */
+/** Prepara los hijos para el escalonado antes de que entren en pantalla. */
 function prepararHijos() {
   if (!props.stagger || !el.value) return
   Array.from(el.value.children).forEach((hijo, i) => {
@@ -39,42 +38,55 @@ function prepararHijos() {
   })
 }
 
-function mostrarHijos() {
-  if (!props.stagger || !el.value) return
-  Array.from(el.value.children).forEach((hijo) => {
-    const h = hijo as HTMLElement
-    h.style.opacity = '1'
-    h.style.transform = 'none'
-  })
+function revelar() {
+  visible.value = true
+
+  if (props.stagger && el.value) {
+    Array.from(el.value.children).forEach((hijo) => {
+      const h = hijo as HTMLElement
+      h.style.opacity = '1'
+      h.style.transform = 'none'
+    })
+  }
+
+  quitarEscuchas()
+}
+
+/**
+ * Comprobación por scroll en lugar de IntersectionObserver: el observador no
+ * dispara de forma fiable dentro de iframes ni tras un salto de scroll
+ * programático, y el contenido se quedaba invisible para siempre.
+ */
+function comprobar() {
+  if (visible.value || !el.value) return
+  const caja = el.value.getBoundingClientRect()
+  if (caja.top < window.innerHeight * 0.92 && caja.bottom > 0) {
+    if (props.delay) window.setTimeout(revelar, props.delay)
+    else revelar()
+  }
+}
+
+function quitarEscuchas() {
+  window.removeEventListener('scroll', comprobar)
+  window.removeEventListener('resize', comprobar)
 }
 
 onMounted(() => {
-  const sinMovimiento = window.matchMedia('(prefers-reduced-motion: reduce)').matches
-  if (sinMovimiento || typeof IntersectionObserver === 'undefined') {
+  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
     visible.value = true
     return
   }
 
   prepararHijos()
+  comprobar()
 
-  observer = new IntersectionObserver(
-    (entradas) => {
-      entradas.forEach((entrada) => {
-        if (!entrada.isIntersecting) return
-        window.setTimeout(() => {
-          visible.value = true
-          mostrarHijos()
-        }, props.delay)
-        observer?.unobserve(entrada.target)
-      })
-    },
-    { threshold: 0.1, rootMargin: '0px 0px -60px 0px' },
-  )
+  if (visible.value) return
 
-  if (el.value) observer.observe(el.value)
+  window.addEventListener('scroll', comprobar, { passive: true })
+  window.addEventListener('resize', comprobar, { passive: true })
 })
 
-onBeforeUnmount(() => observer?.disconnect())
+onBeforeUnmount(quitarEscuchas)
 </script>
 
 <template>
