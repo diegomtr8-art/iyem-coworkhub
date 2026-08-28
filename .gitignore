@@ -25,7 +25,7 @@ Thumbs.db
 
 # ---- Archivos de diseno: no van en git ----
 # El .ai de Illustrator pesa 233 MB. Guardalo en Drive o Dropbox.
-nodico/
+/nodico/
 *.ai
 *.psd
 *.indd
