@@ -19,6 +19,13 @@
 }
 @font-face {
   font-family: 'Carmen Sans';
+  src: url('/fonts/Carmen Sans SemiBold.otf') format('opentype');
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Carmen Sans';
   src: url('/fonts/Carmen Sans Bold.otf') format('opentype');
   font-weight: 700;
   font-style: normal;

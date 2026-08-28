@@ -8,7 +8,10 @@ use Illuminate\Support\Facades\Schema;
 return new class extends Migration {
     public function up(): void
     {
-        DB::statement("ALTER TABLE espacios MODIFY tipo ENUM('coworking','privado','sala_juntas','contenido','fotografia','salon_eventos','escritorio','oficina_privada','cabina_telefonica','lounge')");
+        // SQLite (usado en las pruebas) no tiene ENUM: la columna es TEXT y acepta el valor nuevo.
+        if (DB::getDriverName() === 'mysql') {
+            DB::statement("ALTER TABLE espacios MODIFY tipo ENUM('coworking','privado','sala_juntas','contenido','fotografia','salon_eventos','escritorio','oficina_privada','cabina_telefonica','lounge')");
+        }
 
         Schema::table('espacios', function (Blueprint $table) {
             $table->text('descripcion')->nullable()->after('nombre');
@@ -33,6 +36,8 @@ return new class extends Migration {
             ]);
         });
 
-        DB::statement("ALTER TABLE espacios MODIFY tipo ENUM('coworking','privado','sala_juntas','contenido','fotografia','escritorio','oficina_privada','cabina_telefonica','lounge')");
+        if (DB::getDriverName() === 'mysql') {
+            DB::statement("ALTER TABLE espacios MODIFY tipo ENUM('coworking','privado','sala_juntas','contenido','fotografia','escritorio','oficina_privada','cabina_telefonica','lounge')");
+        }
     }
 };
