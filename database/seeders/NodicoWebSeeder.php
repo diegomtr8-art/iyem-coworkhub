@@ -2,6 +2,7 @@
 
 namespace Database\Seeders;
 
+use App\Models\Ajuste;
 use App\Models\Espacio;
 use App\Models\Plane;
 use Illuminate\Database\Seeder;
@@ -18,6 +19,28 @@ class NodicoWebSeeder extends Seeder
     {
         $this->planes();
         $this->salones();
+        $this->ajustes();
+    }
+
+    /**
+     * Publicaciones de Instagram del perfil @nodicomx, verificadas una a una
+     * contra su embed el 2026-08-28. Se guardan en BD para poder cambiarlas
+     * desde el panel sin volver a desplegar.
+     */
+    private function ajustes(): void
+    {
+        Ajuste::updateOrCreate(
+            ['clave' => 'instagram_posts'],
+            [
+                'descripcion' => 'Permalinks de publicaciones de @nodicomx que se muestran en /actividades',
+                'valor' => [
+                    'https://www.instagram.com/p/DV_WYmtFus1/',
+                    'https://www.instagram.com/p/DUqe8D1kg9e/',
+                    'https://www.instagram.com/p/DcjYCwqsNiF/',
+                    'https://www.instagram.com/p/DcghxE_HLXw/',
+                ],
+            ]
+        );
     }
 
     private function planes(): void

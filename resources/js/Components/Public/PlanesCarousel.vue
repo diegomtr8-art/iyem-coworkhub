@@ -146,8 +146,8 @@ onBeforeUnmount(detenerAutoplay)
     <button
       type="button"
       class="absolute -left-2 top-1/2 z-20 hidden h-12 w-12 -translate-y-1/2 items-center justify-center
-             rounded-full border-2 border-dark bg-white text-dark shadow-dura-sm transition
-             hover:bg-nodo-400 disabled:opacity-30 lg:flex"
+             rounded-full bg-white text-dark shadow-sombra ring-1 ring-dark/10 transition
+             hover:bg-nodo-400 disabled:opacity-25 lg:flex"
       aria-label="Membresía anterior"
       :disabled="indiceActivo === 0"
       @click="anterior"
@@ -158,8 +158,8 @@ onBeforeUnmount(detenerAutoplay)
     <button
       type="button"
       class="absolute -right-2 top-1/2 z-20 hidden h-12 w-12 -translate-y-1/2 items-center justify-center
-             rounded-full border-2 border-dark bg-white text-dark shadow-dura-sm transition
-             hover:bg-nodo-400 disabled:opacity-30 lg:flex"
+             rounded-full bg-white text-dark shadow-sombra ring-1 ring-dark/10 transition
+             hover:bg-nodo-400 disabled:opacity-25 lg:flex"
       aria-label="Membresía siguiente"
       :disabled="indiceActivo === total - 1"
       @click="siguiente"
@@ -190,19 +190,19 @@ onBeforeUnmount(detenerAutoplay)
         role="group"
         aria-roledescription="diapositiva"
         :aria-label="`${i + 1} de ${total}: ${titulo(plan)}`"
-        class="flex shrink-0 snap-center flex-col border-2 border-dark bg-white transition-all duration-300 ease-salida"
+        class="flex shrink-0 snap-center flex-col overflow-hidden rounded-3xl bg-white transition-all duration-300 ease-salida"
         :class="[
           'w-[82%] sm:w-[46%] lg:w-[31.5%]',
           plan.destacado
-            ? 'shadow-dura-lg lg:-my-4 lg:scale-[1.03]'
-            : 'shadow-dura',
+            ? 'shadow-sombra-lg ring-2 ring-dark lg:-my-5 lg:scale-[1.04]'
+            : 'shadow-sombra-sm ring-1 ring-dark/[.08]',
         ]"
       >
         <!-- Franja del color del plan -->
-        <div class="h-3 w-full shrink-0" :style="{ backgroundColor: plan.color ?? '#FFE124' }" aria-hidden="true" />
+        <div class="h-2 w-full shrink-0" :style="{ backgroundColor: plan.color ?? '#FFE124' }" aria-hidden="true" />
 
         <div class="flex flex-1 flex-col p-6 sm:p-7">
-          <p v-if="plan.destacado" class="mb-4 inline-flex w-fit items-center gap-1.5 rounded-full border-2 border-dark bg-nodo-400 px-3 py-1">
+          <p v-if="plan.destacado" class="mb-4 inline-flex w-fit items-center gap-1.5 rounded-full bg-nodo-400 px-3.5 py-1.5">
             <Star class="h-3.5 w-3.5 fill-dark" aria-hidden="true" />
             <span class="etiqueta-tecnica font-bold text-dark">La más popular</span>
           </p>
@@ -233,11 +233,12 @@ onBeforeUnmount(detenerAutoplay)
             :href="plan.stripe_url"
             target="_blank"
             rel="noopener noreferrer"
-            class="group mt-7 inline-flex min-h-[48px] w-full items-center justify-center gap-2 rounded-lg
-                   border-2 border-dark px-6 py-3 font-display text-sm font-bold transition-all duration-200 ease-salida"
+            class="group mt-7 inline-flex min-h-[48px] w-full items-center justify-center gap-2 rounded-xl
+                   px-6 py-3 font-display text-sm font-bold transition-all duration-300 ease-salida
+                   hover:-translate-y-0.5 hover:shadow-sombra"
             :class="plan.destacado
               ? 'bg-dark text-nodo-400 hover:bg-tinta'
-              : 'bg-nodo-400 text-dark hover:shadow-dura-sm'"
+              : 'bg-nodo-400 text-dark'"
           >
             {{ plan.cta_label ?? 'Empezar Ahora' }}
             <span class="transition-transform duration-200 group-hover:translate-x-1" aria-hidden="true">→</span>
@@ -259,8 +260,8 @@ onBeforeUnmount(detenerAutoplay)
         @click="irA(i)"
       >
         <span
-          class="block h-2.5 rounded-full border-2 border-dark transition-all duration-300"
-          :class="indiceActivo === i ? 'w-8 bg-dark' : 'w-2.5 bg-transparent'"
+          class="block h-2 rounded-full transition-all duration-300"
+          :class="indiceActivo === i ? 'w-8 bg-dark' : 'w-2 bg-dark/25'"
         />
       </button>
     </div>

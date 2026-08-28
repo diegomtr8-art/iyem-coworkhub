@@ -143,8 +143,8 @@ const redes = computed(() => [
                     :href="nodico.mapsUrl"
                     target="_blank"
                     rel="noopener noreferrer"
-                    class="inline-flex min-h-[44px] items-center gap-2 border-2 border-dark px-4 py-2
-                           font-display text-sm font-bold text-dark transition hover:bg-dark hover:text-nodo-400"
+                    class="inline-flex min-h-[44px] items-center gap-2 rounded-lg border border-dark/25 px-4 py-2
+                           font-display text-sm font-bold text-dark transition hover:border-dark hover:bg-dark hover:text-white"
                   >
                     Ver en Google Maps
                   </a>
@@ -168,8 +168,8 @@ const redes = computed(() => [
                 target="_blank"
                 rel="noopener noreferrer"
                 :aria-label="`Nódico en ${red.label}`"
-                class="flex h-12 w-12 items-center justify-center border-2 border-dark text-dark
-                       transition duration-200 ease-salida hover:bg-dark hover:text-nodo-400"
+                class="flex h-12 w-12 items-center justify-center rounded-xl border border-dark/20 text-dark
+                       transition duration-300 ease-salida hover:-translate-y-1 hover:border-dark hover:bg-dark hover:text-nodo-400"
               >
                 <component :is="red.icono" class="h-5 w-5" aria-hidden="true" />
               </a>
@@ -178,7 +178,7 @@ const redes = computed(() => [
         </div>
 
         <!-- Tarjeta elevada del formulario -->
-        <div class="border-2 border-dark bg-white p-6 shadow-dura-lg sm:p-9">
+        <div class="rounded-3xl bg-white p-6 shadow-sombra-lg ring-1 ring-dark/[.07] sm:p-9">
           <form novalidate @submit.prevent="enviar">
             <!-- Trampa antibots: fuera de pantalla, nunca enfocable -->
             <div class="absolute left-[-9999px]" aria-hidden="true">
@@ -203,11 +203,11 @@ const redes = computed(() => [
                   :aria-invalid="errorDe(campo.name) ? 'true' : undefined"
                   :aria-describedby="errorDe(campo.name) ? `error-${campo.name}` : undefined"
                   placeholder=" "
-                  class="peer min-h-[60px] w-full border-2 bg-white px-4 pb-2.5 pt-7 font-body text-dark
-                         transition-colors duration-200 focus:outline-none focus:ring-0"
+                  class="peer min-h-[60px] w-full rounded-xl border bg-cream-50 px-4 pb-2.5 pt-7 font-body text-dark
+                         transition-colors duration-200 focus:bg-white focus:outline-none focus:ring-0"
                   :class="errorDe(campo.name)
                     ? 'border-red-500 focus:border-red-500'
-                    : 'border-dark/25 focus:border-nodo-500'"
+                    : 'border-dark/15 focus:border-nodo-500'"
                   @blur="tocado[campo.name] = true"
                 />
                 <label
@@ -236,11 +236,11 @@ const redes = computed(() => [
                   placeholder=" "
                   :aria-invalid="errorDe('comentarios') ? 'true' : undefined"
                   :aria-describedby="errorDe('comentarios') ? 'error-comentarios' : undefined"
-                  class="peer w-full resize-y border-2 bg-white px-4 pb-3 pt-7 font-body text-dark
-                         transition-colors duration-200 focus:outline-none focus:ring-0"
+                  class="peer w-full resize-y rounded-xl border bg-cream-50 px-4 pb-3 pt-7 font-body text-dark
+                         transition-colors duration-200 focus:bg-white focus:outline-none focus:ring-0"
                   :class="errorDe('comentarios')
                     ? 'border-red-500 focus:border-red-500'
-                    : 'border-dark/25 focus:border-nodo-500'"
+                    : 'border-dark/15 focus:border-nodo-500'"
                   @blur="tocado.comentarios = true"
                 />
                 <label
@@ -264,11 +264,10 @@ const redes = computed(() => [
               <button
                 type="submit"
                 :disabled="form.processing"
-                class="group inline-flex min-h-[56px] items-center justify-center gap-2.5 border-2 border-dark
-                       bg-nodo-400 px-9 py-4 font-display text-base font-bold text-dark shadow-dura-sm
-                       transition-all duration-200 ease-salida
-                       hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-none
-                       disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-x-0 disabled:hover:translate-y-0"
+                class="group inline-flex min-h-[56px] items-center justify-center gap-2.5 rounded-xl
+                       bg-nodo-400 px-9 py-4 font-display text-base font-bold text-dark shadow-sombra-sm
+                       transition-all duration-300 ease-salida hover:-translate-y-0.5 hover:shadow-sombra
+                       disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0"
               >
                 <Loader2 v-if="form.processing" class="h-5 w-5 animate-spin" aria-hidden="true" />
                 {{ form.processing ? 'Enviando…' : 'Enviar mensaje' }}

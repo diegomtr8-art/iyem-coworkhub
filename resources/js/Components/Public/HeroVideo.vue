@@ -1,12 +1,16 @@
 <script setup lang="ts">
 import Boton from '@/Components/Public/Boton.vue'
-import { Play, X } from 'lucide-vue-next'
+import { Clock, MapPin, Pause, Phone, Play, Volume2, VolumeX, X } from 'lucide-vue-next'
 import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
 
 const props = withDefaults(defineProps<{
   videoId?: string
   poster?: string
   posterAlt?: string
+  direccion?: string
+  horarios?: string
+  telefono?: string
+  mapsUrl?: string
 }>(), {
   videoId: 'Ml4sprGUqzc',
   poster: '/img/nodico/hero-inicio.webp',
@@ -14,23 +18,25 @@ const props = withDefaults(defineProps<{
 })
 
 const raiz = ref<HTMLElement | null>(null)
+const marco = ref<HTMLIFrameElement | null>(null)
 const modal = ref<HTMLElement | null>(null)
 const botonCerrar = ref<HTMLElement | null>(null)
 
-/** iOS en iPhone bloquea el autoplay en iframes de forma inconsistente. */
 const esIPhone = ref(false)
 const sinMovimiento = ref(false)
-/** Patrón fachada: el iframe de fondo no se monta hasta entrar en viewport. */
 const cargarFondo = ref(false)
 const modalAbierto = ref(false)
+const conSonido = ref(false)
+const enPausa = ref(false)
 
 let observador: IntersectionObserver | undefined
 let focoPrevio: HTMLElement | null = null
 
+// enablejsapi permite activar el sonido y pausar por postMessage.
 const fondoSrc = computed(() =>
   `https://www.youtube-nocookie.com/embed/${props.videoId}` +
   `?autoplay=1&mute=1&loop=1&playlist=${props.videoId}` +
-  '&controls=0&modestbranding=1&rel=0&playsinline=1&disablekb=1',
+  '&controls=0&modestbranding=1&rel=0&playsinline=1&disablekb=1&enablejsapi=1',
 )
 
 const modalSrc = computed(() =>
@@ -38,10 +44,37 @@ const modalSrc = computed(() =>
   '?autoplay=1&rel=0&modestbranding=1&playsinline=1',
 )
 
-/** El video de fondo solo corre donde es fiable y si no se pidió menos movimiento. */
 const usaVideoFondo = computed(() => !esIPhone.value && !sinMovimiento.value)
 
+/** Los navegadores solo permiten quitar el silencio a partir de un gesto del usuario. */
+function ordenar(func: string, args: unknown[] = []) {
+  marco.value?.contentWindow?.postMessage(
+    JSON.stringify({ event: 'command', func, args }),
+    'https://www.youtube-nocookie.com',
+  )
+}
+
+function alternarSonido() {
+  conSonido.value = !conSonido.value
+  if (conSonido.value) {
+    ordenar('unMute')
+    ordenar('setVolume', [60])
+  } else {
+    ordenar('mute')
+  }
+}
+
+function alternarPausa() {
+  enPausa.value = !enPausa.value
+  ordenar(enPausa.value ? 'pauseVideo' : 'playVideo')
+}
+
 function abrirModal() {
+  // Si el fondo llevaba sonido se silencia: dos pistas a la vez es un desastre.
+  if (conSonido.value) {
+    conSonido.value = false
+    ordenar('mute')
+  }
   focoPrevio = document.activeElement as HTMLElement
   modalAbierto.value = true
   document.body.style.overflow = 'hidden'
@@ -54,7 +87,6 @@ function cerrarModal() {
   focoPrevio?.focus()
 }
 
-/** Esc cierra; Tab queda atrapado dentro del diálogo. */
 function alPulsarTecla(e: KeyboardEvent) {
   if (!modalAbierto.value) return
 
@@ -112,8 +144,7 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <section ref="raiz" class="relative isolate min-h-[100svh] overflow-hidden bg-tinta">
-    <!-- Capa de fondo: poster siempre, iframe encima cuando procede -->
+  <section ref="raiz" class="relative isolate flex min-h-[100svh] flex-col overflow-hidden bg-tinta">
     <img
       :src="poster"
       :alt="posterAlt"
@@ -121,14 +152,14 @@ onBeforeUnmount(() => {
       height="1920"
       fetchpriority="high"
       decoding="async"
-      class="absolute inset-0 -z-20 h-full w-full object-cover object-[center_62%]"
+      class="absolute inset-0 -z-20 h-full w-full object-cover object-[center_58%]"
     />
 
     <div v-if="usaVideoFondo && cargarFondo" class="absolute inset-0 -z-20 overflow-hidden" aria-hidden="true">
-      <!-- 177.78vh = 16/9 de la altura: cubre el viewport sin deformar el video. -->
       <iframe
+        ref="marco"
         :src="fondoSrc"
-        title="Video institucional de Nódico, reproducción de fondo sin sonido"
+        title="Video institucional de Nódico"
         tabindex="-1"
         allow="autoplay; encrypted-media"
         class="pointer-events-none absolute left-1/2 top-1/2 h-[100vh] w-[177.78vh] min-h-[56.25vw] min-w-[100vw]
@@ -136,26 +167,24 @@ onBeforeUnmount(() => {
       />
     </div>
 
-    <!-- Velo para que el titular tenga contraste sobre cualquier fotograma -->
+    <!-- Velo direccional: oscuro abajo, donde va el texto; arriba deja ver el espacio -->
     <div
-      class="absolute inset-0 -z-10 bg-gradient-to-b from-tinta/75 via-tinta/55 to-tinta/95"
+      class="absolute inset-0 -z-10 bg-gradient-to-t from-tinta via-tinta/60 to-tinta/20"
       aria-hidden="true"
     />
 
-    <div class="mx-auto flex min-h-[100svh] max-w-7xl flex-col justify-center px-5 pb-20 pt-28 sm:px-8">
-      <p class="etiqueta-tecnica mb-6 text-nodo-400">Coworking · Mérida, Yucatán</p>
+    <div class="mx-auto flex w-full max-w-7xl flex-1 flex-col justify-end px-5 pb-8 pt-32 sm:px-8">
+      <p class="font-display text-lg font-bold text-nodo-400 sm:text-xl">Bienvenidos al lugar</p>
 
-      <h1 class="max-w-4xl font-display text-display-xl font-extrabold text-white">
-        Bienvenidos al lugar
-        <span class="mt-2 block text-nodo-400">donde el trabajo es un pretexto para crear</span>
+      <h1 class="mt-4 max-w-[17ch] font-display text-display-xl font-extrabold text-white">
+        Donde el trabajo es un pretexto para crear
       </h1>
 
-      <p class="mt-7 max-w-xl font-body text-cuerpo-lg text-white/75">
-        Un espacio del Instituto Yucateco de Emprendedores para quienes están construyendo
-        algo propio: comunidad, salas de trabajo y contenido para crecer.
+      <p class="mt-7 max-w-lg font-body text-cuerpo-lg text-white/80">
+        El coworking del Instituto Yucateco de Emprendedores en Mérida.
       </p>
 
-      <div class="mt-9 flex flex-wrap items-center gap-4">
+      <div class="mt-9 flex flex-wrap items-center gap-3">
         <Boton :href="route('membresias')" variante="primario" tamano="lg" flecha>
           Conocer membresías
         </Boton>
@@ -165,22 +194,85 @@ onBeforeUnmount(() => {
 
         <button
           type="button"
-          class="group inline-flex min-h-[56px] items-center gap-3 rounded-lg px-4 font-display text-base
-                 font-bold text-white transition hover:text-nodo-400"
+          class="group inline-flex min-h-[56px] items-center gap-3 rounded-full px-4 font-body text-sm
+                 font-medium text-white/85 transition hover:text-nodo-400"
           @click="abrirModal"
         >
           <span
-            class="flex h-12 w-12 items-center justify-center rounded-full border-2 border-white/40
-                   transition group-hover:border-nodo-400 group-hover:bg-nodo-400 group-hover:text-dark"
+            class="flex h-11 w-11 items-center justify-center rounded-full border border-white/35
+                   transition group-hover:border-nodo-400 group-hover:bg-nodo-400 group-hover:text-tinta"
           >
-            <Play class="ml-0.5 h-5 w-5" aria-hidden="true" />
+            <Play class="ml-0.5 h-4 w-4" aria-hidden="true" />
           </span>
-          Ver el video
+          Ver el video completo
         </button>
+      </div>
+
+      <!-- Riel inferior: datos reales del lugar + control del video de fondo -->
+      <div
+        class="mt-12 flex flex-col gap-4 border-t border-white/15 pt-4
+               lg:flex-row lg:flex-wrap lg:items-center lg:justify-between lg:gap-6"
+      >
+        <ul class="flex flex-col gap-1 lg:flex-row lg:flex-wrap lg:items-center lg:gap-8">
+          <li v-if="direccion">
+            <a
+              :href="mapsUrl"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="flex min-h-[44px] items-center gap-2.5 font-body text-sm text-white/60 transition hover:text-nodo-400"
+            >
+              <MapPin class="h-4 w-4 shrink-0" aria-hidden="true" />
+              {{ direccion }}
+            </a>
+          </li>
+          <li v-if="horarios" class="flex min-h-[44px] items-center gap-2.5 font-body text-sm text-white/60">
+            <Clock class="h-4 w-4 shrink-0" aria-hidden="true" />
+            {{ horarios }}
+          </li>
+          <li v-if="telefono">
+            <a
+              :href="`tel:${telefono.replace(/\s/g, '')}`"
+              class="flex min-h-[44px] items-center gap-2.5 font-body text-sm text-white/60 transition hover:text-nodo-400"
+            >
+              <Phone class="h-4 w-4 shrink-0" aria-hidden="true" />
+              {{ telefono }}
+            </a>
+          </li>
+        </ul>
+
+        <div v-if="usaVideoFondo && cargarFondo" class="flex shrink-0 items-center gap-2">
+          <button
+            type="button"
+            class="flex h-11 w-11 items-center justify-center rounded-full border border-white/25 text-white
+                   transition hover:border-nodo-400 hover:text-nodo-400"
+            :aria-label="enPausa ? 'Reanudar el video de fondo' : 'Pausar el video de fondo'"
+            @click="alternarPausa"
+          >
+            <Play v-if="enPausa" class="ml-0.5 h-4 w-4" aria-hidden="true" />
+            <Pause v-else class="h-4 w-4" aria-hidden="true" />
+          </button>
+
+          <!--
+            El navegador prohíbe arrancar con sonido: el video empieza silenciado
+            y este botón lo activa, porque el clic ya cuenta como gesto del usuario.
+          -->
+          <button
+            type="button"
+            class="flex min-h-[44px] items-center gap-2.5 rounded-full border px-4 font-body text-sm transition"
+            :class="conSonido
+              ? 'border-nodo-400 bg-nodo-400 font-medium text-tinta'
+              : 'border-white/25 text-white/80 hover:border-nodo-400 hover:text-nodo-400'"
+            :aria-pressed="conSonido"
+            @click="alternarSonido"
+          >
+            <Volume2 v-if="conSonido" class="h-4 w-4" aria-hidden="true" />
+            <VolumeX v-else class="h-4 w-4" aria-hidden="true" />
+            {{ conSonido ? 'Sonido activado' : 'Activar sonido' }}
+          </button>
+        </div>
       </div>
     </div>
 
-    <!-- Modal: mismo video con sonido y controles -->
     <Teleport to="body">
       <div
         v-if="modalAbierto"
@@ -195,14 +287,14 @@ onBeforeUnmount(() => {
           ref="botonCerrar"
           type="button"
           class="absolute right-4 top-4 flex h-12 w-12 items-center justify-center rounded-full
-                 border-2 border-white/30 text-white transition hover:border-nodo-400 hover:text-nodo-400"
+                 border border-white/30 text-white transition hover:border-nodo-400 hover:text-nodo-400"
           aria-label="Cerrar el video"
           @click="cerrarModal"
         >
           <X class="h-6 w-6" aria-hidden="true" />
         </button>
 
-        <div class="aspect-video w-full max-w-5xl overflow-hidden rounded-2xl border-2 border-white/15 bg-black">
+        <div class="aspect-video w-full max-w-5xl overflow-hidden rounded-2xl bg-black">
           <iframe
             :src="modalSrc"
             title="Video institucional de Nódico"

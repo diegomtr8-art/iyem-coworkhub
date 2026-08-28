@@ -1,11 +1,9 @@
 <script setup lang="ts">
 withDefaults(defineProps<{
   titulo: string
-  /** Número de sección para la etiqueta técnica: «01 — SERVICIOS». */
-  numero?: string
+  /** Etiqueta técnica de la sección: «Servicios», «Membresías»… */
   etiqueta?: string
   descripcion?: string
-  /** `h2` por defecto; `h1` solo en el encabezado principal de la página. */
   as?: 'h1' | 'h2' | 'h3'
   align?: 'left' | 'center'
   tono?: 'oscuro' | 'claro'
@@ -20,23 +18,17 @@ withDefaults(defineProps<{
 
 <template>
   <div :class="align === 'center' ? 'mx-auto max-w-3xl text-center' : 'text-left'">
-    <!-- Ficha técnica: etiqueta mono numerada + línea de retícula -->
-    <div
-      v-if="numero || etiqueta"
-      class="mb-6 flex items-center gap-4"
-      :class="align === 'center' ? 'justify-center' : ''"
+    <p
+      v-if="etiqueta"
+      class="etiqueta-tecnica mb-5 flex items-center gap-3"
+      :class="[
+        tono === 'claro' ? 'text-nodo-400' : 'text-dark/45',
+        align === 'center' ? 'justify-center' : '',
+      ]"
     >
-      <p class="etiqueta-tecnica shrink-0" :class="tono === 'claro' ? 'text-nodo-400' : 'text-dark/55'">
-        <span v-if="numero">{{ numero }}</span>
-        <span v-if="numero && etiqueta" aria-hidden="true"> — </span>
-        <span v-if="etiqueta">{{ etiqueta }}</span>
-      </p>
-      <span
-        class="h-px flex-1"
-        :class="tono === 'claro' ? 'bg-white/20' : 'bg-dark/15'"
-        aria-hidden="true"
-      />
-    </div>
+      <span class="h-1.5 w-1.5 rounded-full bg-nodo-400" aria-hidden="true" />
+      {{ etiqueta }}
+    </p>
 
     <component
       :is="as"
@@ -53,7 +45,7 @@ withDefaults(defineProps<{
       v-if="descripcion"
       class="mt-6 max-w-2xl font-body text-cuerpo-lg"
       :class="[
-        tono === 'claro' ? 'text-white/70' : 'text-dark/70',
+        tono === 'claro' ? 'text-white/65' : 'text-dark/65',
         align === 'center' ? 'mx-auto' : '',
       ]"
     >

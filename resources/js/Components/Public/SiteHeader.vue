@@ -57,7 +57,7 @@ watch(rutaActual, cerrar)
 <template>
   <header
     class="fixed inset-x-0 top-0 z-50 transition-all duration-300 ease-salida"
-    :class="conFondo && !abierto ? 'border-b-2 border-dark/10 bg-tinta/95 backdrop-blur' : 'bg-transparent'"
+    :class="conFondo && !abierto ? 'bg-tinta/90 shadow-sombra backdrop-blur-md' : 'bg-gradient-to-b from-tinta/70 to-transparent'"
   >
     <nav class="mx-auto flex max-w-7xl items-center justify-between px-5 py-4 sm:px-8" aria-label="Navegación principal">
       <Link :href="route('home')" class="shrink-0 rounded" @click="cerrar">
@@ -88,8 +88,8 @@ watch(rutaActual, cerrar)
         <li>
           <Link
             :href="route('membresias')"
-            class="inline-flex min-h-[44px] items-center border-2 border-nodo-400 bg-nodo-400 px-5 py-2
-                   font-display text-sm font-bold text-dark transition hover:bg-transparent hover:text-nodo-400"
+            class="inline-flex min-h-[44px] items-center rounded-xl bg-nodo-400 px-5 py-2
+                   font-display text-sm font-bold text-dark transition hover:-translate-y-0.5 hover:shadow-sombra"
           >
             Únete
           </Link>
@@ -143,7 +143,7 @@ watch(rutaActual, cerrar)
         <div class="pb-segura px-6">
           <Link
             :href="route('membresias')"
-            class="flex min-h-[56px] w-full items-center justify-center border-2 border-dark bg-nodo-400
+            class="flex min-h-[56px] w-full items-center justify-center rounded-xl bg-nodo-400
                    px-6 py-4 font-display text-base font-bold text-dark"
             @click="cerrar"
           >

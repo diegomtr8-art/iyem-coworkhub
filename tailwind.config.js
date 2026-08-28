@@ -80,13 +80,13 @@ export default {
             },
 
             boxShadow: {
-                // Sombra sólida desplazada: la firma del sistema.
+                // Elevación suave: la superficie por defecto del sistema.
+                'sombra-sm': '0 1px 2px rgba(46,45,44,.05), 0 4px 12px rgba(46,45,44,.05)',
+                'sombra':    '0 2px 4px rgba(46,45,44,.04), 0 14px 34px rgba(46,45,44,.09)',
+                'sombra-lg': '0 4px 8px rgba(46,45,44,.05), 0 28px 64px rgba(46,45,44,.14)',
+                // Sólida desplazada: se reserva para acentos puntuales, no para todo.
                 'dura-sm': '2px 2px 0 #2E2D2C',
                 'dura':    '6px 6px 0 #2E2D2C',
-                'dura-lg': '10px 10px 0 #2E2D2C',
-                'dura-nodo':  '6px 6px 0 #FFE124',
-                'dura-lima':  '6px 6px 0 #D6E265',
-                'dura-crema': '6px 6px 0 #F4F1EA',
             },
 
             transitionTimingFunction: {

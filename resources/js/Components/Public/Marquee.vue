@@ -2,7 +2,6 @@
 withDefaults(defineProps<{
   palabras: string[]
   tono?: 'amarillo' | 'oscuro'
-  /** Grosor de la franja. */
   compacto?: boolean
 }>(), {
   tono: 'amarillo',
@@ -17,10 +16,10 @@ withDefaults(defineProps<{
     la animación queda congelada por la regla global de app.css.
   -->
   <div
-    class="group relative flex overflow-hidden border-y-2 border-dark"
+    class="group relative flex overflow-hidden"
     :class="[
       tono === 'amarillo' ? 'bg-nodo-400 text-dark' : 'bg-tinta text-nodo-400',
-      compacto ? 'py-3' : 'py-5',
+      compacto ? 'py-3.5' : 'py-5',
     ]"
   >
     <div
@@ -31,10 +30,10 @@ withDefaults(defineProps<{
     >
       <template v-for="palabra in palabras" :key="palabra">
         <span
-          class="px-6 font-display font-extrabold uppercase tracking-tight"
-          :class="compacto ? 'text-lg' : 'text-2xl sm:text-3xl'"
+          class="px-7 font-display font-bold uppercase tracking-tight"
+          :class="compacto ? 'text-base' : 'text-xl sm:text-2xl'"
         >{{ palabra }}</span>
-        <span class="text-xl opacity-45" aria-hidden="true">●</span>
+        <span class="text-sm opacity-40" aria-hidden="true">◆</span>
       </template>
     </div>
   </div>

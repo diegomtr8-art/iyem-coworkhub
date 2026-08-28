@@ -32,13 +32,16 @@ class HandleInertiaRequests extends Middleware
 
             // Datos de contacto y redes que consumen el footer y "Hablemos".
             'nodico' => [
-                'email'     => config('nodico.contacto_email'),
-                'telefono'  => config('nodico.telefono'),
-                'direccion' => config('nodico.direccion'),
-                'mapsUrl'   => config('nodico.maps_url'),
-                'horarios'  => config('nodico.horarios'),
-                'redes'     => config('nodico.redes'),
-                'instagram' => config('nodico.instagram_handle'),
+                'email'           => config('nodico.contacto_email'),
+                'telefono'        => config('nodico.telefono'),
+                'telefonoE164'    => config('nodico.telefono_e164'),
+                'direccion'       => config('nodico.direccion'),
+                'direccionCorta'  => config('nodico.direccion_corta'),
+                'mapsUrl'         => config('nodico.maps_url'),
+                'horarios'        => config('nodico.horarios'),
+                'horariosDetalle' => config('nodico.horarios_detalle'),
+                'redes'           => config('nodico.redes'),
+                'instagram'       => config('nodico.instagram_handle'),
             ],
         ];
     }

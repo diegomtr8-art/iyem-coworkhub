@@ -167,14 +167,14 @@ body.cursor-click #cursor-outer { width: 24px; height: 24px; background: rgba(25
     @apply font-mono text-etiqueta uppercase;
   }
 
-  /* Tarjeta de borde duro con sombra sólida desplazada. */
-  .bloque-duro {
-    @apply border-2 border-dark bg-white shadow-dura;
-    transition: transform .2s cubic-bezier(.22,1,.36,1), box-shadow .2s cubic-bezier(.22,1,.36,1);
+  /* Superficie por defecto: elevación suave que sube al pasar el cursor. */
+  .tarjeta {
+    @apply rounded-2xl bg-white shadow-sombra-sm ring-1 ring-dark/[.07];
+    transition: transform .3s cubic-bezier(.22,1,.36,1), box-shadow .3s cubic-bezier(.22,1,.36,1);
   }
-  .bloque-duro-hover:hover {
-    transform: translate(4px, 4px);
-    box-shadow: 2px 2px 0 #2E2D2C;
+  .tarjeta-hover:hover {
+    transform: translateY(-4px);
+    @apply shadow-sombra;
   }
 
   /* Contenedor de carrusel sin barra de desplazamiento visible. */

@@ -40,7 +40,7 @@ function volverArriba() {
 <template>
   <footer>
     <!-- 1 · Cierre con energía sobre amarillo -->
-    <section class="border-t-2 border-dark bg-nodo-400 py-16 lg:py-24">
+    <section class="bg-nodo-400 py-16 lg:py-24">
       <div class="mx-auto max-w-7xl px-5 sm:px-8">
         <div class="flex flex-col gap-10 lg:flex-row lg:items-end lg:justify-between">
           <div>
@@ -89,8 +89,8 @@ function volverArriba() {
                   target="_blank"
                   rel="noopener noreferrer"
                   :aria-label="`Nódico en ${red.label}`"
-                  class="flex h-11 w-11 items-center justify-center border-2 border-white/20 text-white
-                         transition duration-200 ease-salida hover:-translate-y-1 hover:border-nodo-400
+                  class="flex h-11 w-11 items-center justify-center rounded-xl border border-white/20 text-white
+                         transition duration-300 ease-salida hover:-translate-y-1 hover:border-nodo-400
                          hover:bg-nodo-400 hover:text-dark"
                 >
                   <component :is="red.icono" class="h-5 w-5" aria-hidden="true" />
