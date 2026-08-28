@@ -31,8 +31,30 @@ const enPausa = ref(false)
 /** El iframe se revela solo cuando ya pinta video, no mientras almacena en bufer. */
 const videoVisible = ref(false)
 
-let observador: IntersectionObserver | undefined
 let focoPrevio: HTMLElement | null = null
+let temporizadorVideo: number | undefined
+/** Cualquiera de estos gestos adelanta la carga del video. */
+const disparadores = ['scroll', 'pointerdown', 'keydown', 'wheel', 'touchstart'] as const
+
+/**
+ * PERF-01: el hero ya esta en pantalla al abrir, asi que un IntersectionObserver
+ * disparaba de inmediato y metia ~600 KB de reproductor en la carga inicial,
+ * compitiendo con las fuentes y el poster. Se espera al primer pintado, o a la
+ * primera interaccion del usuario, lo que ocurra antes.
+ */
+function montarVideo() {
+  if (cargarFondo.value) return
+  cargarFondo.value = true
+  limpiarDisparadores()
+}
+
+function limpiarDisparadores() {
+  if (temporizadorVideo) {
+    window.clearTimeout(temporizadorVideo)
+    temporizadorVideo = undefined
+  }
+  disparadores.forEach((evento) => window.removeEventListener(evento, montarVideo))
+}
 
 // enablejsapi permite activar el sonido y pausar por postMessage.
 const fondoSrc = computed(() =>
@@ -132,24 +154,23 @@ onMounted(() => {
 
   document.addEventListener('keydown', alPulsarTecla)
 
-  if (!usaVideoFondo.value || typeof IntersectionObserver === 'undefined') return
+  if (!usaVideoFondo.value) return
 
-  observador = new IntersectionObserver(
-    (entradas) => {
-      entradas.forEach((entrada) => {
-        if (!entrada.isIntersecting) return
-        cargarFondo.value = true
-        observador?.disconnect()
-      })
-    },
-    { rootMargin: '200px' },
+  disparadores.forEach((evento) =>
+    window.addEventListener(evento, montarVideo, { once: true, passive: true }),
   )
-  if (raiz.value) observador.observe(raiz.value)
+
+  const trasPrimerPintado = () => {
+    temporizadorVideo = window.setTimeout(montarVideo, 1200)
+  }
+
+  if (document.readyState === 'complete') trasPrimerPintado()
+  else window.addEventListener('load', trasPrimerPintado, { once: true })
 })
 
 onBeforeUnmount(() => {
   document.removeEventListener('keydown', alPulsarTecla)
-  observador?.disconnect()
+  limpiarDisparadores()
   document.body.style.overflow = ''
 })
 </script>

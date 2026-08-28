@@ -16,6 +16,7 @@ const indiceActivo = ref(0)
 const sinMovimiento = ref(false)
 
 let temporizador: number | undefined
+let observadorTamano: ResizeObserver | undefined
 let arrastrando = false
 let inicioX = 0
 let inicioScroll = 0
@@ -118,17 +119,43 @@ function alHacerClic(e: MouseEvent) {
   }
 }
 
+/** Centra el plan recomendado sin animacion. */
+function centrarDestacado() {
+  const destacado = props.planes.findIndex((p) => p.destacado)
+  if (destacado > 0) irA(destacado, false)
+}
+
 onMounted(() => {
   sinMovimiento.value = window.matchMedia('(prefers-reduced-motion: reduce)').matches
 
-  // Arranca centrado en el plan recomendado.
-  const destacado = props.planes.findIndex((p) => p.destacado)
-  if (destacado > 0) irA(destacado, false)
+  centrarDestacado()
+
+  // En onMounted las tarjetas aun no tienen su ancho final: faltan las fuentes
+  // de marca y las imagenes, asi que el centrado sale descuadrado (FE-03).
+  document.fonts?.ready.then(() => {
+    if (!arrastrando) centrarDestacado()
+  })
+
+  // Y si el ancho de la pista cambia despues (rotacion, carga tardia), se
+  // vuelve a centrar la tarjeta que estuviera activa.
+  if (typeof ResizeObserver !== 'undefined' && pista.value) {
+    let anchoPrevio = pista.value.clientWidth
+    observadorTamano = new ResizeObserver(() => {
+      const ancho = pista.value?.clientWidth ?? 0
+      if (ancho === anchoPrevio || arrastrando) return
+      anchoPrevio = ancho
+      irA(indiceActivo.value, false)
+    })
+    observadorTamano.observe(pista.value)
+  }
 
   arrancarAutoplay()
 })
 
-onBeforeUnmount(detenerAutoplay)
+onBeforeUnmount(() => {
+  detenerAutoplay()
+  observadorTamano?.disconnect()
+})
 </script>
 
 <template>

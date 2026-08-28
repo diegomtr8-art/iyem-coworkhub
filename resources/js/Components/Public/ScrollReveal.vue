@@ -1,10 +1,9 @@
 <script setup lang="ts">
+import { router } from '@inertiajs/vue3'
 import { onBeforeUnmount, onMounted, ref } from 'vue'
 
 const props = withDefaults(defineProps<{
-  /** Dirección de entrada. */
   from?: 'bottom' | 'left' | 'right' | 'scale'
-  /** Retraso propio, en ms. */
   delay?: number
   /** Si es > 0, escalona los hijos directos con este intervalo en ms. */
   stagger?: number
@@ -19,6 +18,10 @@ const props = withDefaults(defineProps<{
 const el = ref<HTMLElement | null>(null)
 const visible = ref(false)
 
+let observador: IntersectionObserver | undefined
+let temporizadorSeguridad: number | undefined
+let quitarInertia: (() => void) | undefined
+
 const desplazamientos = {
   bottom: 'translateY(36px)',
   left: 'translateX(-44px)',
@@ -26,7 +29,6 @@ const desplazamientos = {
   scale: 'scale(0.94)',
 }
 
-/** Prepara los hijos para el escalonado antes de que entren en pantalla. */
 function prepararHijos() {
   if (!props.stagger || !el.value) return
   Array.from(el.value.children).forEach((hijo, i) => {
@@ -39,6 +41,7 @@ function prepararHijos() {
 }
 
 function revelar() {
+  if (visible.value) return
   visible.value = true
 
   if (props.stagger && el.value) {
@@ -49,26 +52,36 @@ function revelar() {
     })
   }
 
-  quitarEscuchas()
+  desconectar()
+}
+
+function desconectar() {
+  observador?.disconnect()
+  observador = undefined
+  if (temporizadorSeguridad) window.clearTimeout(temporizadorSeguridad)
+  temporizadorSeguridad = undefined
+  window.removeEventListener('load', recomprobar)
+  window.removeEventListener('orientationchange', recomprobar)
+  quitarInertia?.()
+  quitarInertia = undefined
 }
 
 /**
- * Comprobación por scroll en lugar de IntersectionObserver: el observador no
- * dispara de forma fiable dentro de iframes ni tras un salto de scroll
- * programático, y el contenido se quedaba invisible para siempre.
+ * Reengancha el observador. IntersectionObserver es la herramienta correcta,
+ * pero puede no disparar si el elemento ya estaba en pantalla cuando se montó
+ * en una navegación de Inertia, o si el layout cambia al cargar imágenes.
  */
-function comprobar() {
+function recomprobar() {
   if (visible.value || !el.value) return
-  const caja = el.value.getBoundingClientRect()
-  if (caja.top < window.innerHeight * 0.92 && caja.bottom > 0) {
-    if (props.delay) window.setTimeout(revelar, props.delay)
-    else revelar()
-  }
-}
 
-function quitarEscuchas() {
-  window.removeEventListener('scroll', comprobar)
-  window.removeEventListener('resize', comprobar)
+  const caja = el.value.getBoundingClientRect()
+  if (caja.top < window.innerHeight && caja.bottom > 0) {
+    revelar()
+    return
+  }
+
+  observador?.unobserve(el.value)
+  observador?.observe(el.value)
 }
 
 onMounted(() => {
@@ -78,15 +91,35 @@ onMounted(() => {
   }
 
   prepararHijos()
-  comprobar()
 
-  if (visible.value) return
+  if (typeof IntersectionObserver === 'undefined') {
+    revelar()
+    return
+  }
 
-  window.addEventListener('scroll', comprobar, { passive: true })
-  window.addEventListener('resize', comprobar, { passive: true })
+  observador = new IntersectionObserver(
+    (entradas) => {
+      entradas.forEach((entrada) => {
+        if (!entrada.isIntersecting) return
+        if (props.delay) window.setTimeout(revelar, props.delay)
+        else revelar()
+      })
+    },
+    { threshold: 0.05, rootMargin: '0px 0px -40px 0px' },
+  )
+
+  if (el.value) observador.observe(el.value)
+
+  // Redes de seguridad. Nunca debe quedar contenido invisible.
+  window.addEventListener('load', recomprobar)
+  window.addEventListener('orientationchange', recomprobar)
+  quitarInertia = router.on('navigate', () => window.setTimeout(recomprobar, 50))
+
+  // Último recurso: pase lo que pase, a los 3 s se revela.
+  temporizadorSeguridad = window.setTimeout(revelar, 3000)
 })
 
-onBeforeUnmount(quitarEscuchas)
+onBeforeUnmount(desconectar)
 </script>
 
 <template>
