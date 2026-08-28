@@ -51,10 +51,10 @@ DIRS_ASSETS = [
 
 FILES = ["composer.json", "composer.lock", "package.json", "tailwind.config.js"]
 
-EXCLUDE_DIRS = {
-    "node_modules", ".git", "__pycache__", "vendor",
-    "logs", "sessions", "views", "cache",
-}
+# Ojo: sólo nombres que no puedan colisionar con directorios legítimos de la app.
+# 'views' o 'cache' aquí excluirían resources/views/ y bootstrap/cache/.
+# storage/ no se sube nunca, así que no hace falta filtrar sus subcarpetas.
+EXCLUDE_DIRS = {"node_modules", ".git", "__pycache__", "vendor"}
 EXCLUDE_EXT = {".log", ".map"}
 
 
