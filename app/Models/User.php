@@ -30,7 +30,7 @@ class User extends Authenticatable implements MustVerifyEmail
         'avatar', 'face_id_ok', 'ocupacion', 'notas_admin',
     ];
 
-    protected $hidden = ['password', 'remember_token', 'verificacion_nonce'];
+    protected $hidden = ['password', 'remember_token', 'verificacion_nonce', 'dos_factores_secreto'];
 
     protected function casts(): array
     {
@@ -38,6 +38,10 @@ class User extends Authenticatable implements MustVerifyEmail
             'email_verified_at' => 'datetime',
             'password'          => 'hashed',
             'face_id_ok'        => 'boolean',
+            // Cifrado, no hasheado: hay que poder leerlo para calcular el
+            // codigo de cada minuto. Depende de APP_KEY.
+            'dos_factores_secreto'       => 'encrypted',
+            'dos_factores_confirmado_en' => 'datetime',
         ];
     }
 
@@ -83,6 +87,20 @@ class User extends Authenticatable implements MustVerifyEmail
     public function tieneContrasena(): bool
     {
         return filled($this->attributes['password'] ?? null);
+    }
+
+    /**
+     * D — El segundo factor solo cuenta como activo si se **confirmo** con un
+     * codigo real.
+     *
+     * Un secreto guardado sin confirmar significa que la app de codigos quiza
+     * nunca lo escaneo bien; darlo por activo dejaria a la persona fuera de su
+     * propia cuenta sin remedio.
+     */
+    public function tieneDosFactores(): bool
+    {
+        return $this->dos_factores_confirmado_en !== null
+            && filled($this->dos_factores_secreto);
     }
 
     /**
@@ -201,6 +219,8 @@ class User extends Authenticatable implements MustVerifyEmail
     // ── Relaciones ──────────────────────────────────────────────────────────
 
     public function identidades()    { return $this->hasMany(IdentidadSocial::class); }
+    public function codigosRecuperacion()   { return $this->hasMany(CodigoRecuperacion::class); }
+    public function dispositivosConfiables(){ return $this->hasMany(DispositivoConfiable::class); }
     public function enlacesMagicos() { return $this->hasMany(EnlaceMagico::class); }
 
     public function suscripciones()  { return $this->hasMany(Suscripcion::class); }

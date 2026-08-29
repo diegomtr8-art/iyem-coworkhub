@@ -99,6 +99,23 @@ return [
         'google'        => (bool) env('NODICO_GOOGLE_LOGIN_ENABLED', false),
         'enlace_magico' => (bool) env('NODICO_ENLACE_MAGICO_ENABLED', false),
     ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Segundo factor
+    |--------------------------------------------------------------------------
+    | Hoy es **opcional para todos**, como decidio Nodico, asi que la lista va
+    | vacia. El interruptor queda listo porque es muy probable que el IYEM lo
+    | exija para el portal operativo cuando el sistema maneje cobros: entonces
+    | basta con poner ['admin', 'staff'] aqui.
+    |
+    | Con un rol en la lista, esas cuentas no pueden desactivar su segundo
+    | factor. Lo que **no** hace todavia es obligar a activarlo a quien no lo
+    | tenga: eso son pantallas de onboarding que hoy no existen.
+    */
+    'dos_factores' => [
+        'obligatorio_para' => [],
+    ],
     'sufijo_titulo' => 'Nódico',
 
     /*
@@ -154,4 +171,38 @@ return [
             'imagen'      => 'home',
         ],
     ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Operación del espacio y reglas de reserva
+    |--------------------------------------------------------------------------
+    | Reglas duras del motor de reservas. Estaban repartidas por controladores
+    | y vistas —o directamente no existían—, que es como el sistema acabó
+    | aceptando reservas de madrugada y a tres años vista.
+    |
+    | `dias_habiles` va en el formato de `Carbon::dayOfWeek`: 1 = lunes.
+    | Coincide con el horario público de `nodico.horarios`; si uno cambia,
+    | cambian los dos.
+    */
+    'operacion' => [
+        'dias_habiles'          => [1, 2, 3, 4, 5],
+        'apertura'              => env('NODICO_APERTURA', '09:00'),
+        'cierre'                => env('NODICO_CIERRE', '19:00'),
+
+        // Bloques de media hora, mínimo una hora por reserva.
+        'granularidad_minutos'  => 30,
+        'duracion_minima_horas' => 1,
+
+        // No se reserva para dentro de 10 minutos ni con tres meses de antelación.
+        'antelacion_minima_minutos' => 10,
+        'antelacion_maxima_dias'    => 90,
+
+        // Decisión de Nódico: se devuelven las horas si cancela con 2 h o más
+        // de anticipación. Cancelación tardía y no-show consumen igual.
+        'horas_para_cancelar_sin_penalizacion' => 2,
+
+        // Ventana para consumir los días de los planes por día (Day-Pass, Flex).
+        'dias_ventana_planes_por_dia' => 30,
+    ],
+
 ];

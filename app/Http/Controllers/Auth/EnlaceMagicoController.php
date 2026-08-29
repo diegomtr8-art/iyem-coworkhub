@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Enums\EventoAuth;
+use App\Http\Controllers\Auth\Concerns\ExigeSegundoFactor;
 use App\Http\Controllers\Auth\Concerns\RedirigeAlPortal;
 use App\Http\Controllers\Controller;
 use App\Models\EnlaceMagico;
@@ -40,7 +41,7 @@ use Throwable;
  */
 class EnlaceMagicoController extends Controller
 {
-    use RedirigeAlPortal;
+    use ExigeSegundoFactor, RedirigeAlPortal;
 
     /** Clave del secreto que ata el enlace a este navegador. */
     private const CLAVE_SESION = 'enlace_magico_secreto';
@@ -117,6 +118,15 @@ class EnlaceMagicoController extends Controller
         $enlace->forceFill(['usado_en' => now()])->save();
 
         $usuario = $enlace->usuario;
+
+        // D — Un enlace magico **no** rodea el segundo factor. Si lo hiciera,
+        // bastaria con tener acceso al buzon para saltarselo, y el segundo
+        // factor dejaria de serlo.
+        if ($this->necesitaSegundoFactor($usuario, $request)) {
+            $request->session()->forget(self::CLAVE_SESION);
+
+            return $this->mandarAlDesafio($usuario, $request);
+        }
 
         Auth::login($usuario, remember: true);
         $request->session()->forget(self::CLAVE_SESION);

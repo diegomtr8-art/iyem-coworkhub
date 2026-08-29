@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Auth;
 use App\Enums\EstadoCuenta;
 use App\Enums\EventoAuth;
 use App\Enums\RolUsuario;
+use App\Http\Controllers\Auth\Concerns\ExigeSegundoFactor;
 use App\Http\Controllers\Auth\Concerns\RedirigeAlPortal;
 use App\Http\Controllers\Controller;
 use App\Models\Comunicado;
@@ -43,7 +44,7 @@ use Throwable;
  */
 class OAuthController extends Controller
 {
-    use RedirigeAlPortal;
+    use ExigeSegundoFactor, RedirigeAlPortal;
 
     /**
      * Proveedores que este controlador sabe manejar, y su interruptor.
@@ -131,6 +132,11 @@ class OAuthController extends Controller
                 'status',
                 'Esa cuenta de Google no tiene el correo verificado, así que no podemos vincularla a una cuenta que ya existe en Nódico. Entra con tu contraseña.',
             );
+        }
+
+        // D — Entrar con Google tampoco rodea el segundo factor.
+        if ($this->necesitaSegundoFactor($usuario, $request)) {
+            return $this->mandarAlDesafio($usuario, $request);
         }
 
         Auth::login($usuario, remember: true);

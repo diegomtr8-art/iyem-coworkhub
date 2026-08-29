@@ -2,6 +2,8 @@
 
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\Auth\ConfirmablePasswordController;
+use App\Http\Controllers\Auth\DesafioDosFactoresController;
+use App\Http\Controllers\Auth\DosFactoresController;
 use App\Http\Controllers\Auth\EnlaceMagicoController;
 use App\Http\Controllers\Auth\EmailVerificationNotificationController;
 use App\Http\Controllers\Auth\EmailVerificationPromptController;
@@ -77,6 +79,19 @@ Route::middleware('guest')->group(function () {
         ->middleware('throttle:acceso')
         ->name('enlace-magico.entrar');
 
+    /*
+     * D — Desafio del segundo factor.
+     *
+     * Va en el grupo `guest` porque entre la contrasena y el codigo **no hay
+     * sesion iniciada**: solo un identificador en la sesion. El limite es el
+     * mismo del acceso, porque es exactamente eso.
+     */
+    Route::get('dos-factores/desafio', [DesafioDosFactoresController::class, 'mostrar'])
+        ->name('dos-factores.desafio');
+
+    Route::post('dos-factores/desafio', [DesafioDosFactoresController::class, 'verificar'])
+        ->middleware('throttle:acceso');
+
     Route::get('reset-password/{token}', [NewPasswordController::class, 'create'])
         ->name('password.reset');
 
@@ -138,6 +153,27 @@ Route::middleware('auth')->group(function () {
     // portales a propósito: la necesitan por igual el equipo y los miembros, y
     // no cambia según el rol.
     Route::get('seguridad', [SeguridadController::class, 'index'])->name('seguridad');
+
+    /*
+     * D — Alta y baja del segundo factor.
+     *
+     * Todo detras de `password.confirm`: activarlo o quitarlo con una sesion
+     * olvidada en un equipo prestado seria regalar justo lo que protege.
+     */
+    Route::middleware('password.confirm')->group(function () {
+        Route::get('dos-factores', [DosFactoresController::class, 'crear'])
+            ->name('dos-factores.crear');
+
+        Route::post('dos-factores', [DosFactoresController::class, 'confirmar'])
+            ->middleware('throttle:acceso')
+            ->name('dos-factores.confirmar');
+
+        Route::post('dos-factores/codigos', [DosFactoresController::class, 'regenerarCodigos'])
+            ->name('dos-factores.codigos');
+
+        Route::delete('dos-factores', [DosFactoresController::class, 'destruir'])
+            ->name('dos-factores.destruir');
+    });
 
     Route::middleware('password.confirm')->group(function () {
         Route::delete('seguridad/sesiones', [SeguridadController::class, 'cerrarOtras'])
