@@ -2,8 +2,10 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\TipoEspacio;
 use App\Models\Espacio;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 
 class EspaciosController extends Controller
@@ -24,7 +26,7 @@ class EspaciosController extends Controller
     {
         return [
             'nombre'      => 'required|string|max:100',
-            'tipo'        => 'required|in:coworking,privado,sala_juntas,contenido,fotografia,escritorio,oficina_privada,cabina_telefonica,lounge',
+            'tipo'        => ['required', Rule::in(TipoEspacio::valores())],
             'capacidad'   => 'required|integer|min:1',
             'precio_hora' => 'nullable|numeric|min:0',
             'amenidades'  => 'nullable|array',

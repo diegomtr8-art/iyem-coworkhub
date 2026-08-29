@@ -14,12 +14,14 @@ const form = useForm({
   dias_cowork_mes:     props.plan?.dias_cowork_mes     ?? '',
   horas_sala_mes:      props.plan?.horas_sala_mes      ?? '',
   horas_contenido_mes: props.plan?.horas_contenido_mes ?? '',
+  horas_asesoria_mes:  props.plan?.horas_asesoria_mes  ?? '',
   max_horas_sala_dia:  props.plan?.max_horas_sala_dia  ?? '',
+  max_horas_contenido_dia: props.plan?.max_horas_contenido_dia ?? '',
+  max_horas_asesoria_dia:  props.plan?.max_horas_asesoria_dia  ?? '',
   personas:            props.plan?.personas            ?? 1,
   horas_incluidas:     props.plan?.horas_incluidas     ?? '',
   max_reservas_mes:    props.plan?.max_reservas_mes    ?? '',
   acceso_24h:          props.plan?.acceso_24h          ?? false,
-  incluye_sala_juntas: props.plan?.incluye_sala_juntas ?? false,
   color:               props.plan?.color               ?? '#F5C600',
   destacado:           props.plan?.destacado           ?? false,
   activo:              props.plan?.activo              ?? true,
@@ -136,6 +138,25 @@ const coloresPreset = ['#F5C600', '#3B82F6', '#10B981', '#8B5CF6', '#EF4444', '#
                 class="w-full border border-gray-200 rounded-xl px-3 py-3 text-sm focus:ring-2 focus:ring-nodo-400 outline-none transition" />
             </div>
           </div>
+          <div class="grid sm:grid-cols-2 gap-4">
+            <div>
+              <label class="block text-sm font-medium text-dark mb-1.5">Horas asesoría IYEM / mes</label>
+              <input v-model="form.horas_asesoria_mes" type="number" min="0" step="0.5" placeholder="Vacío = sin acceso"
+                class="w-full border border-gray-200 rounded-xl px-3 py-3 text-sm focus:ring-2 focus:ring-nodo-400 outline-none transition" />
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-dark mb-1.5">Máx. horas asesoría por día</label>
+              <input v-model="form.max_horas_asesoria_dia" type="number" min="0" step="0.5" placeholder="Ej: 1"
+                class="w-full border border-gray-200 rounded-xl px-3 py-3 text-sm focus:ring-2 focus:ring-nodo-400 outline-none transition" />
+            </div>
+          </div>
+          <div class="grid sm:grid-cols-2 gap-4">
+            <div>
+              <label class="block text-sm font-medium text-dark mb-1.5">Máx. horas contenido por día</label>
+              <input v-model="form.max_horas_contenido_dia" type="number" min="0" step="0.5" placeholder="Ej: 1"
+                class="w-full border border-gray-200 rounded-xl px-3 py-3 text-sm focus:ring-2 focus:ring-nodo-400 outline-none transition" />
+            </div>
+          </div>
           <div class="space-y-3 pt-2">
             <label class="flex items-center justify-between p-3.5 bg-gray-50 rounded-xl cursor-pointer hover:bg-gray-100 transition-colors">
               <div>
@@ -147,16 +168,23 @@ const coloresPreset = ['#F5C600', '#3B82F6', '#10B981', '#8B5CF6', '#EF4444', '#
                 <div :class="['w-5 h-5 bg-white rounded-full shadow mt-0.5 transition-transform', form.acceso_24h ? 'translate-x-5' : 'translate-x-0.5']" />
               </div>
             </label>
-            <label class="flex items-center justify-between p-3.5 bg-gray-50 rounded-xl cursor-pointer hover:bg-gray-100 transition-colors">
+            <!--
+              El interruptor de «Incluye sala de juntas» se retiró: era un
+              segundo campo gobernando la misma regla que las horas de sala y
+              podían contradecirse (BUG-02). Ahora se deriva de la bolsa y se
+              enseña como consecuencia, no como opción.
+            -->
+            <div class="flex items-center justify-between p-3.5 bg-gray-50 rounded-xl">
               <div>
-                <p class="text-sm font-semibold text-dark">Incluye sala de juntas</p>
-                <p class="text-xs text-gray-500">Permite reservar salas privadas y sala de juntas</p>
+                <p class="text-sm font-semibold text-dark">Incluye salas privadas y de juntas</p>
+                <p class="text-xs text-gray-500">Se activa solo si el plan tiene horas de sala al mes</p>
               </div>
-              <div @click="form.incluye_sala_juntas = !form.incluye_sala_juntas"
-                :class="['w-11 h-6 rounded-full transition-all cursor-pointer flex-shrink-0', form.incluye_sala_juntas ? 'bg-nodo-400' : 'bg-gray-300']">
-                <div :class="['w-5 h-5 bg-white rounded-full shadow mt-0.5 transition-transform', form.incluye_sala_juntas ? 'translate-x-5' : 'translate-x-0.5']" />
-              </div>
-            </label>
+              <span :class="['text-xs font-bold px-2.5 py-1 rounded-full flex-shrink-0',
+                             form.horas_sala_mes !== '' && Number(form.horas_sala_mes) > 0
+                               ? 'bg-nodo-400 text-dark' : 'bg-gray-200 text-gray-500']">
+                {{ form.horas_sala_mes !== '' && Number(form.horas_sala_mes) > 0 ? 'Sí' : 'No' }}
+              </span>
+            </div>
           </div>
         </div>
 

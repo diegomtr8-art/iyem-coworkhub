@@ -2,16 +2,41 @@
 
 namespace App\Http\Controllers\Portal;
 
+use App\Enums\BolsaDeHoras;
 use App\Http\Controllers\Controller;
 use App\Models\Espacio;
 use App\Models\Reserva;
-use Carbon\Carbon;
+use App\Models\Suscripcion;
+use App\Servicios\Reservas\RegistroDeBloques;
+use Carbon\CarbonImmutable;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 
+/**
+ * Motor de reservas del portal del miembro.
+ *
+ * Reescrito en la Fase 0 para corregir los siete defectos documentados en
+ * `PROMPT-PORTALES-NODICO.md`. Los tres criterios que ordenan el archivo:
+ *
+ * 1. **La duración se calcula en un solo sitio**, `Reserva::calcularHoras()`.
+ *    Los tres cálculos a mano que había aquí devolvían minutos en negativo
+ *    (BUG-01) y con ello invertían todo el control de cupos.
+ * 2. **La bolsa es la única fuente de verdad** sobre qué puede reservar cada
+ *    plan (BUG-02). Ni `incluye_sala_juntas` —que ya no existe— ni listas de
+ *    tipos escritas a mano: `TipoEspacio::bolsa()` lo decide.
+ * 3. **Nada se comprueba fuera de la transacción** (BUG-03). Y lo que la
+ *    transacción no puede garantizar sola lo garantiza el índice único de
+ *    `bloques_reserva`.
+ */
 class ReservasController extends Controller
 {
+    public function __construct(private readonly RegistroDeBloques $bloques)
+    {
+    }
+
     public function index(Request $request)
     {
         $user = $request->user();
@@ -19,190 +44,340 @@ class ReservasController extends Controller
         $proximas = $user->reservas()
             ->with('espacio')
             ->where('fecha', '>=', today())
-            ->where('estatus', 'Confirmada')
+            ->confirmadas()
             ->orderBy('fecha')
-            ->get();
+            ->orderBy('hora_inicio')
+            ->get()
+            ->map(fn (Reserva $reserva) => $this->paraLaVista($reserva));
 
         $pasadas = $user->reservas()
             ->with('espacio')
-            ->where(fn($q) => $q->where('fecha', '<', today())
+            ->where(fn ($q) => $q->where('fecha', '<', today())
                 ->orWhereIn('estatus', ['Cancelada', 'Completada', 'No_Show']))
             ->orderByDesc('fecha')
+            ->orderByDesc('hora_inicio')
             ->limit(20)
-            ->get();
-
-        $suscripcion = $user->suscripciones()
-            ->with('plan')
-            ->where('estatus', 'Activa')
-            ->latest()
-            ->first();
+            ->get()
+            ->map(fn (Reserva $reserva) => $this->paraLaVista($reserva));
 
         return Inertia::render('Portal/MisReservas', [
             'proximas'    => $proximas,
             'pasadas'     => $pasadas,
-            'suscripcion' => $suscripcion,
+            'suscripcion' => $this->suscripcionActiva($request),
         ]);
     }
 
     public function create(Request $request)
     {
-        $user = $request->user();
-        $suscripcion = $user->suscripciones()
-            ->with('plan')
-            ->where('estatus', 'Activa')
-            ->latest()
-            ->first();
+        $suscripcion = $this->suscripcionActiva($request);
 
-        $espaciosDisponibles = collect();
+        $espacios = collect();
+
         if ($suscripcion) {
-            $plan = $suscripcion->plan;
-            $tipos = [];
-
-            if ($plan?->incluye_sala_juntas) {
-                $tipos[] = 'sala_juntas';
-                $tipos[] = 'privado';
-            }
-
-            if ($plan?->horas_contenido_mes) {
-                $tipos[] = 'contenido';
-                $tipos[] = 'fotografia';
-            }
-
-            if ($plan?->esIlimitado() || $plan?->dias_cowork_mes) {
-                $tipos[] = 'coworking';
-            }
-
-            $espaciosDisponibles = Espacio::where('disponible', true)
-                ->whereIn('tipo', array_unique($tipos))
-                ->get();
+            // El filtro sale de la bolsa, igual que la validación de `store`.
+            // Antes eran dos criterios distintos y podían contradecirse (BUG-02).
+            $espacios = Espacio::reservables()
+                ->get()
+                ->filter(fn (Espacio $espacio) => $espacio->bolsa()?->incluidaEn($suscripcion->plan))
+                ->values();
         }
 
         return Inertia::render('Portal/Reservar', [
-            'espacios'    => $espaciosDisponibles,
+            'espacios'    => $espacios,
             'suscripcion' => $suscripcion,
-            'resumen'     => $suscripcion ? [
-                'horas_sala_restantes'     => $suscripcion->horasSalaRestantes(),
-                'horas_sala_max'           => $suscripcion->plan?->horas_sala_mes,
-                'horas_contenido_restantes'=> $suscripcion->horasContenidoRestantes(),
-                'horas_contenido_max'      => $suscripcion->plan?->horas_contenido_mes,
-                'max_horas_sala_dia'       => $suscripcion->plan?->max_horas_sala_dia,
-            ] : null,
+            'resumen'     => $suscripcion ? $this->resumenDeBolsas($suscripcion) : null,
+            'operacion'   => config('nodico.operacion'),
         ]);
     }
 
     public function store(Request $request)
     {
-        $data = $request->validate([
-            'espacio_id'  => 'required|exists:espacios,id',
-            'fecha'       => 'required|date|after_or_equal:today',
-            'hora_inicio' => 'required|date_format:H:i',
-            'hora_fin'    => 'required|date_format:H:i|after:hora_inicio',
+        $datos = $request->validate([
+            'espacio_id'  => ['required', 'exists:espacios,id'],
+            'fecha'       => ['required', 'date', 'after_or_equal:today'],
+            'hora_inicio' => ['required', 'date_format:H:i'],
+            'hora_fin'    => ['required', 'date_format:H:i', 'after:hora_inicio'],
         ]);
 
         $user        = $request->user();
-        $espacio     = Espacio::findOrFail($data['espacio_id']);
-        $suscripcion = $user->suscripciones()->with('plan')->where('estatus', 'Activa')->latest()->first();
+        $espacio     = Espacio::findOrFail($datos['espacio_id']);
+        $suscripcion = $this->suscripcionActiva($request);
 
-        if (!$suscripcion) {
-            return back()->withErrors(['general' => 'No tienes una membresía activa.']);
+        if (! $suscripcion) {
+            throw ValidationException::withMessages([
+                'general' => 'No tienes una membresía activa.',
+            ]);
         }
 
-        // Validar que la fecha esté dentro del período de suscripción
-        $fecha = Carbon::parse($data['fecha']);
-        if ($fecha->gt(Carbon::parse($suscripcion->fecha_fin))) {
-            return back()->withErrors(['fecha' => 'La fecha de reserva está fuera del período de tu membresía.']);
+        if (! $espacio->esReservablePorMiembro()) {
+            throw ValidationException::withMessages([
+                'espacio_id' => $espacio->tipoEnum() === \App\Enums\TipoEspacio::Coworking
+                    ? 'El área de coworking no se reserva: entra cuando quieras y haz tu check-in en recepción.'
+                    : 'Ese espacio no se puede reservar desde el portal.',
+            ]);
         }
 
-        // Calcular duración correctamente con Carbon
-        $horaInicio = Carbon::createFromFormat('H:i', $data['hora_inicio']);
-        $horaFin    = Carbon::createFromFormat('H:i', $data['hora_fin']);
-        $horas      = $horaFin->diffInMinutes($horaInicio) / 60;
+        $bolsa = $espacio->bolsa();
 
-        // Verificar disponibilidad del espacio (anti double-booking)
-        $conflicto = Reserva::where('espacio_id', $data['espacio_id'])
-            ->where('fecha', $data['fecha'])
-            ->where('estatus', 'Confirmada')
-            ->where('hora_inicio', '<', $data['hora_fin'])
-            ->where('hora_fin', '>', $data['hora_inicio'])
-            ->exists();
-
-        if ($conflicto) {
-            return back()->withErrors(['hora_fin' => 'Este espacio ya está reservado en ese horario. Elige otro horario.']);
+        if (! $bolsa->incluidaEn($suscripcion->plan)) {
+            throw ValidationException::withMessages([
+                'espacio_id' => "Tu plan {$suscripcion->plan?->nombre} no incluye {$bolsa->etiqueta()}.",
+            ]);
         }
 
-        return DB::transaction(function () use ($data, $user, $espacio, $suscripcion, $horas) {
-            // Validar límite diario de sala
-            if (in_array($espacio->tipo, ['privado', 'sala_juntas'])) {
-                $maxDia = $suscripcion->plan?->max_horas_sala_dia;
-                if ($maxDia !== null) {
-                    $horasEseDia = Reserva::where('user_id', $user->id)
-                        ->where('suscripcion_id', $suscripcion->id)
-                        ->where('fecha', $data['fecha'])
-                        ->whereHas('espacio', fn($q) => $q->whereIn('tipo', ['privado', 'sala_juntas']))
-                        ->where('estatus', 'Confirmada')
-                        ->get()
-                        ->sum(function ($r) {
-                            $i = Carbon::createFromFormat('H:i:s', $r->hora_inicio);
-                            $f = Carbon::createFromFormat('H:i:s', $r->hora_fin);
-                            return $f->diffInMinutes($i) / 60;
-                        });
+        $horas = Reserva::calcularHoras($datos['hora_inicio'], $datos['hora_fin']);
 
-                    if ($horasEseDia + $horas > $maxDia) {
-                        return back()->withErrors(['hora_fin' => "Máximo {$maxDia} hora(s) por día en salas privadas."]);
-                    }
-                }
+        $this->verificarVigencia($suscripcion, $datos['fecha']);
 
-                if ($suscripcion->horasSalaRestantes() !== null && $suscripcion->horasSalaRestantes() < $horas) {
-                    return back()->withErrors(['hora_fin' => 'No tienes suficientes horas de sala disponibles este mes.']);
-                }
+        // Todo lo que sigue comprueba y escribe **dentro** de la misma
+        // transacción. Sacar cualquier comprobación de aquí reabre el BUG-03.
+        DB::transaction(function () use ($datos, $user, $espacio, $suscripcion, $bolsa, $horas) {
+            // Bloqueo pesimista sobre las reservas de ese espacio y esa fecha:
+            // dos peticiones simultáneas se serializan aquí en vez de pasar las
+            // dos la comprobación.
+            Reserva::where('espacio_id', $espacio->id)
+                ->whereDate('fecha', $datos['fecha'])
+                ->lockForUpdate()
+                ->get();
 
-                $suscripcion->increment('horas_sala_usadas', $horas);
-            }
+            $this->verificarTraslape($espacio, $datos);
+            $this->verificarTopeDiario($user->id, $suscripcion, $bolsa, $datos['fecha'], $horas);
+            $this->verificarSaldo($suscripcion, $bolsa, $horas);
 
-            if (in_array($espacio->tipo, ['contenido', 'fotografia'])) {
-                if ($suscripcion->horasContenidoRestantes() !== null && $suscripcion->horasContenidoRestantes() < $horas) {
-                    return back()->withErrors(['hora_fin' => 'No tienes suficientes horas de estudio disponibles este mes.']);
-                }
-
-                $suscripcion->increment('horas_contenido_usadas', $horas);
-            }
-
-            Reserva::create([
-                ...$data,
+            $reserva = Reserva::create([
+                ...$datos,
                 'user_id'        => $user->id,
                 'suscripcion_id' => $suscripcion->id,
                 'estatus'        => 'Confirmada',
                 'precio_total'   => 0,
             ]);
 
-            return redirect()->route('portal.reservas')->with('success', '¡Reserva confirmada! Te esperamos.');
+            // La red de seguridad de verdad: si otra transacción ganó la carrera
+            // entre la comprobación de arriba y este punto, el índice único
+            // revienta aquí y la transacción entera se revierte. Se traduce a un
+            // error de formulario porque para quien reserva no es un fallo del
+            // sistema: alguien se le adelantó por medio segundo.
+            try {
+                $this->bloques->ocupar($reserva);
+            } catch (QueryException $e) {
+                if (! $this->esTraslape($e)) {
+                    throw $e;
+                }
+
+                throw ValidationException::withMessages([
+                    'hora_inicio' => 'Alguien acaba de reservar ese horario en '
+                        . $espacio->nombre . '. Elige otro.',
+                ]);
+            }
+
+            $suscripcion->increment($bolsa->campoConsumo(), $horas);
         });
+
+        return redirect()
+            ->route('portal.reservas')
+            ->with('success', '¡Reserva confirmada! Te esperamos.');
     }
 
-    public function destroy(Reserva $reserva)
+    public function destroy(Request $request, Reserva $reserva)
     {
-        if ($reserva->user_id !== request()->user()->id) {
+        if ($reserva->user_id !== $request->user()->id) {
             abort(403);
         }
 
-        DB::transaction(function () use ($reserva) {
-            $suscripcion = $reserva->suscripcion;
-            if ($suscripcion && $reserva->fecha >= today()) {
-                $i    = Carbon::createFromFormat('H:i:s', $reserva->hora_inicio);
-                $f    = Carbon::createFromFormat('H:i:s', $reserva->hora_fin);
-                $horas = $f->diffInMinutes($i) / 60;
+        $devolvio = DB::transaction(function () use ($reserva) {
+            // Se recarga con bloqueo: dos peticiones seguidas devolvían las horas
+            // dos veces porque ninguna miraba el estatus antes de tocar nada (BUG-04).
+            $fresca = Reserva::whereKey($reserva->getKey())->lockForUpdate()->first();
 
-                if (in_array($reserva->espacio?->tipo, ['privado', 'sala_juntas'])) {
-                    $suscripcion->decrement('horas_sala_usadas', max(0, $horas));
-                }
-                if (in_array($reserva->espacio?->tipo, ['contenido', 'fotografia'])) {
-                    $suscripcion->decrement('horas_contenido_usadas', max(0, $horas));
-                }
+            if (! $fresca || ! $fresca->estaConfirmada()) {
+                return null;
             }
 
-            $reserva->update(['estatus' => 'Cancelada']);
+            $devuelve = $fresca->cancelarDevuelveHoras();
+            $bolsa    = $fresca->bolsa();
+
+            if ($devuelve && $bolsa && $fresca->suscripcion) {
+                $horas  = $fresca->duracionEnHoras();
+                $actual = $bolsa->consumo($fresca->suscripcion);
+
+                // `max(0, …)` sobre el resultado, no sobre las horas: lo segundo
+                // era lo que hacía el código anterior y con la duración en
+                // negativo se quedaba siempre en cero.
+                $fresca->suscripcion->update([
+                    $bolsa->campoConsumo() => max(0, round($actual - $horas, 2)),
+                ]);
+            }
+
+            $fresca->update(['estatus' => 'Cancelada']);
+            $this->bloques->liberar($fresca);
+
+            return $devuelve;
         });
 
-        return back()->with('success', 'Reserva cancelada. Las horas han sido devueltas a tu cuenta.');
+        if ($devolvio === null) {
+            return back()->with('error', 'Esa reserva ya no estaba confirmada.');
+        }
+
+        return back()->with('success', $devolvio
+            ? 'Reserva cancelada. Las horas vuelven a tu cuenta.'
+            : 'Reserva cancelada. Al faltar menos de '
+                . config('nodico.operacion.horas_para_cancelar_sin_penalizacion')
+                . ' horas para tu reserva, las horas se consumen igual.');
+    }
+
+    // ── Comprobaciones ──────────────────────────────────────────────────────
+
+    /**
+     * Si la excepción es la violación del índice único de `bloques_reserva` y
+     * no otro fallo de base de datos, que no se debe disfrazar de conflicto de
+     * horario.
+     */
+    private function esTraslape(QueryException $e): bool
+    {
+        return (int) ($e->errorInfo[0] ?? 0) === 23000
+            || str_contains($e->getMessage(), 'bloques_reserva_unico')
+            || str_contains($e->getMessage(), 'bloques_reserva.espacio_id');
+    }
+
+    private function verificarVigencia(Suscripcion $suscripcion, string $fecha): void
+    {
+        $dia = CarbonImmutable::parse($fecha);
+
+        if ($dia->gt(CarbonImmutable::parse($suscripcion->fecha_fin))) {
+            throw ValidationException::withMessages([
+                'fecha' => 'La fecha está fuera del período de tu membresía, que termina el '
+                    . CarbonImmutable::parse($suscripcion->fecha_fin)->translatedFormat('j \d\e F') . '.',
+            ]);
+        }
+    }
+
+    private function verificarTraslape(Espacio $espacio, array $datos): void
+    {
+        $ocupado = Reserva::where('espacio_id', $espacio->id)
+            ->whereDate('fecha', $datos['fecha'])
+            ->confirmadas()
+            ->where('hora_inicio', '<', $datos['hora_fin'])
+            ->where('hora_fin', '>', $datos['hora_inicio'])
+            ->exists();
+
+        if ($ocupado) {
+            throw ValidationException::withMessages([
+                'hora_inicio' => 'Ese horario ya está ocupado en ' . $espacio->nombre . '. Elige otro.',
+            ]);
+        }
+    }
+
+    /**
+     * Tope por día de la bolsa, sumando **todas** las reservas del mismo día que
+     * consuman esa bolsa. El código anterior sumaba duraciones negativas, así
+     * que el total bajaba con cada reserva y el tope no se alcanzaba nunca.
+     */
+    private function verificarTopeDiario(
+        int $userId,
+        Suscripcion $suscripcion,
+        BolsaDeHoras $bolsa,
+        string $fecha,
+        float $horas
+    ): void {
+        $tope = $bolsa->topeDiario($suscripcion->plan);
+
+        if ($tope === null) {
+            return;
+        }
+
+        $yaReservadas = Reserva::where('user_id', $userId)
+            ->where('suscripcion_id', $suscripcion->id)
+            ->whereDate('fecha', $fecha)
+            ->confirmadas()
+            ->whereHas('espacio', fn ($q) => $q->deBolsa($bolsa))
+            ->get()
+            ->sum(fn (Reserva $reserva) => $reserva->duracionEnHoras());
+
+        if ($yaReservadas + $horas > $tope) {
+            $libres = max(0, round($tope - $yaReservadas, 2));
+
+            throw ValidationException::withMessages([
+                'hora_fin' => $libres > 0
+                    ? "Tu plan permite {$tope} h al día en {$bolsa->etiqueta()} y ese día ya tienes "
+                        . "{$yaReservadas} h. Te queda {$libres} h."
+                    : "Tu plan permite {$tope} h al día en {$bolsa->etiqueta()} y ese día ya las usaste.",
+            ]);
+        }
+    }
+
+    private function verificarSaldo(Suscripcion $suscripcion, BolsaDeHoras $bolsa, float $horas): void
+    {
+        $restante = $bolsa->restante($suscripcion);
+
+        // `null` aquí es «ilimitada», y solo lo es la bolsa de días.
+        if ($restante === null) {
+            return;
+        }
+
+        if ($restante < $horas) {
+            throw ValidationException::withMessages([
+                'hora_fin' => "No te alcanza: esta reserva son {$horas} h y te quedan {$restante} h "
+                    . "de {$bolsa->etiqueta()} en este ciclo.",
+            ]);
+        }
+    }
+
+    // ── Apoyo ───────────────────────────────────────────────────────────────
+
+    private function suscripcionActiva(Request $request): ?Suscripcion
+    {
+        return $request->user()
+            ->suscripciones()
+            ->with('plan')
+            ->where('estatus', 'Activa')
+            ->latest('fecha_inicio')
+            ->first();
+    }
+
+    /**
+     * Estado de cada bolsa que el plan incluye. Lo consumen los medidores del
+     * portal, que tienen que poder responder «¿cuánto me queda y hasta cuándo?»
+     * sin que nadie eche cuentas.
+     */
+    private function resumenDeBolsas(Suscripcion $suscripcion): array
+    {
+        $plan = $suscripcion->plan;
+
+        return collect(BolsaDeHoras::cases())
+            ->filter(fn (BolsaDeHoras $bolsa) => $bolsa->incluidaEn($plan))
+            ->map(fn (BolsaDeHoras $bolsa) => [
+                'bolsa'       => $bolsa->value,
+                'etiqueta'    => $bolsa->etiqueta(),
+                'unidad'      => $bolsa->unidad(),
+                'cupo'        => $bolsa->cupo($plan),
+                'usado'       => $bolsa->consumo($suscripcion),
+                'restante'    => $bolsa->restante($suscripcion),
+                'tope_diario' => $bolsa->topeDiario($plan),
+                'ilimitada'   => $bolsa->cupo($plan) === null,
+            ])
+            ->values()
+            ->all();
+    }
+
+    /**
+     * La reserva con lo que la vista necesita saber y no puede calcular: sobre
+     * todo si cancelarla devuelve las horas, que debe verse **antes** de pulsar
+     * el botón.
+     */
+    private function paraLaVista(Reserva $reserva): array
+    {
+        $bolsa = $reserva->bolsa();
+
+        return [
+            ...$reserva->toArray(),
+            'horas'                  => $reserva->duracionEnHoras(),
+            'bolsa'                  => $bolsa?->value,
+            'bolsa_etiqueta'         => $bolsa?->etiqueta(),
+            'cancelar_devuelve'      => $reserva->estaConfirmada() && $reserva->cancelarDevuelveHoras(),
+            'limite_cancelacion'     => $reserva->inicioEnCalendario()
+                ->subHours((int) config('nodico.operacion.horas_para_cancelar_sin_penalizacion'))
+                ->toIso8601String(),
+            'inicio_en_calendario'   => $reserva->inicioEnCalendario()->toIso8601String(),
+        ];
     }
 }

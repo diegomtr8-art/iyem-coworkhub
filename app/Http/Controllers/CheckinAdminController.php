@@ -5,12 +5,23 @@ namespace App\Http\Controllers;
 use App\Models\Checkin;
 use App\Models\Espacio;
 use App\Models\User;
-use Carbon\Carbon;
+use App\Servicios\Accesos\RegistroDeAcceso;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 
+/**
+ * Check-in y check-out desde el mostrador.
+ *
+ * Comparte `RegistroDeAcceso` con el portal del miembro: la regla de que un día
+ * se consume una sola vez por día natural (BUG-05) tiene que valer igual entre
+ * a quien entre por su cuenta o lo registre recepción.
+ */
 class CheckinAdminController extends Controller
 {
+    public function __construct(private readonly RegistroDeAcceso $accesos)
+    {
+    }
+
     public function index()
     {
         $activos = Checkin::with(['user', 'espacio'])
@@ -34,24 +45,25 @@ class CheckinAdminController extends Controller
 
     public function entrada(Request $request)
     {
-        $data = $request->validate([
-            'user_id'    => 'required|exists:users,id',
-            'espacio_id' => 'required|exists:espacios,id',
+        $datos = $request->validate([
+            'user_id'    => ['required', 'exists:users,id'],
+            'espacio_id' => ['required', 'exists:espacios,id'],
         ]);
 
-        Checkin::where('user_id', $data['user_id'])->whereNull('hora_salida')->each(function ($c) {
-            $minutos = (int) Carbon::parse($c->hora_entrada)->diffInMinutes(now());
-            $c->update(['hora_salida' => now(), 'duracion_minutos' => $minutos]);
-        });
+        $this->accesos->entrada(
+            User::findOrFail($datos['user_id']),
+            Espacio::find($datos['espacio_id']),
+        );
 
-        Checkin::create([...$data, 'hora_entrada' => now()]);
         return back()->with('success', 'Check-in registrado.');
     }
 
     public function salida(Checkin $checkin)
     {
-        $minutos = (int) Carbon::parse($checkin->hora_entrada)->diffInMinutes(now());
-        $checkin->update(['hora_salida' => now(), 'duracion_minutos' => $minutos]);
-        return back()->with('success', 'Check-out registrado. Duración: ' . $minutos . ' minutos.');
+        $acceso = $this->accesos->salida($checkin->user);
+
+        return back()->with('success', $acceso
+            ? 'Check-out registrado. Duración: ' . $acceso->duracion_minutos . ' minutos.'
+            : 'Ese miembro ya no tenía un acceso abierto.');
     }
 }
