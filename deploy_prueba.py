@@ -61,6 +61,16 @@ DIRS_A_BLINDAR = [
     "storage", "vendor", "tests", "tools", "deploy",
 ]
 
+# Sueltos de public/ que van a la RAIZ del document root. Se subian las
+# carpetas (build, img, fonts, icons) pero no estos, asi que los favicons y el
+# manifiesto generados en IMG-06 nunca llegaron al servidor: comprobado el
+# 2026-08-29, /favicon-32.png, /favicon-96.png, /apple-touch-icon.png y
+# /site.webmanifest daban 404 mientras existian en local.
+#
+# `index.php` y `.htaccess` NO se tocan: este host tiene los suyos, adaptados
+# al layout plano, y sobreescribirlos tumba el sitio.
+PUBLIC_SUELTOS_OMITIR = {"index.php", ".htaccess"}
+
 # Rutas que NO deben responder 200 despues de desplegar.
 COMPROBAR_CERRADAS = [
     "/storage/logs/laravel.log",
@@ -71,6 +81,23 @@ COMPROBAR_CERRADAS = [
     "/config/nodico.php",
     "/database/seeders/NodicoWebSeeder.php",
     "/package.json",
+]
+
+# Rutas que SI deben responder 200 despues de desplegar.
+COMPROBAR_ABIERTAS = [
+    "/",
+    "/nosotros",
+    "/membresias",
+    "/eventos",
+    "/actividades",
+    "/aviso-de-privacidad",
+    "/terminos",
+    "/robots.txt",
+    "/sitemap.xml",
+    "/build/manifest.json",
+    "/favicon-32.png",
+    "/apple-touch-icon.png",
+    "/site.webmanifest",
 ]
 
 # Ojo: sólo nombres que no puedan colisionar con directorios legítimos de la app.
@@ -212,6 +239,18 @@ def main():
         total += subir_dir(sftp, os.path.join(LOCAL_ROOT, local),
                            f"{REMOTE_ROOT}/{remoto}", remoto)
 
+    print("\n--> Sueltos de public/ a la raíz")
+    local_public = os.path.join(LOCAL_ROOT, "public")
+    for nombre in sorted(os.listdir(local_public)):
+        if nombre in PUBLIC_SUELTOS_OMITIR:
+            continue
+        origen = os.path.join(local_public, nombre)
+        if not os.path.isfile(origen):
+            continue
+        sftp.put(origen, f"{REMOTE_ROOT}/{nombre}")
+        total += 1
+        print(f"    {nombre}")
+
     print("\n--> Blindando las carpetas de aplicación")
     blindaje = os.path.join(LOCAL_ROOT, "deploy", "htaccess-negar-todo")
     for carpeta in DIRS_A_BLINDAR:
@@ -270,6 +309,26 @@ def comprobar_cierre() -> bool:
             todo_bien = False
         else:
             print(f"    ok  {ruta} -> {estado}")
+
+    # Blindar de mas es tan roto como blindar de menos.
+    print("\n--> Comprobando que el sitio sigue en pie")
+    for ruta in COMPROBAR_ABIERTAS:
+        url = f"https://prueba.nodico.com.mx{ruta}"
+        peticion = urllib.request.Request(url, method="HEAD")
+        try:
+            with urllib.request.urlopen(peticion, timeout=20) as resp:
+                estado = resp.status
+        except urllib.error.HTTPError as exc:
+            estado = exc.code
+        except Exception as exc:
+            print(f"    ?   {ruta} -> no se pudo comprobar ({exc})")
+            continue
+
+        if estado == 200:
+            print(f"    ok  {ruta} -> 200")
+        else:
+            print(f"    MAL {ruta} -> {estado}, deberia responder 200")
+            todo_bien = False
 
     return todo_bien
 
