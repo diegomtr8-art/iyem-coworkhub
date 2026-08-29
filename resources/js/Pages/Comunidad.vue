@@ -103,7 +103,7 @@ const fechaLarga = (valor: string) =>
             <p class="font-body text-cuerpo-lg text-dark/70">
               Todavía no hay actividades cargadas en la agenda.
             </p>
-            <p class="mt-3 font-body text-cuerpo text-dark/55">
+            <p class="mt-3 font-body text-cuerpo text-dark/70">
               Los talleres del mes están siempre al día en el calendario, aquí abajo.
             </p>
             <Boton href="#talleres" variante="oscuro" class="mt-8" flecha>
@@ -130,14 +130,14 @@ const fechaLarga = (valor: string) =>
               class="aspect-[3/2] w-full object-cover"
             />
             <div class="flex flex-1 flex-col p-6">
-              <time v-if="evento.fecha" :datetime="evento.fecha" class="etiqueta-tecnica text-dark/40">
+              <time v-if="evento.fecha" :datetime="evento.fecha" class="etiqueta-tecnica text-dark/70">
                 {{ fechaLarga(evento.fecha) }}
               </time>
               <h3 class="mt-3 font-display text-lg font-bold leading-snug text-dark">{{ evento.titulo }}</h3>
-              <p v-if="evento.descripcion" class="mt-3 flex-1 font-body text-sm leading-relaxed text-dark/65">
+              <p v-if="evento.descripcion" class="mt-3 flex-1 font-body text-sm leading-relaxed text-dark/70">
                 {{ evento.descripcion }}
               </p>
-              <p v-if="evento.lugar" class="mt-4 font-body text-sm text-dark/50">{{ evento.lugar }}</p>
+              <p v-if="evento.lugar" class="mt-4 font-body text-sm text-dark/70">{{ evento.lugar }}</p>
             </div>
           </article>
         </ScrollReveal>
@@ -247,9 +247,9 @@ const fechaLarga = (valor: string) =>
               <div class="flex items-center justify-between gap-3 p-5">
                 <div>
                   <h3 class="font-display text-base font-bold text-dark">{{ negocio.nombre }}</h3>
-                  <p class="mt-0.5 font-body text-sm text-dark/50">@{{ negocio.instagram }}</p>
+                  <p class="mt-0.5 font-body text-sm text-dark/70">@{{ negocio.instagram }}</p>
                 </div>
-                <Instagram class="h-5 w-5 shrink-0 text-dark/55 transition group-hover:text-dark" aria-hidden="true" />
+                <Instagram class="h-5 w-5 shrink-0 text-dark/70 transition group-hover:text-dark" aria-hidden="true" />
               </div>
             </a>
           </li>

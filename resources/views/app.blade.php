@@ -21,8 +21,28 @@
         <link rel="preload" href="/fonts/carmen-sans-extrabold.woff2" as="font" type="font/woff2" crossorigin>
         <link rel="preload" href="/fonts/gteestiprodisplay-regular.woff2" as="font" type="font/woff2" crossorigin>
 
+        {{-- La portada pinta sobre esta foto; sin declararla aquí no se pide
+             hasta que Vue monta el hero, tres segundos más tarde. --}}
+        @if (($page['component'] ?? null) === 'Welcome')
+            <link
+                rel="preload"
+                as="image"
+                href="/img/nodico/hero-inicio-1280.webp"
+                imagesrcset="/img/nodico/hero-inicio-640.webp 640w, /img/nodico/hero-inicio-1280.webp 1280w, /img/nodico/hero-inicio.webp 1079w"
+                imagesizes="100vw"
+                fetchpriority="high"
+            >
+        @endif
+
         @routes
         @vite('resources/js/app.js')
+
+        {{-- Módulos del componente que va a montarse: bajan en paralelo con la
+             entrada en vez de esperar a que ésta se ejecute. --}}
+        @foreach (\App\Support\PrecargaVite::modulos($page['component'] ?? null) as $modulo)
+            <link rel="modulepreload" href="{{ $modulo }}">
+        @endforeach
+
         @inertiaHead
     </head>
     <body class="font-body antialiased">

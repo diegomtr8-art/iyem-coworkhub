@@ -22,7 +22,7 @@ withDefaults(defineProps<{
       v-if="etiqueta"
       class="etiqueta-tecnica mb-5 flex items-center gap-3"
       :class="[
-        tono === 'claro' ? 'text-nodo-400' : 'text-dark/55',
+        tono === 'claro' ? 'text-nodo-400' : 'text-dark/70',
         align === 'center' ? 'justify-center' : '',
       ]"
     >
@@ -45,7 +45,7 @@ withDefaults(defineProps<{
       v-if="descripcion"
       class="mt-6 max-w-2xl font-body text-cuerpo-lg"
       :class="[
-        tono === 'claro' ? 'text-white/85' : 'text-dark/65',
+        tono === 'claro' ? 'text-white/85' : 'text-dark/70',
         align === 'center' ? 'mx-auto' : '',
       ]"
     >

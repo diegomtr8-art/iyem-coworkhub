@@ -41,6 +41,24 @@ corporativo lo tome en serio. La seriedad viene del rigor de la retícula, no de
   o texto sobre crema (5.4:1).
 - `coral` sobre `dark` 5.2:1 ✓.
 
+#### Piso de opacidad para texto atenuado
+
+Un texto de 12–14 px necesita 4.5:1. Componiendo `dark` sobre los cuatro fondos claros
+del sistema, el peor caso es `cream-200`:
+
+| Opacidad | white | cream | cream-50 | cream-200 |
+|---|---|---|---|---|
+| `/60` | 3.89 | 3.72 | 3.81 | 3.52 |
+| `/65` | 4.50 | 4.28 | 4.39 | 4.02 |
+| **`/70`** | **5.24** | **4.94** | **5.09** | **4.60** |
+
+- **Texto oscuro atenuado: nunca por debajo de `text-dark/70`.** `/65` solo pasa sobre
+  blanco puro, y basta cambiar la sección de fondo para romperlo.
+- **Texto blanco atenuado: nunca por debajo de `text-white/60`.** `/50` falla sobre
+  `dark-600` (4.09).
+- Esto aplica también a `etiqueta-tecnica`, que mide 0.75 rem: es texto normal a efectos
+  de WCAG, no texto grande.
+
 ### Tipografía
 
 `font-display` = Carmen Sans (titulares) · `font-body` = GT Eesti Pro Display (texto) ·

@@ -236,7 +236,7 @@ const fichaSalon = computed(() => {
               <h3 class="font-display text-lg font-bold leading-snug text-dark">
                 {{ servicio.titulo }}
               </h3>
-              <p class="mt-2.5 font-body text-sm leading-relaxed text-dark/65">
+              <p class="mt-2.5 font-body text-sm leading-relaxed text-dark/70">
                 {{ servicio.descripcion }}
               </p>
             </article>
@@ -312,7 +312,7 @@ const fichaSalon = computed(() => {
         </ScrollReveal>
 
         <ScrollReveal from="right">
-          <p class="etiqueta-tecnica mb-5 flex items-center gap-3 text-dark/55">
+          <p class="etiqueta-tecnica mb-5 flex items-center gap-3 text-dark/70">
             <span class="h-1.5 w-1.5 rounded-full bg-dark" aria-hidden="true" />
             Day-pass emprendedor
           </p>
@@ -383,7 +383,7 @@ const fichaSalon = computed(() => {
     <section class="bg-cream-50 py-16 lg:py-20">
       <div class="mx-auto max-w-7xl px-5 sm:px-8">
         <ScrollReveal>
-          <p class="etiqueta-tecnica mb-10 text-center text-dark/40">
+          <p class="etiqueta-tecnica mb-10 text-center text-dark/70">
             Con el respaldo de
           </p>
           <AliadosSection />

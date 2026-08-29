@@ -52,7 +52,7 @@ const comoFunciona = [
     <!-- Portada -->
     <section class="bg-nodo-400 pb-16 pt-32 lg:pb-20 lg:pt-40">
       <div class="mx-auto max-w-7xl px-5 sm:px-8">
-        <p class="etiqueta-tecnica mb-5 flex items-center gap-3 text-dark/55">
+        <p class="etiqueta-tecnica mb-5 flex items-center gap-3 text-dark/70">
           <span class="h-1.5 w-1.5 rounded-full bg-dark" aria-hidden="true" />
           Membresías
         </p>

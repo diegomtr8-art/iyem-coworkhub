@@ -185,7 +185,7 @@ const valores = [
               <h3 class="font-display text-lg font-bold leading-snug text-dark">
                 {{ valor.titulo }}
               </h3>
-              <p class="mt-2.5 font-body text-sm leading-relaxed text-dark/65">
+              <p class="mt-2.5 font-body text-sm leading-relaxed text-dark/70">
                 {{ valor.descripcion }}
               </p>
             </article>

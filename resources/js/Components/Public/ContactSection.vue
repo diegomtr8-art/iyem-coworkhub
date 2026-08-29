@@ -92,7 +92,7 @@ const telefonoHref = computed(
   <section id="hablemos" class="relative bg-cream py-20 lg:py-28">
     <div class="mx-auto max-w-7xl px-5 sm:px-8">
       <div class="max-w-2xl">
-        <p class="etiqueta-tecnica mb-5 flex items-center gap-3 text-dark/55">
+        <p class="etiqueta-tecnica mb-5 flex items-center gap-3 text-dark/70">
           <span class="h-1.5 w-1.5 rounded-full bg-nodo-400" aria-hidden="true" />
           Contacto
         </p>
@@ -108,7 +108,7 @@ const telefonoHref = computed(
       <!-- 1 · Franja de datos: cuatro columnas iguales, 2x2 en iPhone -->
       <dl class="mt-12 grid grid-cols-2 gap-px overflow-hidden rounded-3xl bg-dark/10 lg:grid-cols-4">
         <div v-if="nodico.email" class="flex flex-col gap-2 bg-cream p-6">
-          <dt class="etiqueta-tecnica flex items-center gap-2 text-dark/55">
+          <dt class="etiqueta-tecnica flex items-center gap-2 text-dark/70">
             <Mail class="h-4 w-4" aria-hidden="true" /> Correo
           </dt>
           <dd>
@@ -119,7 +119,7 @@ const telefonoHref = computed(
         </div>
 
         <div v-if="nodico.telefono" class="flex flex-col gap-2 bg-cream p-6">
-          <dt class="etiqueta-tecnica flex items-center gap-2 text-dark/55">
+          <dt class="etiqueta-tecnica flex items-center gap-2 text-dark/70">
             <Phone class="h-4 w-4" aria-hidden="true" /> Teléfono
           </dt>
           <dd>
@@ -130,7 +130,7 @@ const telefonoHref = computed(
         </div>
 
         <div v-if="nodico.direccion" class="flex flex-col gap-2 bg-cream p-6">
-          <dt class="etiqueta-tecnica flex items-center gap-2 text-dark/55">
+          <dt class="etiqueta-tecnica flex items-center gap-2 text-dark/70">
             <MapPin class="h-4 w-4" aria-hidden="true" /> Dirección
           </dt>
           <dd class="font-body text-sm leading-relaxed text-dark">
@@ -146,12 +146,12 @@ const telefonoHref = computed(
         </div>
 
         <div v-if="nodico.horarios" class="flex flex-col gap-2 bg-cream p-6">
-          <dt class="etiqueta-tecnica flex items-center gap-2 text-dark/55">
+          <dt class="etiqueta-tecnica flex items-center gap-2 text-dark/70">
             <Clock class="h-4 w-4" aria-hidden="true" /> Horarios
           </dt>
           <dd class="font-body text-sm text-dark">
             {{ nodico.horarios }}
-            <span v-if="nodico.horariosDetalle" class="mt-0.5 block text-dark/55">
+            <span v-if="nodico.horariosDetalle" class="mt-0.5 block text-dark/70">
               {{ nodico.horariosDetalle }}
             </span>
           </dd>
@@ -187,9 +187,9 @@ const telefonoHref = computed(
                 />
                 <label
                   :for="`contacto-${campo.name}`"
-                  class="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 font-body text-dark/55
+                  class="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 font-body text-dark/70
                          transition-all duration-200 ease-salida
-                         peer-focus:top-3 peer-focus:translate-y-0 peer-focus:text-xs peer-focus:text-dark/60
+                         peer-focus:top-3 peer-focus:translate-y-0 peer-focus:text-xs peer-focus:text-dark/70
                          peer-[:not(:placeholder-shown)]:top-3
                          peer-[:not(:placeholder-shown)]:translate-y-0
                          peer-[:not(:placeholder-shown)]:text-xs"
@@ -217,9 +217,9 @@ const telefonoHref = computed(
                 />
                 <label
                   for="contacto-comentarios"
-                  class="pointer-events-none absolute left-4 top-6 -translate-y-1/2 font-body text-dark/55
+                  class="pointer-events-none absolute left-4 top-6 -translate-y-1/2 font-body text-dark/70
                          transition-all duration-200 ease-salida
-                         peer-focus:top-4 peer-focus:text-xs peer-focus:text-dark/60
+                         peer-focus:top-4 peer-focus:text-xs peer-focus:text-dark/70
                          peer-[:not(:placeholder-shown)]:top-4
                          peer-[:not(:placeholder-shown)]:text-xs"
                 >
@@ -281,7 +281,7 @@ const telefonoHref = computed(
               <MapPin class="h-6 w-6 text-dark" aria-hidden="true" />
             </span>
             <span class="font-display text-base font-bold text-dark">Ver el mapa</span>
-            <span class="max-w-xs px-6 text-center font-body text-sm text-dark/60">
+            <span class="max-w-xs px-6 text-center font-body text-sm text-dark/70">
               Se carga desde Google Maps al pulsar
             </span>
           </button>

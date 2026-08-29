@@ -32,6 +32,8 @@ const publicacionesValidas = computed(() =>
 /** Celdas cuyo iframe no llegó a cargar: muestran tarjeta de respaldo propia. */
 const fallidas = reactive<Record<string, boolean>>({})
 const cargadas = reactive<Record<string, boolean>>({})
+/** Celdas que ya se acercaron a pantalla: solo entonces se crea su iframe. */
+const cercanas = reactive<Record<string, boolean>>({})
 
 function alCargar(code: string) {
   cargadas[code] = true
@@ -42,22 +44,35 @@ function alFallar(code: string) {
 }
 
 /**
- * El vigilante arranca cuando la celda entra en pantalla, no al montar: los
- * iframes van con loading="lazy" y ni siquiera habian empezado a cargar cuando
- * expiraba el plazo, asi que tres de cuatro caian al respaldo sin motivo.
+ * Instagram cuesta ~1.2 MB de terceros por los cuatro embeds, y la sección va
+ * muy por debajo del pliegue. `loading="lazy"` no bastaba: el iframe existe
+ * desde el primer render y el navegador lo pide igual en cuanto puede, así que
+ * quien nunca baja hasta aquí pagaba el peso completo.
+ *
+ * Ahora el iframe no se crea hasta que la celda se acerca a pantalla. El
+ * vigilante del respaldo arranca en ese mismo momento, no al montar: antes
+ * expiraba el plazo sin que el iframe hubiera empezado siquiera a cargar y
+ * tres de cuatro caían al respaldo sin motivo.
  */
 function vigilar(el: Element | null, code: string) {
-  if (! el || typeof IntersectionObserver === 'undefined') return
+  if (! el) return
+
+  // Sin IntersectionObserver no hay carga diferida posible: se muestra directo.
+  if (typeof IntersectionObserver === 'undefined') {
+    cercanas[code] = true
+    return
+  }
 
   const observador = new IntersectionObserver((entradas) => {
     entradas.forEach((entrada) => {
       if (! entrada.isIntersecting) return
       observador.disconnect()
+      cercanas[code] = true
       window.setTimeout(() => {
         if (! cargadas[code]) fallidas[code] = true
       }, 10000)
     })
-  }, { rootMargin: '200px' })
+  }, { rootMargin: '400px' })
 
   observador.observe(el)
 }
@@ -73,7 +88,7 @@ function vigilar(el: Element | null, code: string) {
       <div class="mb-12 text-center">
         <p
           class="etiqueta-tecnica mb-5 flex items-center justify-center gap-3"
-          :class="tono === 'oscuro' ? 'text-nodo-400' : 'text-dark/55'"
+          :class="tono === 'oscuro' ? 'text-nodo-400' : 'text-dark/70'"
         >
           <span class="h-1.5 w-1.5 rounded-full bg-nodo-400" aria-hidden="true" />
           Instagram
@@ -93,25 +108,25 @@ function vigilar(el: Element | null, code: string) {
         class="grid gap-5 sm:grid-cols-2 lg:grid-cols-4"
       >
         <li
-          v-for="(post, i) in publicacionesValidas"
+          v-for="post in publicacionesValidas"
           :key="post.code"
           class="overflow-hidden rounded-2xl bg-white shadow-sombra-sm ring-1 ring-dark/[.07]"
+          @vue:mounted="(n: any) => vigilar(n.el, post.code)"
         >
           <iframe
-            v-if="!fallidas[post.code]"
+            v-if="cercanas[post.code] && !fallidas[post.code]"
             :src="`https://www.instagram.com/p/${post.code}/embed/`"
             :title="`Publicación de @${handle} en Instagram`"
             scrolling="no"
-            :loading="i === 0 ? 'eager' : 'lazy'"
+            loading="lazy"
             class="h-[420px] w-full border-0"
             @load="alCargar(post.code)"
             @error="alFallar(post.code)"
-            @vue:mounted="(n: any) => vigilar(n.el, post.code)"
           />
 
           <!-- Respaldo por celda: nunca un hueco en blanco -->
           <a
-            v-else
+            v-else-if="fallidas[post.code]"
             :href="post.url"
             target="_blank"
             rel="noopener noreferrer"
@@ -135,6 +150,9 @@ function vigilar(el: Element | null, code: string) {
               Verla en Instagram
             </span>
           </a>
+
+          <!-- Aún lejos de pantalla: se reserva el alto para no mover la reja -->
+          <div v-else class="h-[420px] w-full bg-cream-50" aria-hidden="true" />
         </li>
       </ul>
 

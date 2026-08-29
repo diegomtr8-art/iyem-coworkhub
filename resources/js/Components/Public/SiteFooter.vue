@@ -70,7 +70,7 @@ function volverArriba() {
               loading="lazy"
               class="h-11 w-auto"
             />
-            <p class="mt-6 max-w-sm font-body text-sm leading-relaxed text-white/55">
+            <p class="mt-6 max-w-sm font-body text-sm leading-relaxed text-white/60">
               El coworking del Instituto Yucateco de Emprendedores en Mérida: espacio, comunidad
               y contenido para quienes están construyendo algo propio.
             </p>
@@ -198,20 +198,20 @@ function volverArriba() {
           <div class="flex flex-wrap items-center gap-x-6">
             <Link
               :href="route('privacidad')"
-              class="flex min-h-[44px] items-center font-body text-xs text-white/50 transition hover:text-nodo-400"
+              class="flex min-h-[44px] items-center font-body text-xs text-white/60 transition hover:text-nodo-400"
             >
               Aviso de privacidad
             </Link>
             <Link
               :href="route('terminos')"
-              class="flex min-h-[44px] items-center font-body text-xs text-white/50 transition hover:text-nodo-400"
+              class="flex min-h-[44px] items-center font-body text-xs text-white/60 transition hover:text-nodo-400"
             >
               Términos y condiciones
             </Link>
 
             <button
               type="button"
-              class="group flex min-h-[44px] items-center gap-2 font-body text-xs text-white/50 transition hover:text-nodo-400"
+              class="group flex min-h-[44px] items-center gap-2 font-body text-xs text-white/60 transition hover:text-nodo-400"
               @click="volverArriba"
             >
               Volver arriba

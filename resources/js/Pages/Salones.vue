@@ -109,14 +109,14 @@ const ficha = (salon: Salon) => [
               />
 
               <div class="flex flex-1 flex-col p-7 sm:p-8">
-                <p class="etiqueta-tecnica text-dark/55">Sala 0{{ i + 1 }}</p>
+                <p class="etiqueta-tecnica text-dark/70">Sala 0{{ i + 1 }}</p>
                 <h2 class="mt-3 font-display text-display-sm font-extrabold text-dark">
                   {{ salon.nombre }}
                 </h2>
 
                 <dl class="mt-7 grid grid-cols-2 gap-x-6 gap-y-5">
                   <div v-for="[etiqueta, valor] in ficha(salon)" :key="etiqueta">
-                    <dt class="etiqueta-tecnica text-dark/55">{{ etiqueta }}</dt>
+                    <dt class="etiqueta-tecnica text-dark/70">{{ etiqueta }}</dt>
                     <dd class="mt-1.5 font-display text-base font-bold text-dark">{{ valor }}</dd>
                   </div>
                 </dl>
@@ -181,12 +181,12 @@ const ficha = (salon: Salon) => [
             <div class="rounded-3xl bg-white/[.06] p-7 ring-1 ring-white/10">
               <p class="etiqueta-tecnica text-white/60">Hasta 25 pax</p>
               <p class="mt-3 font-display text-4xl font-extrabold text-nodo-400">$45</p>
-              <p class="mt-1 font-body text-sm text-white/55">MXN por persona</p>
+              <p class="mt-1 font-body text-sm text-white/60">MXN por persona</p>
             </div>
             <div class="rounded-3xl bg-white/[.06] p-7 ring-1 ring-white/10">
               <p class="etiqueta-tecnica text-white/60">Desde 100 pax</p>
               <p class="mt-3 font-display text-4xl font-extrabold text-nodo-400">$35</p>
-              <p class="mt-1 font-body text-sm text-white/55">MXN por persona</p>
+              <p class="mt-1 font-body text-sm text-white/60">MXN por persona</p>
             </div>
           </ScrollReveal>
         </div>

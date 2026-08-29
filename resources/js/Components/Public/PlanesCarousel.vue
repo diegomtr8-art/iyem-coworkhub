@@ -246,7 +246,7 @@ onBeforeUnmount(() => {
       @keydown.left.prevent="anterior"
       @keydown.right.prevent="siguiente"
     >
-      <article
+      <div
         v-for="(plan, i) in planes"
         :key="plan.id ?? plan.nombre"
         :ref="(el) => { if (el) tarjetas[i] = el as HTMLElement }"
@@ -276,7 +276,7 @@ onBeforeUnmount(() => {
           <p class="mt-4 font-display text-5xl font-extrabold leading-none text-dark">
             {{ precio(plan.precio) }}
           </p>
-          <p v-if="plan.periodo_label" class="mt-2 font-mono text-etiqueta uppercase text-dark/55">
+          <p v-if="plan.periodo_label" class="mt-2 font-mono text-etiqueta uppercase text-dark/70">
             {{ plan.periodo_label }}
           </p>
 
@@ -308,7 +308,7 @@ onBeforeUnmount(() => {
             <span class="sr-only">— {{ titulo(plan) }}</span>
           </a>
         </div>
-      </article>
+      </div>
     </div>
 
     <!-- A11Y-03: patrón de pestañas; `aria-current` no era el valor adecuado -->
