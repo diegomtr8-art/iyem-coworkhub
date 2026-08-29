@@ -98,6 +98,74 @@ web:
 chmod -R 775 public_html/storage public_html/bootstrap/cache
 ```
 
+## El document root expone la aplicación entera
+
+Lo encontró el `/security-review` del 29 de agosto de 2026 y **es el riesgo más
+serio de este montaje.**
+
+`public_html/` es a la vez el document root y la raíz de la aplicación. La regla
+de Laravel sólo entrega la petición a `index.php` cuando el archivo pedido **no
+existe** en disco (`RewriteCond %{REQUEST_FILENAME} !-f`), de modo que todo lo
+que se sincroniza ahí queda servido tal cual, saltandose el framework.
+
+Comprobado en vivo contra `prueba.nodico.com.mx` antes de corregirlo:
+
+| Petición | Antes |
+|---|---|
+| `/storage/logs/laravel.log` | **200, 67 KB** — log de la aplicación |
+| `/composer.lock` | **200, 320 KB** — versión exacta de cada dependencia |
+| `/vendor/composer/installed.json` | **200, 241 KB** |
+| `/app/Http/Controllers/WelcomeController.php` | **200** — `Fatal error` con la ruta absoluta del servidor |
+| `/config/nodico.php` | **200** |
+| `/package.json`, `/tailwind.config.js` | **200**, servidos literalmente |
+| `/.env` | 403 |
+
+El log importa más de lo que parece: `ContactoController::store` escribe ahí los
+fallos de correo, y un `QueryException` al insertar en `contactos` dejaría en el
+log el SQL **con los valores**, es decir el nombre, correo, teléfono y mensaje de
+quien escribió por el formulario.
+
+Que `/.env` dé 403 es una regla del hosting, no algo que controle este repositorio.
+
+### Lo que hace ahora el despliegue
+
+1. `deploy_prueba.py` deja un `.htaccess` que niega todo en cada carpeta de
+   aplicación (`app`, `bootstrap`, `config`, `database`, `resources`, `routes`,
+   `storage`, `vendor`, `tests`, `tools`). El contenido está en
+   `deploy/htaccess-negar-todo`.
+2. `deploy.sh` borra `package.json` y `tailwind.config.js` del servidor (sin Node
+   no pintan nada), pone `display_errors = Off` en `.user.ini` y añade **una sola
+   vez**, marcado, un bloque `<FilesMatch>` al `.htaccess` de la raíz para
+   `composer.json` y `composer.lock`, que sí tienen que quedarse porque
+   `composer install` corre ahí. No toca la regla de reescritura existente.
+3. Al terminar, `deploy_prueba.py` pide por HTTP las rutas de
+   `COMPROBAR_CERRADAS` y **falla el despliegue** si alguna responde 200.
+
+### Lo que falta, y es la solución de verdad
+
+Apuntar el document root del dominio a `public_html/public/` desde hPanel y dejar
+la aplicación un nivel por encima. Eso elimina la clase entera de problema en vez
+de taparla regla a regla, y de paso quita la doble sincronización de `build/`.
+Mientras siga como está, un cambio en el panel del hosting basta para dejar
+`.env` al descubierto.
+
+**Además: hay que rotar lo que haya pasado por el log expuesto y truncar
+`storage/logs/laravel.log` en el servidor.**
+
+## Verificación de la llave del host SSH
+
+`deploy_prueba.py` usaba `AutoAddPolicy`, que acepta en silencio cualquier llave
+de host en cada ejecución. La llave del host es lo único que autentica al
+servidor: sin comprobarla, quien se interponga en la red recibe el código
+completo de la aplicación y la secuencia de despliegue.
+
+Ahora se confia en `~/.ssh/known_hosts` y se rechaza lo desconocido. La primera
+vez desde una máquina nueva, tras verificar la huella en hPanel:
+
+```bash
+ssh-keyscan -p 65002 195.35.38.222 >> ~/.ssh/known_hosts
+```
+
 ## Problemas conocidos
 
 **HTTP 500 con log vacío tras sincronizar archivos.** Caché de configuración

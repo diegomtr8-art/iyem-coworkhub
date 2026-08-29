@@ -1,0 +1,23 @@
+# Lo coloca deploy_prueba.py en cada carpeta de aplicación. No editar a mano.
+#
+# En este host `public_html/` ES el document root y contiene la aplicación
+# entera, así que Apache sirve tal cual cualquier archivo que exista en disco:
+# la regla de Laravel sólo entrega la petición a index.php cuando el archivo
+# NO existe (`RewriteCond %{REQUEST_FILENAME} !-f`).
+#
+# Comprobado el 2026-08-29 contra prueba.nodico.com.mx antes de esta corrección:
+#   /storage/logs/laravel.log        200, 67 KB
+#   /composer.lock                   200, 320 KB
+#   /vendor/composer/installed.json  200, 241 KB
+#   /app/Http/Controllers/*.php      200
+#
+# Nada de lo que hay en este directorio debe salir por HTTP.
+
+<IfModule mod_authz_core.c>
+    Require all denied
+</IfModule>
+
+<IfModule !mod_authz_core.c>
+    Order allow,deny
+    Deny from all
+</IfModule>

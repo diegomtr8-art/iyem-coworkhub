@@ -49,7 +49,29 @@ DIRS_ASSETS = [
     ("public/icons", "icons"),
 ]
 
-FILES = ["composer.json", "composer.lock", "package.json", "tailwind.config.js"]
+# Sólo lo que el servidor necesita de verdad. `package.json` y
+# `tailwind.config.js` no hacen falta (este host no tiene Node) y se servían
+# tal cual por HTTP, asi que dejan de subirse y `deploy.sh` los borra.
+FILES = ["composer.json", "composer.lock"]
+
+# Carpetas de aplicacion que quedan dentro del document root y que Apache
+# serviria tal cual. Se les deja un .htaccess que niega todo.
+DIRS_A_BLINDAR = [
+    "app", "bootstrap", "config", "database", "resources", "routes",
+    "storage", "vendor", "tests", "tools", "deploy",
+]
+
+# Rutas que NO deben responder 200 despues de desplegar.
+COMPROBAR_CERRADAS = [
+    "/storage/logs/laravel.log",
+    "/composer.json",
+    "/composer.lock",
+    "/vendor/composer/installed.json",
+    "/app/Http/Controllers/WelcomeController.php",
+    "/config/nodico.php",
+    "/database/seeders/NodicoWebSeeder.php",
+    "/package.json",
+]
 
 # Ojo: sólo nombres que no puedan colisionar con directorios legítimos de la app.
 # 'views' o 'cache' aquí excluirían resources/views/ y bootstrap/cache/.
@@ -59,12 +81,35 @@ EXCLUDE_EXT = {".log", ".map"}
 
 
 def conectar() -> paramiko.SSHClient:
+    """
+    Con `AutoAddPolicy` se aceptaba en silencio cualquier llave de host, en
+    cada ejecución. La llave del host es lo único que autentica al servidor:
+    sin comprobarla, quien se interponga en la red recibe el código completo
+    de la aplicación y la secuencia de despliegue.
+
+    Ahora se confía en `~/.ssh/known_hosts`. La primera vez hay que apuntar el
+    servidor a mano, con la huella verificada en hPanel:
+
+        ssh-keyscan -p 65002 195.35.38.222 >> ~/.ssh/known_hosts
+    """
     if not os.path.exists(KEY_PATH):
         sys.exit(f"ERROR: no se encontró la llave SSH en {KEY_PATH}")
+
     cliente = paramiko.SSHClient()
-    cliente.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-    cliente.connect(SSH_HOST, port=SSH_PORT, username=SSH_USER,
-                    key_filename=KEY_PATH, timeout=40)
+    cliente.load_system_host_keys()
+    cliente.set_missing_host_key_policy(paramiko.RejectPolicy())
+
+    try:
+        cliente.connect(SSH_HOST, port=SSH_PORT, username=SSH_USER,
+                        key_filename=KEY_PATH, timeout=40)
+    except paramiko.SSHException as exc:
+        sys.exit(
+            f"ERROR: no se pudo verificar la llave del host ({exc}).\n"
+            f"Si es la primera vez desde esta máquina, comprueba la huella en\n"
+            f"hPanel y luego:\n"
+            f"    ssh-keyscan -p {SSH_PORT} {SSH_HOST} >> ~/.ssh/known_hosts"
+        )
+
     return cliente
 
 
@@ -167,6 +212,18 @@ def main():
         total += subir_dir(sftp, os.path.join(LOCAL_ROOT, local),
                            f"{REMOTE_ROOT}/{remoto}", remoto)
 
+    print("\n--> Blindando las carpetas de aplicación")
+    blindaje = os.path.join(LOCAL_ROOT, "deploy", "htaccess-negar-todo")
+    for carpeta in DIRS_A_BLINDAR:
+        destino = f"{REMOTE_ROOT}/{carpeta}"
+        try:
+            sftp.stat(destino)
+        except FileNotFoundError:
+            continue
+        sftp.put(blindaje, f"{destino}/.htaccess")
+        total += 1
+        print(f"    {carpeta}/.htaccess")
+
     sftp.close()
     print(f"\n--> {total} archivos subidos. Ejecutando pasos de servidor...\n")
 
@@ -178,7 +235,43 @@ def main():
 
     if codigo != 0:
         sys.exit(f"\nERROR: los pasos de servidor terminaron con código {codigo}")
+
+    if not comprobar_cierre():
+        sys.exit("\nERROR: hay archivos internos accesibles por HTTP.")
+
     print("\n=== Deploy completado ===")
+
+
+def comprobar_cierre() -> bool:
+    """
+    El /security-review del 2026-08-29 encontró la aplicación entera legible
+    por HTTP. Se comprueba en cada despliegue para que no pueda volver.
+    """
+    import urllib.error
+    import urllib.request
+
+    print("\n--> Comprobando que nada interno responde por HTTP")
+    todo_bien = True
+
+    for ruta in COMPROBAR_CERRADAS:
+        url = f"https://prueba.nodico.com.mx{ruta}"
+        peticion = urllib.request.Request(url, method="HEAD")
+        try:
+            with urllib.request.urlopen(peticion, timeout=20) as resp:
+                estado = resp.status
+        except urllib.error.HTTPError as exc:
+            estado = exc.code
+        except Exception as exc:
+            print(f"    ?   {ruta} -> no se pudo comprobar ({exc})")
+            continue
+
+        if estado == 200:
+            print(f"    MAL {ruta} -> 200, sigue siendo público")
+            todo_bien = False
+        else:
+            print(f"    ok  {ruta} -> {estado}")
+
+    return todo_bien
 
 
 if __name__ == "__main__":
