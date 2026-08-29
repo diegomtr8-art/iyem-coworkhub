@@ -2,13 +2,14 @@
 import AliadosSection from '@/Components/Public/AliadosSection.vue'
 import Boton from '@/Components/Public/Boton.vue'
 import ContactSection from '@/Components/Public/ContactSection.vue'
+import Meta from '@/Components/Public/Meta.vue'
 import HeroVideo from '@/Components/Public/HeroVideo.vue'
 import InstagramSection from '@/Components/Public/InstagramSection.vue'
 import PlanesCarousel from '@/Components/Public/PlanesCarousel.vue'
 import ScrollReveal from '@/Components/Public/ScrollReveal.vue'
 import SectionHeading from '@/Components/Public/SectionHeading.vue'
 import PublicLayout from '@/Layouts/PublicLayout.vue'
-import { Head, usePage } from '@inertiajs/vue3'
+import { usePage } from '@inertiajs/vue3'
 import { computed } from 'vue'
 
 const props = defineProps<{
@@ -66,13 +67,11 @@ const fichaSalon = computed(() => {
 </script>
 
 <template>
-  <Head>
-    <title>Nódico — Coworking en Mérida para emprendedores</title>
-    <meta
-      name="description"
-      content="Nódico es el coworking del Instituto Yucateco de Emprendedores en Mérida: espacio colaborativo, sala de creación de contenido, salones para eventos y una comunidad que impulsa tu proyecto."
-    />
-  </Head>
+  <Meta
+    titulo="Coworking en Mérida para emprendedores"
+    descripcion="Nódico es el coworking del Instituto Yucateco de Emprendedores en Mérida: espacio colaborativo, sala de creación de contenido, salones para eventos y una comunidad que impulsa tu proyecto."
+    imagen="home"
+  />
 
   <PublicLayout>
     <!-- ═══ HERO — aprobado, no se modifica ═══ -->

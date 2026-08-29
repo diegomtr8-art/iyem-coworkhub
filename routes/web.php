@@ -35,14 +35,55 @@ Route::get('/terminos',            [WelcomeController::class, 'terminos'])->name
 
 // robots.txt dinamico: en staging se bloquea la indexacion completa.
 Route::get('/robots.txt', function () {
-    $lineas = app()->environment('staging', 'local')
-        ? ['User-agent: *', 'Disallow: /']
-        : ['User-agent: *', 'Disallow: /dashboard', 'Disallow: /portal', 'Disallow: /profile'];
+    if (app()->environment('staging', 'local')) {
+        $lineas = ['User-agent: *', 'Disallow: /'];
+    } else {
+        $lineas = [
+            'User-agent: *',
+            'Disallow: /dashboard',
+            'Disallow: /portal',
+            'Disallow: /profile',
+            '',
+            'Sitemap: ' . url('/sitemap.xml'),
+        ];
+    }
 
     return response(implode(PHP_EOL, $lineas) . PHP_EOL, 200, [
         'Content-Type' => 'text/plain; charset=UTF-8',
     ]);
 })->name('robots');
+
+// SEO-05 — sitemap con las cinco publicas mas las legales.
+Route::get('/sitemap.xml', function () {
+    $host = config('nodico.host_canonico') ?: url('/');
+    $host = rtrim($host, '/');
+
+    $paginas = [
+        ['home',        '1.0', 'weekly'],
+        ['membresias',  '0.9', 'weekly'],
+        ['eventos',     '0.8', 'monthly'],
+        ['actividades', '0.8', 'weekly'],
+        ['nosotros',    '0.7', 'monthly'],
+        ['privacidad',  '0.3', 'yearly'],
+        ['terminos',    '0.3', 'yearly'],
+    ];
+
+    $xml = '<?xml version="1.0" encoding="UTF-8"?>' . PHP_EOL
+        . '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">' . PHP_EOL;
+
+    foreach ($paginas as [$ruta, $prioridad, $frecuencia]) {
+        $camino = parse_url(route($ruta), PHP_URL_PATH) ?: '/';
+        $xml .= '  <url>' . PHP_EOL
+            . '    <loc>' . htmlspecialchars($host . $camino, ENT_XML1) . '</loc>' . PHP_EOL
+            . '    <changefreq>' . $frecuencia . '</changefreq>' . PHP_EOL
+            . '    <priority>' . $prioridad . '</priority>' . PHP_EOL
+            . '  </url>' . PHP_EOL;
+    }
+
+    $xml .= '</urlset>' . PHP_EOL;
+
+    return response($xml, 200, ['Content-Type' => 'application/xml; charset=UTF-8']);
+})->name('sitemap');
 
 // --- ADMINISTRACIÓN ---
 Route::middleware(['auth', 'verified', 'admin'])->group(function () {

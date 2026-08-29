@@ -8,7 +8,7 @@
             <meta name="robots" content="noindex, nofollow">
         @endif
 
-        <title inertia>{{ config('app.name', 'Nódico') }}</title>
+        <title inertia>Nódico</title>
 
         <link rel="icon" href="/favicon-32.png" sizes="32x32" type="image/png">
         <link rel="icon" href="/favicon-96.png" sizes="96x96" type="image/png">

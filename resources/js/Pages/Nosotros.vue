@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import Boton from '@/Components/Public/Boton.vue'
 import ContactSection from '@/Components/Public/ContactSection.vue'
+import Meta from '@/Components/Public/Meta.vue'
 import ScrollReveal from '@/Components/Public/ScrollReveal.vue'
 import SectionHeading from '@/Components/Public/SectionHeading.vue'
 import PublicLayout from '@/Layouts/PublicLayout.vue'
-import { Head } from '@inertiajs/vue3'
 
 const valores = [
   { icono: '/img/nodico/valor-creatividad.webp', titulo: 'Creatividad' },
@@ -17,13 +17,11 @@ const valores = [
 </script>
 
 <template>
-  <Head>
-    <title>Nosotros — Nódico</title>
-    <meta
-      name="description"
-      content="Más que un espacio físico, Nódico es una comunidad profesional en Mérida donde la colaboración, la vinculación estratégica y la formación continua convierten ideas en proyectos de impacto."
-    />
-  </Head>
+  <Meta
+    titulo="Nosotros"
+    descripcion="Más que un espacio físico, Nódico es una comunidad profesional en Mérida donde la colaboración, la vinculación estratégica y la formación continua convierten ideas en proyectos de impacto."
+    imagen="nosotros"
+  />
 
   <PublicLayout>
     <!-- Portada de sección: foto a sangre con velo -->

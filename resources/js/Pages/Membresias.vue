@@ -1,13 +1,30 @@
 <script setup lang="ts">
 import ContactSection from '@/Components/Public/ContactSection.vue'
+import Meta from '@/Components/Public/Meta.vue'
 import PlanesCarousel from '@/Components/Public/PlanesCarousel.vue'
 import ScrollReveal from '@/Components/Public/ScrollReveal.vue'
 import SectionHeading from '@/Components/Public/SectionHeading.vue'
 import PublicLayout from '@/Layouts/PublicLayout.vue'
-import { Head } from '@inertiajs/vue3'
 import { Check, CreditCard, ShieldCheck, Users } from 'lucide-vue-next'
+import { computed } from 'vue'
 
-defineProps<{ planes?: any[] }>()
+const props = defineProps<{ planes?: any[] }>()
+
+/** SEO-03 — cada membresía como Offer dentro de un catálogo. */
+const ofertas = computed(() => ({
+  '@context': 'https://schema.org',
+  '@type': 'OfferCatalog',
+  name: 'Membresías de Nódico',
+  itemListElement: (props.planes ?? []).map((plan: any) => ({
+    '@type': 'Offer',
+    name: plan.nombre,
+    description: plan.descripcion_larga ?? plan.descripcion_corta ?? undefined,
+    price: Number(plan.precio),
+    priceCurrency: 'MXN',
+    url: plan.stripe_url ?? undefined,
+    availability: 'https://schema.org/InStock',
+  })),
+}))
 
 const incluidoEnTodas = [
   'Acceso a la comunidad emprendedora de Nódico',
@@ -24,13 +41,12 @@ const comoFunciona = [
 </script>
 
 <template>
-  <Head>
-    <title>Membresías y precios — Nódico</title>
-    <meta
-      name="description"
-      content="Day-Pass, Nódico Flex, Nodo Pro y Nodo Match: elige la membresía de coworking que se ajusta a tu proyecto. Desde $79 MXN, con sala de creación de contenido, café y comunidad incluidos."
-    />
-  </Head>
+  <Meta
+    titulo="Membresías y precios"
+    descripcion="Day-Pass, Nódico Flex, Nodo Pro y Nodo Match: elige la membresía de coworking que se ajusta a tu proyecto. Desde $79 MXN, con sala de creación de contenido, café y comunidad incluidos."
+    imagen="membresias"
+    :datos-estructurados="ofertas"
+  />
 
   <PublicLayout>
     <!-- Portada -->

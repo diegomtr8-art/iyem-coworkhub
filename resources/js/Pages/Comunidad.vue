@@ -1,11 +1,12 @@
 <script setup lang="ts">
 import Boton from '@/Components/Public/Boton.vue'
 import ContactSection from '@/Components/Public/ContactSection.vue'
+import Meta from '@/Components/Public/Meta.vue'
 import InstagramSection from '@/Components/Public/InstagramSection.vue'
 import ScrollReveal from '@/Components/Public/ScrollReveal.vue'
 import SectionHeading from '@/Components/Public/SectionHeading.vue'
 import PublicLayout from '@/Layouts/PublicLayout.vue'
-import { Head, usePage } from '@inertiajs/vue3'
+import { usePage } from '@inertiajs/vue3'
 import { Instagram } from 'lucide-vue-next'
 import { computed } from 'vue'
 
@@ -25,18 +26,34 @@ const nodico = computed(() => (page.props.nodico ?? {}) as any)
 
 const eventos = computed(() => [...(props.proximos ?? []), ...(props.pasados ?? [])].slice(0, 6))
 
+/** SEO-03 — los próximos eventos como Event. */
+const eventosEstructurados = computed(() =>
+  (props.proximos ?? []).map((e: any) => ({
+    '@context': 'https://schema.org',
+    '@type': 'Event',
+    name: e.titulo,
+    description: e.descripcion ?? undefined,
+    startDate: e.fecha ?? undefined,
+    eventAttendanceMode: 'https://schema.org/OfflineEventAttendanceMode',
+    location: {
+      '@type': 'Place',
+      name: e.lugar ?? 'Nódico',
+      address: 'Hacienda Sodzil Nte., Mérida, Yucatán',
+    },
+  })),
+)
+
 const fechaLarga = (valor: string) =>
   new Date(valor).toLocaleDateString('es-MX', { day: 'numeric', month: 'long', year: 'numeric' })
 </script>
 
 <template>
-  <Head>
-    <title>Comunidad y actividades — Nódico</title>
-    <meta
-      name="description"
-      content="Talleres, eventos y el directorio de emprendedores de Nódico. Conoce las actividades del mes y a la comunidad que forma parte de los programas de incubación del IYEM."
-    />
-  </Head>
+  <Meta
+    titulo="Comunidad y actividades"
+    descripcion="Talleres, eventos y el directorio de emprendedores de Nódico. Conoce las actividades del mes y a la comunidad que forma parte de los programas de incubación del IYEM."
+    imagen="actividades"
+    :datos-estructurados="eventosEstructurados"
+  />
 
   <PublicLayout>
     <!-- Portada -->

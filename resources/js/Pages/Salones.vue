@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import Boton from '@/Components/Public/Boton.vue'
 import ContactSection from '@/Components/Public/ContactSection.vue'
+import Meta from '@/Components/Public/Meta.vue'
 import ScrollReveal from '@/Components/Public/ScrollReveal.vue'
 import SectionHeading from '@/Components/Public/SectionHeading.vue'
 import PublicLayout from '@/Layouts/PublicLayout.vue'
-import { Head } from '@inertiajs/vue3'
 import { Check } from 'lucide-vue-next'
 
 defineProps<{ salones?: any[] }>()
@@ -21,13 +21,11 @@ const ficha = (salon: any) => [
 </script>
 
 <template>
-  <Head>
-    <title>Salones para eventos — Nódico</title>
-    <meta
-      name="description"
-      content="Renta los salones Yucatán Emprende de Nódico en Mérida: 15x14 m, hasta 120 personas, proyector, sonido, internet y mobiliario incluido desde $600 MXN por hora."
-    />
-  </Head>
+  <Meta
+    titulo="Salones para eventos"
+    descripcion="Renta los salones Yucatán Emprende de Nódico en Mérida: 15x14 m, hasta 120 personas, proyector, sonido, internet y mobiliario incluido desde $600 MXN por hora."
+    imagen="eventos"
+  />
 
   <PublicLayout>
     <!-- Portada: foto del salón a sangre -->

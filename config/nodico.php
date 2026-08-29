@@ -50,4 +50,15 @@ return [
     |--------------------------------------------------------------------------
     */
     'video_id' => env('NODICO_VIDEO_ID', 'Ml4sprGUqzc'),
+
+    /*
+    |--------------------------------------------------------------------------
+    | SEO
+    |--------------------------------------------------------------------------
+    | `host_canonico` fija de una vez si el sitio vive con o sin www. Mientras
+    | esté en null, la canónica usa el host de la petición tal cual.
+    | PENDIENTE: Diego debe decidir para producción.
+    */
+    'host_canonico' => env('NODICO_HOST_CANONICO'),
+    'sufijo_titulo' => 'Nódico',
 ];
