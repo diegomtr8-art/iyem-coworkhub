@@ -69,46 +69,6 @@
   html { scroll-behavior: smooth; }
 }
 
-/* ── CUSTOM CURSOR — scoped to .cursor-zone only, never global ── */
-.cursor-zone, .cursor-zone * { cursor: none !important; }
-#cursor-outer {
-  width: 40px; height: 40px;
-  border: 2px solid #FFE124;
-  border-radius: 50%;
-  position: fixed; top: 0; left: 0;
-  pointer-events: none; z-index: 9999;
-  transform: translate(-50%, -50%);
-  transition: width .3s, height .3s, background .3s, border-color .3s, opacity .3s;
-  mix-blend-mode: difference;
-}
-#cursor-inner {
-  width: 8px; height: 8px;
-  background: #FFE124;
-  border-radius: 50%;
-  position: fixed; top: 0; left: 0;
-  pointer-events: none; z-index: 10000;
-  transform: translate(-50%, -50%);
-  transition: width .15s, height .15s;
-}
-body.cursor-hover #cursor-outer { width: 64px; height: 64px; background: rgba(255,225,36,0.15); }
-body.cursor-hover #cursor-inner { width: 4px; height: 4px; }
-body.cursor-click #cursor-outer { width: 24px; height: 24px; background: rgba(255,225,36,0.4); }
-
-/* ── REVEAL ON SCROLL ── */
-.reveal-scale { opacity: 0; transform: scale(0.94); }
-.reveal-scale.visible { opacity: 1; transform: scale(1); transition: opacity .6s ease, transform .6s ease; }
-
-/* ── MAGNETIC BUTTON / CARD TILT ── */
-.magnetic { transition: transform .3s cubic-bezier(.23,1,.32,1); }
-
-/* ── NOISE TEXTURE overlay ── */
-.noise { position: relative; }
-.noise::after {
-  content:''; position:absolute; inset:0; border-radius:inherit;
-  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
-  pointer-events:none; z-index:1;
-}
-
 /* ══════════════════════════════════════════════════════════════════
    SISTEMA «EDITORIAL TÉCNICO»
    Reglas de uso en .claude/skills/nodico-design/SKILL.md

@@ -28,7 +28,7 @@ class CheckinAdminController extends Controller
             'activos'   => $activos,
             'historial' => $historial,
             'espacios'  => Espacio::where('disponible', true)->get(['id', 'nombre', 'tipo']),
-            'miembros'  => User::where('tipo', 'miembro')->get(['id', 'name', 'empresa']),
+            'miembros'  => User::miembros()->get(['id', 'name', 'empresa']),
         ]);
     }
 

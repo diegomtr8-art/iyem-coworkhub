@@ -3,10 +3,11 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
+use App\Models\User;
+use App\Support\SesionesActivas;
 use Illuminate\Auth\Events\PasswordReset;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rules;
@@ -16,9 +17,10 @@ use Inertia\Response;
 
 class NewPasswordController extends Controller
 {
-    /**
-     * Display the password reset view.
-     */
+    public function __construct(private readonly SesionesActivas $sesiones)
+    {
+    }
+
     public function create(Request $request): Response
     {
         return Inertia::render('Auth/ResetPassword', [
@@ -28,42 +30,42 @@ class NewPasswordController extends Controller
     }
 
     /**
-     * Handle an incoming new password request.
-     *
      * @throws ValidationException
      */
     public function store(Request $request): RedirectResponse
     {
         $request->validate([
-            'token' => 'required',
-            'email' => 'required|email',
+            'token'    => 'required',
+            'email'    => 'required|email',
             'password' => ['required', 'confirmed', Rules\Password::defaults()],
         ]);
 
-        // Here we will attempt to reset the user's password. If it is successful we
-        // will update the password on an actual user model and persist it to the
-        // database. Otherwise we will parse the error and return the response.
-        $status = Password::reset(
+        $estado = Password::reset(
             $request->only('email', 'password', 'password_confirmation', 'token'),
-            function ($user) use ($request) {
-                $user->forceFill([
-                    'password' => Hash::make($request->password),
+            function (User $usuario) use ($request) {
+                $usuario->forceFill([
+                    'password'       => $request->password,
                     'remember_token' => Str::random(60),
                 ])->save();
 
-                event(new PasswordReset($user));
+                // B — Restablecer la contraseña echa a todo el mundo de la
+                // cuenta. Quien la restablece suele hacerlo justo porque cree
+                // que alguien más entró: dejar vivas las sesiones abiertas
+                // vaciaría de sentido el gesto.
+                $this->sesiones->cerrarOtras($usuario, null);
+
+                event(new PasswordReset($usuario));
             }
         );
 
-        // If the password was successfully reset, we will redirect the user back to
-        // the application's home authenticated view. If there is an error we can
-        // redirect them back to where they came from with their error message.
-        if ($status == Password::PASSWORD_RESET) {
-            return redirect()->route('login')->with('status', __($status));
+        if ($estado === Password::PASSWORD_RESET) {
+            return redirect()->route('login')->with('status', trans($estado));
         }
 
+        // Un token inválido o caducado no delata nada: dice que el enlace ya no
+        // sirve, no si el correo tiene cuenta.
         throw ValidationException::withMessages([
-            'email' => [trans($status)],
+            'email' => [trans($estado)],
         ]);
     }
 }

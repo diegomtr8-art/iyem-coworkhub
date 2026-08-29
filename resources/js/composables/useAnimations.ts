@@ -15,57 +15,12 @@ export function useRevealOnScroll() {
       { threshold: 0.12, rootMargin: '0px 0px -40px 0px' }
     )
 
-    document.querySelectorAll('.reveal, .reveal-left, .reveal-right, .reveal-scale, .stagger').forEach(el => {
+    document.querySelectorAll('.reveal, .reveal-left, .reveal-right, .stagger').forEach(el => {
       observer.observe(el)
     })
   })
 
   onUnmounted(() => observer?.disconnect())
-}
-
-export function useCursor() {
-  let outer: HTMLElement | null = null
-  let inner: HTMLElement | null = null
-  let mouseX = 0, mouseY = 0
-  let outerX = 0, outerY = 0
-  let raf: number
-
-  function lerp(a: number, b: number, t: number) { return a + (b - a) * t }
-
-  function tick() {
-    outerX = lerp(outerX, mouseX, 0.12)
-    outerY = lerp(outerY, mouseY, 0.12)
-    if (outer) { outer.style.left = outerX + 'px'; outer.style.top = outerY + 'px' }
-    if (inner) { inner.style.left = mouseX + 'px'; inner.style.top = mouseY + 'px' }
-    raf = requestAnimationFrame(tick)
-  }
-
-  function onMove(e: MouseEvent) { mouseX = e.clientX; mouseY = e.clientY }
-  function onEnterLink() { document.body.classList.add('cursor-hover') }
-  function onLeaveLink() { document.body.classList.remove('cursor-hover') }
-  function onMouseDown() { document.body.classList.add('cursor-click') }
-  function onMouseUp() { document.body.classList.remove('cursor-click') }
-
-  onMounted(() => {
-    outer = document.getElementById('cursor-outer')
-    inner = document.getElementById('cursor-inner')
-    document.addEventListener('mousemove', onMove)
-    document.addEventListener('mousedown', onMouseDown)
-    document.addEventListener('mouseup', onMouseUp)
-    document.querySelectorAll('a, button, [data-cursor-hover]').forEach(el => {
-      el.addEventListener('mouseenter', onEnterLink)
-      el.addEventListener('mouseleave', onLeaveLink)
-    })
-    raf = requestAnimationFrame(tick)
-  })
-
-  onUnmounted(() => {
-    cancelAnimationFrame(raf)
-    document.body.classList.remove('cursor-hover', 'cursor-click')
-    document.removeEventListener('mousemove', onMove)
-    document.removeEventListener('mousedown', onMouseDown)
-    document.removeEventListener('mouseup', onMouseUp)
-  })
 }
 
 export function useCounter(el: HTMLElement, target: number, duration = 1800) {

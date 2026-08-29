@@ -3,6 +3,9 @@
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
+use Illuminate\Http\Request;
+use Inertia\Inertia;
+use Symfony\Component\HttpFoundation\Response;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -14,15 +17,45 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->trustProxies(at: '*');
 
         $middleware->web(append: [
+            // B — Va la primera para que las cabeceras salgan tambien en las
+            // respuestas de error, que es cuando mas falta hacen.
+            \App\Http\Middleware\CabecerasDeSeguridad::class,
             \App\Http\Middleware\HandleInertiaRequests::class,
             \Illuminate\Http\Middleware\AddLinkHeadersForPreloadedAssets::class,
         ]);
 
+        // A.1 — `admin` y `miembro` se fusionan en uno solo, parametrizado por
+        // portal, que aborta en vez de redirigir. Ver `PerteneceAlPortal`.
         $middleware->alias([
-            'admin'   => \App\Http\Middleware\EsAdmin::class,
-            'miembro' => \App\Http\Middleware\EsMiembro::class,
+            'portal'       => \App\Http\Middleware\PerteneceAlPortal::class,
+            'inactividad'  => \App\Http\Middleware\CaducidadPorInactividad::class,
+            'no.suspendida' => \App\Http\Middleware\CuentaNoSuspendida::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
-        //
+        /*
+         * A.1 — El 403 es ahora el destino de todo rol que no encaja en el
+         * portal que pidio, asi que no puede ser la pantalla en blanco de
+         * Symfony: tiene que explicar que paso y ofrecer una salida.
+         *
+         * Se envuelve solo el 403. El resto de codigos siguen con el manejo por
+         * defecto, incluida la pagina de depuracion en local.
+         */
+        $exceptions->respond(function (Response $respuesta, Throwable $e, Request $peticion) {
+            if ($respuesta->getStatusCode() !== 403 || $peticion->expectsJson()) {
+                return $respuesta;
+            }
+
+            $mensaje = trim((string) $e->getMessage());
+
+            // Gate y Policy lanzan el texto en ingles de Laravel; el usuario no
+            // deberia verlo nunca.
+            if ($mensaje === '' || $mensaje === 'This action is unauthorized.') {
+                $mensaje = 'No tienes permiso para entrar a esta sección de Nódico.';
+            }
+
+            return Inertia::render('Errors/403', ['mensaje' => $mensaje])
+                ->toResponse($peticion)
+                ->setStatusCode(403);
+        });
     })->create();

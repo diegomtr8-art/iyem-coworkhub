@@ -2,26 +2,30 @@
 
 namespace App\Http\Controllers\Auth;
 
+use App\Http\Controllers\Auth\Concerns\RedirigeAlPortal;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Auth\VerificarCorreoRequest;
 use Illuminate\Auth\Events\Verified;
-use Illuminate\Foundation\Auth\EmailVerificationRequest;
 use Illuminate\Http\RedirectResponse;
 
 class VerifyEmailController extends Controller
 {
-    /**
-     * Mark the authenticated user's email address as verified.
-     */
-    public function __invoke(EmailVerificationRequest $request): RedirectResponse
+    use RedirigeAlPortal;
+
+    public function __invoke(VerificarCorreoRequest $request): RedirectResponse
     {
-        if ($request->user()->hasVerifiedEmail()) {
-            return redirect()->intended(route('dashboard', absolute: false).'?verified=1');
+        $usuario = $request->user();
+
+        if (! $usuario->hasVerifiedEmail()) {
+            $usuario->marcarCorreoVerificado();
+
+            event(new Verified($usuario));
+
+            // Verificar el correo cambia lo que la sesion puede hacer, asi que
+            // se renueva su identificador. Es la misma regla que en el login.
+            $request->session()->regenerate();
         }
 
-        if ($request->user()->markEmailAsVerified()) {
-            event(new Verified($request->user()));
-        }
-
-        return redirect()->intended(route('dashboard', absolute: false).'?verified=1');
+        return $this->alPortal($usuario)->with('status', 'correo-verificado');
     }
 }

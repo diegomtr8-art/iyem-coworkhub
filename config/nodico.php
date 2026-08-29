@@ -63,6 +63,39 @@ return [
     | entorno; nunca el host de la petición, que es manipulable.
     */
     'host_canonico' => env('NODICO_HOST_CANONICO'),
+
+    /*
+    |--------------------------------------------------------------------------
+    | Content Security Policy
+    |--------------------------------------------------------------------------
+    | Mientras esto sea `false`, la CSP se emite como `Report-Only`: el
+    | navegador informa de lo que habria bloqueado, pero no bloquea nada. Una
+    | CSP estricta rompe el sitio **en silencio**, y este incrusta YouTube,
+    | Instagram, Luma y Google Maps.
+    |
+    | Para cerrarla: poner `NODICO_CSP_ESTRICTA=true` en staging, recorrer las
+    | cinco publicas mas los dos portales con la consola abierta, y solo
+    | entonces subirlo a produccion.
+    */
+    'csp_estricta' => env('NODICO_CSP_ESTRICTA', false),
+
+    /*
+    |--------------------------------------------------------------------------
+    | Proveedores de acceso externo
+    |--------------------------------------------------------------------------
+    | Lo que enciende cada boton en las pantallas de acceso. Con el interruptor
+    | apagado el boton **no se renderiza** y la ruta responde 404: no basta con
+    | esconderlo en el front.
+    |
+    | Apple queda implementado pero apagado hasta que Nodico tenga cuenta de
+    | Apple Developer (99 USD/ano). Los pasos exactos para encenderlo van en
+    | docs/AUTH-PROVEEDORES.md.
+    */
+    'acceso' => [
+        'google'        => (bool) env('NODICO_GOOGLE_LOGIN_ENABLED', false),
+        'apple'         => (bool) env('NODICO_APPLE_LOGIN_ENABLED', false),
+        'enlace_magico' => (bool) env('NODICO_ENLACE_MAGICO_ENABLED', false),
+    ],
     'sufijo_titulo' => 'Nódico',
 
     /*

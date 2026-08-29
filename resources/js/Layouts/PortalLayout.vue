@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, watch } from 'vue'
 import { Link, usePage } from '@inertiajs/vue3'
-import { LayoutDashboard, CalendarDays, Clock, CreditCard, Receipt, LogOut, Menu, X, Home } from 'lucide-vue-next'
+import { LayoutDashboard, CalendarDays, Clock, CreditCard, Receipt, LogOut, Menu, X, Home, ShieldCheck } from 'lucide-vue-next'
 import { Toaster, toast } from 'vue-sonner'
 import { ref } from 'vue'
 
@@ -20,6 +20,7 @@ const nav = [
   { label: 'Mis reservas',     href: route('portal.reservas'),    icon: Clock,           active: 'portal.reservas' },
   { label: 'Mi membresía',     href: route('portal.suscripcion'), icon: CreditCard,      active: 'portal.suscripcion' },
   { label: 'Mis facturas',     href: route('portal.facturas'),    icon: Receipt,         active: 'portal.facturas' },
+  { label: 'Mi seguridad',     href: route('seguridad'),          icon: ShieldCheck,     active: 'seguridad*' },
 ]
 </script>
 
@@ -88,7 +89,7 @@ const nav = [
       </div>
     </aside>
 
-    <div class="flex-1 lg:ml-64">
+    <div class="flex-1 min-w-0 lg:ml-64">
       <header class="bg-white border-b border-gray-200 px-4 lg:px-8 py-3 flex items-center gap-4 sticky top-0 z-10">
         <button @click="sidebarOpen = !sidebarOpen" class="lg:hidden p-2 text-gray-400 hover:text-gray-600">
           <Menu :size="20" />

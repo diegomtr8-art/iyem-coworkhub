@@ -14,7 +14,7 @@ class MiembrosController extends Controller
 {
     public function index(Request $request)
     {
-        $miembros = User::where('tipo', 'miembro')
+        $miembros = User::miembros()
             ->with(['suscripciones' => fn($q) => $q->where('estatus', 'Activa')->with('plan')])
             ->when($request->search, fn($q, $s) => $q->where(fn($q) =>
                 $q->where('name', 'like', "%$s%")->orWhere('email', 'like', "%$s%")
@@ -40,7 +40,7 @@ class MiembrosController extends Controller
         return Inertia::render('Miembros/Show', [
             'miembro'  => $miembro,
             'planes'   => Plane::where('activo', true)->get(),
-            'miembros' => User::where('tipo', 'miembro')->where('id', '!=', $miembro->id)->select('id','name','email')->get(),
+            'miembros' => User::miembros()->where('id', '!=', $miembro->id)->select('id','name','email')->get(),
         ]);
     }
 

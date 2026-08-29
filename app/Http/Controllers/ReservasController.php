@@ -23,7 +23,7 @@ class ReservasController extends Controller
         return Inertia::render('Reservas/Index', [
             'reservas'  => $reservas,
             'espacios'  => Espacio::orderBy('nombre')->get(['id', 'nombre', 'tipo']),
-            'miembros'  => User::where('tipo', 'miembro')->orderBy('name')->get(['id', 'name']),
+            'miembros'  => User::miembros()->orderBy('name')->get(['id', 'name']),
             'filters'   => $request->only(['fecha', 'espacio_id', 'estatus', 'user_id']),
         ]);
     }

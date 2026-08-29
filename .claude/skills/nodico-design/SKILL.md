@@ -1,12 +1,14 @@
 ---
 name: nodico-design
-description: Sistema de diseño «Editorial técnico» del sitio público de Nódico (tokens, tipografía, patrones de componente, movimiento y responsive). Usar al crear o modificar cualquier página o componente bajo resources/js/Pages o resources/js/Components/Public del proyecto coworkhub.
+description: Sistema de diseño «Editorial técnico» del sitio público y de las pantallas de acceso de Nódico (tokens, tipografía, patrones de componente, contraste de foco, movimiento y responsive). Usar al crear o modificar cualquier página o componente bajo resources/js/Pages/{Welcome,Nosotros,Membresias,Salones,Comunidad,Legal,Auth}, resources/js/Components/{Public,Auth} o resources/js/Layouts/AuthLayout.vue del proyecto coworkhub.
 ---
 
 # Sistema de diseño de Nódico — «Editorial técnico»
 
-Aplica al **sitio público** de `coworkhub` (`resources/js/Pages/{Welcome,Nosotros,Membresias,Salones,Comunidad,Legal}` y
-`resources/js/Components/Public/`). **No** aplica a `/dashboard`, `/portal` ni a las pantallas de autenticación.
+Aplica al **sitio público** de `coworkhub` (`resources/js/Pages/{Welcome,Nosotros,Membresias,Salones,Comunidad,Legal}`,
+`resources/js/Components/Public/`) y a las **pantallas de acceso** (`resources/js/Pages/Auth/`,
+`resources/js/Layouts/AuthLayout.vue`, `resources/js/Components/Auth/`).
+**No** aplica a `/dashboard` ni a `/portal`, que siguen con su propio lenguaje de panel.
 
 ## La idea
 
@@ -141,6 +143,27 @@ Cada página debe tener su propia composición: no repitas la misma retícula en
 
 Antes de crear uno nuevo, revisa si `Boton` o `SectionHeading` ya cubren el caso. **No metas
 dependencias de terceros**: el carrusel es `scroll-snap` nativo y el video una fachada de YouTube.
+
+## Pantallas de acceso
+
+Comparten `AuthLayout.vue`: composición partida, panel de marca a sangre a la izquierda
+—foto del espacio con velo `tinta/55`, logo, frase grande y prueba social— y el formulario
+a la derecha sobre `cream`, con ancho de lectura (`max-w-md`, o `max-w-lg` en el registro).
+En iPhone el panel colapsa a una banda superior con el logo y el formulario ocupa el resto:
+dos columnas a 375 px no son responsive.
+
+- El titular del formulario va en `text-display-sm`; la frase del panel, en `text-display-md`.
+  El panel grita, el formulario trabaja.
+- Los campos son `CampoTexto.vue`, que reproduce el patrón del formulario «Hablemos»:
+  etiqueta flotante, `bg-cream-50` que aclara a blanco al enfocar, borde `nodo-500` en foco.
+- **El foco lleva dos colores, no uno.** El borde amarillo solo da 1.75:1 contra el blanco
+  del campo enfocado y no cumple el criterio de foco visible, así que se acompaña de un
+  contorno `outline-2 outline-offset-2 outline-dark`. Un anillo amarillo sobre crema es
+  invisible; no lo uses como único indicador en ninguna parte del sistema.
+- Botones sociales **arriba** del formulario, separados por una línea con «o con tu correo».
+- Errores debajo de su campo y atados con `aria-describedby`, nunca en un bloque arriba.
+- La prueba social del panel sale de la BD, con un piso: por debajo de 10 miembros no se
+  muestra. Un dato real puede jugar en contra.
 
 ## Contenido
 

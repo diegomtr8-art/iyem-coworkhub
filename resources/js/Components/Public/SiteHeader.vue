@@ -27,7 +27,10 @@ const rutaActual = computed(() => page.url.split('?')[0])
 const usuario = computed(() => (page.props.auth as any)?.user ?? null)
 const puedeEntrar = computed(() => Boolean((page.props as any).canLogin))
 const puedeRegistrarse = computed(() => Boolean((page.props as any).canRegister))
-const esAdmin = computed(() => usuario.value?.tipo === 'admin')
+// El destino y la etiqueta salen del payload compartido: comparar `tipo === 'admin'`
+// dejaba fuera a recepcion (`staff`), que tambien trabaja en el panel operativo.
+const rutaPortal = computed(() => usuario.value?.portalRuta ?? null)
+const etiquetaPortal = computed(() => (usuario.value?.esOperativo ? 'Panel' : 'Mi portal'))
 
 function esActivo(ruta: string) {
   const destino = new URL(route(ruta), window.location.origin).pathname
@@ -164,11 +167,12 @@ function cerrarSesion() {
             class="absolute right-0 mt-2 w-52 overflow-hidden rounded-xl bg-white shadow-sombra ring-1 ring-dark/10"
           >
             <Link
-              :href="esAdmin ? route('dashboard') : route('portal.dashboard')"
+              v-if="rutaPortal"
+              :href="route(rutaPortal)"
               role="menuitem"
               class="flex min-h-[44px] items-center px-4 font-body text-sm text-dark transition hover:bg-cream"
             >
-              {{ esAdmin ? 'Dashboard' : 'Mi portal' }}
+              {{ etiquetaPortal }}
             </Link>
             <button
               type="button"
@@ -252,11 +256,12 @@ function cerrarSesion() {
           <div class="pb-segura space-y-3 px-6">
             <template v-if="usuario">
               <Link
-                :href="esAdmin ? route('dashboard') : route('portal.dashboard')"
+                v-if="rutaPortal"
+                :href="route(rutaPortal)"
                 class="flex min-h-[56px] w-full items-center justify-center rounded-xl bg-nodo-400 px-6 font-display text-base font-bold text-dark"
                 @click="cerrarMenu(false)"
               >
-                {{ esAdmin ? 'Dashboard' : 'Mi portal' }}
+                {{ etiquetaPortal }}
               </Link>
               <button
                 type="button"

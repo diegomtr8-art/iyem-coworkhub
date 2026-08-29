@@ -1,101 +1,82 @@
-<script setup>
-import GuestLayout from '@/Layouts/GuestLayout.vue';
-import InputError from '@/Components/InputError.vue';
-import InputLabel from '@/Components/InputLabel.vue';
-import PrimaryButton from '@/Components/PrimaryButton.vue';
-import TextInput from '@/Components/TextInput.vue';
-import { Head, useForm } from '@inertiajs/vue3';
+<script setup lang="ts">
+import AuthLayout from '@/Layouts/AuthLayout.vue'
+import CampoTexto from '@/Components/Auth/CampoTexto.vue'
+import MedidorFuerza from '@/Components/Auth/MedidorFuerza.vue'
+import Boton from '@/Components/Public/Boton.vue'
+import { useForm } from '@inertiajs/vue3'
+import { Loader2, LogOut } from 'lucide-vue-next'
 
-const props = defineProps({
-    email: {
-        type: String,
-        required: true,
-    },
-    token: {
-        type: String,
-        required: true,
-    },
-});
+const props = defineProps<{ email: string; token: string }>()
 
 const form = useForm({
-    token: props.token,
-    email: props.email,
-    password: '',
-    password_confirmation: '',
-});
+  token: props.token,
+  email: props.email,
+  password: '',
+  password_confirmation: '',
+})
 
-const submit = () => {
-    form.post(route('password.store'), {
-        onFinish: () => form.reset('password', 'password_confirmation'),
-    });
-};
+const enviar = () =>
+  form.post(route('password.store'), {
+    onFinish: () => form.reset('password', 'password_confirmation'),
+  })
 </script>
 
 <template>
-    <GuestLayout>
-        <Head title="Reset Password" />
+  <AuthLayout
+    etiqueta="Contraseña nueva"
+    numero="04"
+    titulo="Elige tu contraseña nueva"
+    :subtitulo="`Vas a cambiar la contraseña de ${email}.`"
+    frase="Una contraseña larga vale más que una complicada"
+  >
+    <form novalidate @submit.prevent="enviar">
+      <div class="grid gap-5">
+        <CampoTexto
+          v-model="form.password"
+          etiqueta="Contraseña nueva"
+          type="password"
+          autocomplete="new-password"
+          requerido
+          autofocus
+          :error="form.errors.password"
+        >
+          <template #bajo-campo>
+            <MedidorFuerza :contrasena="form.password" :datos-personales="[email, 'nodico']" />
+          </template>
+        </CampoTexto>
 
-        <form @submit.prevent="submit">
-            <div>
-                <InputLabel for="email" value="Email" />
+        <CampoTexto
+          v-model="form.password_confirmation"
+          etiqueta="Repite la contraseña nueva"
+          type="password"
+          autocomplete="new-password"
+          requerido
+          :error="form.errors.password_confirmation"
+        />
+      </div>
 
-                <TextInput
-                    id="email"
-                    type="email"
-                    class="mt-1 block w-full"
-                    v-model="form.email"
-                    required
-                    autofocus
-                    autocomplete="username"
-                />
+      <!--
+        Se avisa **antes** de enviar, no después: cerrar todas las sesiones es
+        justo lo que quiere quien restablece porque cree que alguien entró, y
+        una sorpresa para quien solo olvidó la contraseña en su portátil.
+      -->
+      <div class="mt-6 flex items-start gap-3 border-l-4 border-nodo-400 bg-nodo-50 px-4 py-3">
+        <LogOut class="mt-0.5 h-5 w-5 shrink-0 text-dark" aria-hidden="true" />
+        <p class="font-body text-cuerpo text-dark">
+          Al guardarla se cerrará tu sesión en todos los demás dispositivos.
+          Tendrás que volver a entrar en ellos.
+        </p>
+      </div>
 
-                <InputError class="mt-2" :message="form.errors.email" />
-            </div>
+      <!-- El error del token no pertenece a ningún campo visible: va aquí. -->
+      <p v-if="form.errors.email" class="mt-4 font-body text-sm text-red-600">
+        {{ form.errors.email }}
+      </p>
 
-            <div class="mt-4">
-                <InputLabel for="password" value="Password" />
-
-                <TextInput
-                    id="password"
-                    type="password"
-                    class="mt-1 block w-full"
-                    v-model="form.password"
-                    required
-                    autocomplete="new-password"
-                />
-
-                <InputError class="mt-2" :message="form.errors.password" />
-            </div>
-
-            <div class="mt-4">
-                <InputLabel
-                    for="password_confirmation"
-                    value="Confirm Password"
-                />
-
-                <TextInput
-                    id="password_confirmation"
-                    type="password"
-                    class="mt-1 block w-full"
-                    v-model="form.password_confirmation"
-                    required
-                    autocomplete="new-password"
-                />
-
-                <InputError
-                    class="mt-2"
-                    :message="form.errors.password_confirmation"
-                />
-            </div>
-
-            <div class="mt-4 flex items-center justify-end">
-                <PrimaryButton
-                    :class="{ 'opacity-25': form.processing }"
-                    :disabled="form.processing"
-                >
-                    Reset Password
-                </PrimaryButton>
-            </div>
-        </form>
-    </GuestLayout>
+      <Boton type="submit" tamano="lg" class="mt-7 w-full" :disabled="form.processing">
+        <Loader2 v-if="form.processing" class="h-5 w-5 animate-spin" aria-hidden="true" />
+        {{ form.processing ? 'Guardando…' : 'Guardar y cerrar las demás sesiones' }}
+      </Boton>
+    </form>
+  </AuthLayout>
 </template>

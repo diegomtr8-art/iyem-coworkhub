@@ -3,7 +3,8 @@ import { ref, computed } from 'vue'
 import { Link, usePage } from '@inertiajs/vue3'
 import {
   LayoutDashboard, Users, CalendarDays, Clock, Receipt,
-  Megaphone, BarChart3, Building2, Tag, LogOut, Menu, X, Home, UserCheck, PartyPopper
+  Megaphone, BarChart3, Building2, Tag, LogOut, Menu, X, Home, UserCheck, PartyPopper,
+  ScrollText, ShieldCheck
 } from 'lucide-vue-next'
 import { Toaster } from 'vue-sonner'
 import { toast } from 'vue-sonner'
@@ -20,18 +21,29 @@ watch(() => flash.value, (f) => {
   if (f?.warning) toast.warning(f.warning)
 }, { immediate: true })
 
-const nav = [
-  { label: 'Dashboard',  href: route('dashboard'),        icon: LayoutDashboard, active: 'dashboard' },
-  { label: 'Planes',     href: route('planes.index'),     icon: Tag,             active: 'planes*' },
-  { label: 'Espacios',   href: route('espacios.index'),   icon: Building2,       active: 'espacios*' },
-  { label: 'Miembros',   href: route('miembros.index'),   icon: Users,           active: 'miembros*' },
-  { label: 'Reservas',   href: route('reservas.index'),   icon: CalendarDays,    active: 'reservas*' },
-  { label: 'Check-ins',  href: route('checkins.index'),   icon: Clock,           active: 'checkins*' },
-  { label: 'Facturas',   href: route('facturas.index'),   icon: Receipt,         active: 'facturas*' },
-  { label: 'Anuncios',   href: route('anuncios.index'),        icon: Megaphone,     active: 'anuncios*' },
-  { label: 'Eventos',    href: route('eventos.admin.index'),   icon: PartyPopper,   active: 'eventos*' },
-  { label: 'Reportes',   href: route('reportes.index'),        icon: BarChart3,     active: 'reportes*' },
-]
+// A.3 — El menu se filtra por permiso: recepcion no debe ver Planes ni
+// Reportes para descubrir al pulsarlos que le dan 403. Esto **no** es control
+// de acceso —cada ruta lo hace en el servidor con su `can:`— sino cortesia.
+const permisos = computed<Record<string, boolean>>(
+  () => ((usePage().props.auth as any)?.permisos ?? {}),
+)
+
+const puede = (permiso: string) => permisos.value[permiso] === true
+
+const nav = computed(() => [
+  { label: 'Dashboard',    href: route('dashboard'),           icon: LayoutDashboard, active: 'dashboard',   ver: true },
+  { label: 'Planes',       href: route('planes.index'),        icon: Tag,             active: 'planes*',     ver: puede('gestionar-planes') },
+  { label: 'Espacios',     href: route('espacios.index'),      icon: Building2,       active: 'espacios*',   ver: puede('gestionar-espacios') },
+  { label: 'Miembros',     href: route('miembros.index'),      icon: Users,           active: 'miembros*',   ver: puede('ver-miembros') },
+  { label: 'Reservas',     href: route('reservas.index'),      icon: CalendarDays,    active: 'reservas*',   ver: puede('gestionar-reservas') },
+  { label: 'Check-ins',    href: route('checkins.index'),      icon: Clock,           active: 'checkins*',   ver: puede('operar-checkins') },
+  { label: 'Facturas',     href: route('facturas.index'),      icon: Receipt,         active: 'facturas*',   ver: puede('gestionar-facturacion') },
+  { label: 'Anuncios',     href: route('anuncios.index'),      icon: Megaphone,       active: 'anuncios*',   ver: puede('gestionar-anuncios') },
+  { label: 'Eventos',      href: route('eventos.admin.index'), icon: PartyPopper,     active: 'eventos*',    ver: puede('gestionar-eventos') },
+  { label: 'Reportes',     href: route('reportes.index'),      icon: BarChart3,       active: 'reportes*',   ver: puede('ver-reportes') },
+  { label: 'Bitácora',     href: route('bitacora.index'),      icon: ScrollText,      active: 'bitacora*',   ver: puede('ver-bitacora') },
+  { label: 'Mi seguridad', href: route('seguridad'),           icon: ShieldCheck,     active: 'seguridad*',  ver: true },
+].filter((enlace) => enlace.ver))
 </script>
 
 <template>
@@ -105,7 +117,7 @@ const nav = [
     </aside>
 
     <!-- Main -->
-    <div class="flex-1 lg:ml-64 flex flex-col min-h-screen">
+    <div class="flex-1 min-w-0 lg:ml-64 flex flex-col min-h-screen">
       <header class="bg-white border-b border-gray-200 px-4 lg:px-8 py-3 flex items-center gap-4 sticky top-0 z-10">
         <button @click="sidebarOpen = true" class="lg:hidden p-2 text-gray-400 hover:text-gray-600">
           <Menu :size="20" />

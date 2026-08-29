@@ -2,7 +2,9 @@
 
 namespace App\Http\Middleware;
 
+use App\Providers\AuthServiceProvider;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Gate;
 use Inertia\Middleware;
 
 class HandleInertiaRequests extends Middleware
@@ -19,7 +21,8 @@ class HandleInertiaRequests extends Middleware
         return [
             ...parent::share($request),
             'auth' => [
-                'user' => $request->user(),
+                'user'    => $this->usuarioCompartido($request),
+                'permisos' => $this->permisosCompartidos($request),
             ],
             'flash' => [
                 'success'     => $request->session()->get('success'),
@@ -29,6 +32,15 @@ class HandleInertiaRequests extends Middleware
                 'contacto_ok' => $request->session()->get('contacto_ok'),
             ],
             'isStaging' => app()->environment('staging'),
+
+            // F — Que botones de acceso externo dibujar. La ruta de cada
+            // proveedor comprueba el mismo interruptor por su cuenta: esconder
+            // el boton no es control de acceso.
+            'proveedores' => [
+                'google'       => (bool) config('nodico.acceso.google'),
+                'apple'        => (bool) config('nodico.acceso.apple'),
+                'enlaceMagico' => (bool) config('nodico.acceso.enlace_magico'),
+            ],
 
             // Datos de contacto y redes que consumen el footer y "Hablemos".
             'nodico' => [
@@ -52,6 +64,74 @@ class HandleInertiaRequests extends Middleware
                 'negocio'  => $this->fichaNegocio(),
                 'pagina'   => $this->metadatosDePagina($request),
             ],
+        ];
+    }
+
+    /**
+     * Que puede hacer esta persona, segun los Gates.
+     *
+     * Sirve para no ensenar en el menu secciones que van a responder 403.
+     * **No es control de acceso**: cada ruta se autoriza en el servidor con su
+     * propio `can:`; esconder un boton no protege nada.
+     *
+     * @return array<string, bool>
+     */
+    private function permisosCompartidos(Request $request): array
+    {
+        if (! $request->user()) {
+            return [];
+        }
+
+        $permisos = [];
+
+        foreach (AuthServiceProvider::todos() as $permiso) {
+            $permisos[$permiso] = Gate::allows($permiso);
+        }
+
+        return $permisos;
+    }
+
+    /**
+     * Usuario que se comparte con el front, campo por campo.
+     *
+     * Antes se enviaba `$request->user()` entero, o sea el modelo completo:
+     * entre otras cosas `notas_admin`, que son apuntes internos del equipo
+     * sobre esa persona y que le llegaban a su propio navegador en cada
+     * respuesta de Inertia.
+     *
+     * `rol` y `portalRuta` salen de aqui para que el navbar publico y los
+     * layouts no tengan que adivinar el destino comparando cadenas: con un rol
+     * desconocido `portalRuta` es `null` y la interfaz simplemente no ofrece
+     * ningun portal, en vez de mandar a nadie a rebotar (A.1).
+     *
+     * @return array<string, mixed>|null
+     */
+    private function usuarioCompartido(Request $request): ?array
+    {
+        $usuario = $request->user();
+
+        if (! $usuario) {
+            return null;
+        }
+
+        return [
+            'id'             => $usuario->id,
+            'name'           => $usuario->name,
+            'email'          => $usuario->email,
+            'avatar'         => $usuario->avatar,
+            'telefono'       => $usuario->telefono,
+            'empresa'        => $usuario->empresa,
+            'ocupacion'      => $usuario->ocupacion,
+            'face_id_ok'     => $usuario->face_id_ok,
+            'email_verified_at' => $usuario->email_verified_at,
+            'verificado'     => $usuario->hasVerifiedEmail(),
+            'rol'            => $usuario->rol?->value,
+            'rolEtiqueta'    => $usuario->rol?->etiqueta(),
+            'esOperativo'    => $usuario->esOperativo(),
+            'portalRuta'     => $usuario->rutaInicio(),
+            'estado'         => $usuario->estado->value,
+            'estadoEtiqueta' => $usuario->estado->etiqueta(),
+            'cuentaActiva'   => $usuario->cuentaActiva(),
         ];
     }
 

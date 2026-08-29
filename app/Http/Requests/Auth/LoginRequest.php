@@ -2,85 +2,130 @@
 
 namespace App\Http\Requests\Auth;
 
+use App\Models\User;
+use App\Support\ControlDeIntentos;
 use Illuminate\Auth\Events\Lockout;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
 class LoginRequest extends FormRequest
 {
-    /**
-     * Determine if the user is authorized to make this request.
-     */
     public function authorize(): bool
     {
         return true;
     }
 
     /**
-     * Get the validation rules that apply to the request.
-     *
      * @return array<string, ValidationRule|array<mixed>|string>
      */
     public function rules(): array
     {
         return [
-            'email' => ['required', 'string', 'email'],
+            'email'    => ['required', 'string', 'email'],
             'password' => ['required', 'string'],
         ];
     }
 
     /**
-     * Attempt to authenticate the request's credentials.
-     *
      * @throws ValidationException
      */
     public function authenticate(): void
     {
-        $this->ensureIsNotRateLimited();
+        $control = app(ControlDeIntentos::class);
 
-        if (! Auth::attempt($this->only('email', 'password'), $this->boolean('remember'))) {
-            RateLimiter::hit($this->throttleKey());
+        $this->asegurarQueNoHayEspera($control);
 
-            throw ValidationException::withMessages([
-                'email' => trans('auth.failed'),
-            ]);
-        }
+        if (Auth::attempt($this->only('email', 'password'), $this->boolean('remember'))) {
+            $control->limpiar($this->correo());
 
-        RateLimiter::clear($this->throttleKey());
-    }
-
-    /**
-     * Ensure the login request is not rate limited.
-     *
-     * @throws ValidationException
-     */
-    public function ensureIsNotRateLimited(): void
-    {
-        if (! RateLimiter::tooManyAttempts($this->throttleKey(), 5)) {
             return;
         }
 
-        event(new Lockout($this));
+        $usuario = User::where('email', $this->correo())->first();
 
-        $seconds = RateLimiter::availableIn($this->throttleKey());
+        // B — Enumeración por tiempo de respuesta.
+        //
+        // Cuando el correo no existe, `Auth::attempt` no llega siquiera a
+        // comparar hashes: responde en una fracción del tiempo que tarda un
+        // fallo de contraseña sobre una cuenta real. Con un cronómetro, eso
+        // basta para averiguar quién está registrado en Nódico. Se paga el
+        // mismo bcrypt contra un hash señuelo para que los dos caminos cuesten
+        // lo mismo.
+        if (! $usuario) {
+            Hash::check((string) $this->string('password'), $this->hashSenuelo());
+        }
+
+        $espera = $control->registrarFallo($this->correo(), (string) $this->ip());
+
+        if ($espera > 0) {
+            // El listener de este evento escribe la bitácora y avisa por correo
+            // al titular, si la cuenta existe.
+            event(new Lockout($this));
+
+            throw ValidationException::withMessages([
+                'email' => $this->mensajeDeEspera($espera),
+            ]);
+        }
 
         throw ValidationException::withMessages([
-            'email' => trans('auth.throttle', [
-                'seconds' => $seconds,
-                'minutes' => ceil($seconds / 60),
-            ]),
+            'email' => trans('auth.failed'),
         ]);
     }
 
     /**
-     * Get the rate limiting throttle key for the request.
+     * @throws ValidationException
      */
-    public function throttleKey(): string
+    private function asegurarQueNoHayEspera(ControlDeIntentos $control): void
     {
-        return Str::transliterate(Str::lower($this->string('email')).'|'.$this->ip());
+        $espera = $control->esperaPendiente($this->correo(), (string) $this->ip());
+
+        if ($espera === 0) {
+            return;
+        }
+
+        throw ValidationException::withMessages([
+            'email' => $this->mensajeDeEspera($espera),
+        ]);
+    }
+
+    /**
+     * Retraso creciente, no bloqueo seco: el mensaje dice cuánto falta para
+     * que quien de verdad tecleó mal no se quede mirando una pared.
+     */
+    private function mensajeDeEspera(int $segundos): string
+    {
+        if ($segundos < 60) {
+            return "Demasiados intentos seguidos. Vuelve a intentarlo en {$segundos} segundos.";
+        }
+
+        $minutos = (int) ceil($segundos / 60);
+
+        return "Demasiados intentos seguidos. Vuelve a intentarlo en {$minutos} minuto"
+            . ($minutos === 1 ? '' : 's') . '.';
+    }
+
+    /**
+     * Hash contra el que comparar cuando la cuenta no existe.
+     *
+     * Se calcula una sola vez y se guarda: generarlo en cada intento fallido
+     * costaría **dos** bcrypt en vez de uno, y volvería el camino del correo
+     * inexistente más lento que el real — la misma fuga, del revés.
+     */
+    private function hashSenuelo(): string
+    {
+        return Cache::rememberForever(
+            'auth:hash-senuelo',
+            fn () => Hash::make(Str::random(64)),
+        );
+    }
+
+    private function correo(): string
+    {
+        return Str::lower(trim((string) $this->string('email')));
     }
 }

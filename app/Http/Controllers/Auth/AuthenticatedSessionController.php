@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Auth;
 
+use App\Http\Controllers\Auth\Concerns\RedirigeAlPortal;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\LoginRequest;
 use Illuminate\Http\RedirectResponse;
@@ -13,6 +14,8 @@ use Inertia\Response;
 
 class AuthenticatedSessionController extends Controller
 {
+    use RedirigeAlPortal;
+
     public function create(): Response
     {
         return Inertia::render('Auth/Login', [
@@ -27,14 +30,10 @@ class AuthenticatedSessionController extends Controller
 
         $request->session()->regenerate();
 
-        $user = $request->user();
-
-        // Redirigir según rol
-        if ($user->esAdmin()) {
-            return redirect()->intended(route('dashboard'));
-        }
-
-        return redirect()->intended(route('portal.dashboard'));
+        // Un rol desconocido se detiene aqui con un 403 explicado. Antes se
+        // resolvia con `if ($user->esAdmin()) ... else portal`, que mandaba al
+        // portal a cualquiera que no fuera admin y arrancaba el rebote de A.1.
+        return redirect()->intended(route($this->rutaDelPortal($request->user())));
     }
 
     public function destroy(Request $request): RedirectResponse

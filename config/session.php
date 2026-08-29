@@ -169,7 +169,14 @@ return [
     |
     */
 
-    'secure' => env('SESSION_SECURE_COOKIE'),
+    // B — Sin `secure`, la cookie de sesion viaja tambien por HTTP y basta
+    // una peticion en claro para llevarsela. Se activa sola fuera de local, en
+    // vez de depender de que alguien se acuerde de ponerla en el .env del
+    // servidor; `SESSION_SECURE_COOKIE` sigue mandando si se define.
+    'secure' => env(
+        'SESSION_SECURE_COOKIE',
+        ! in_array(env('APP_ENV', 'production'), ['local', 'testing'], true)
+    ),
 
     /*
     |--------------------------------------------------------------------------

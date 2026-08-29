@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\RolUsuario;
 use App\Mail\ContactoRecibido;
 use App\Models\Comunicado;
 use App\Models\Contacto;
@@ -44,7 +45,7 @@ class ContactoController extends Controller
         ]);
 
         // Copia interna para el panel de administración.
-        if ($admin = User::where('tipo', 'admin')->first()) {
+        if ($admin = User::conRol(RolUsuario::Admin)->first()) {
             Comunicado::create([
                 'user_id' => $admin->id,
                 'titulo'  => "Contacto web: {$contacto->nombre} ({$contacto->email})",

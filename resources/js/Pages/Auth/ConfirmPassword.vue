@@ -1,55 +1,47 @@
-<script setup>
-import GuestLayout from '@/Layouts/GuestLayout.vue';
-import InputError from '@/Components/InputError.vue';
-import InputLabel from '@/Components/InputLabel.vue';
-import PrimaryButton from '@/Components/PrimaryButton.vue';
-import TextInput from '@/Components/TextInput.vue';
-import { Head, useForm } from '@inertiajs/vue3';
+<script setup lang="ts">
+import AuthLayout from '@/Layouts/AuthLayout.vue'
+import CampoTexto from '@/Components/Auth/CampoTexto.vue'
+import Boton from '@/Components/Public/Boton.vue'
+import { useForm } from '@inertiajs/vue3'
+import { Loader2, ShieldCheck } from 'lucide-vue-next'
 
-const form = useForm({
-    password: '',
-});
+const form = useForm({ password: '' })
 
-const submit = () => {
-    form.post(route('password.confirm'), {
-        onFinish: () => form.reset(),
-    });
-};
+const enviar = () =>
+  form.post(route('password.confirm'), { onFinish: () => form.reset('password') })
 </script>
 
 <template>
-    <GuestLayout>
-        <Head title="Confirm Password" />
+  <AuthLayout
+    etiqueta="Confirmación"
+    numero="06"
+    titulo="Confirma que eres tú"
+    frase="Una sesión olvidada no debería costarte la cuenta"
+  >
+    <!-- Explicar por qué se pide evita que la gente teclee su contraseña sin leer. -->
+    <div class="flex items-start gap-3 border-l-4 border-nodo-400 bg-nodo-50 px-4 py-3">
+      <ShieldCheck class="mt-0.5 h-5 w-5 shrink-0 text-dark" aria-hidden="true" />
+      <p class="font-body text-cuerpo text-dark">
+        Vas a hacer un cambio delicado en tu cuenta. Te pedimos la contraseña otra vez
+        por si dejaste la sesión abierta en un equipo que no es tuyo.
+      </p>
+    </div>
 
-        <div class="mb-4 text-sm text-gray-600">
-            This is a secure area of the application. Please confirm your
-            password before continuing.
-        </div>
+    <form class="mt-7" novalidate @submit.prevent="enviar">
+      <CampoTexto
+        v-model="form.password"
+        etiqueta="Tu contraseña"
+        type="password"
+        autocomplete="current-password"
+        requerido
+        autofocus
+        :error="form.errors.password"
+      />
 
-        <form @submit.prevent="submit">
-            <div>
-                <InputLabel for="password" value="Password" />
-                <TextInput
-                    id="password"
-                    type="password"
-                    class="mt-1 block w-full"
-                    v-model="form.password"
-                    required
-                    autocomplete="current-password"
-                    autofocus
-                />
-                <InputError class="mt-2" :message="form.errors.password" />
-            </div>
-
-            <div class="mt-4 flex justify-end">
-                <PrimaryButton
-                    class="ms-4"
-                    :class="{ 'opacity-25': form.processing }"
-                    :disabled="form.processing"
-                >
-                    Confirm
-                </PrimaryButton>
-            </div>
-        </form>
-    </GuestLayout>
+      <Boton type="submit" tamano="lg" class="mt-6 w-full" :disabled="form.processing">
+        <Loader2 v-if="form.processing" class="h-5 w-5 animate-spin" aria-hidden="true" />
+        {{ form.processing ? 'Comprobando…' : 'Continuar' }}
+      </Boton>
+    </form>
+  </AuthLayout>
 </template>

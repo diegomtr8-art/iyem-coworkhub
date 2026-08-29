@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\AnunciosController;
+use App\Http\Controllers\BitacoraController;
 use App\Http\Controllers\CheckinAdminController;
 use App\Http\Controllers\ContactoController;
 use App\Http\Controllers\DashboardController;
@@ -85,48 +86,82 @@ Route::get('/sitemap.xml', function () {
     return response($xml, 200, ['Content-Type' => 'application/xml; charset=UTF-8']);
 })->name('sitemap');
 
-// --- ADMINISTRACIÓN ---
-Route::middleware(['auth', 'verified', 'admin'])->group(function () {
+// --- PANEL OPERATIVO (administracion y recepcion) ---
+// A.1 — `portal:operativo` aborta con 403 en vez de redirigir al otro portal.
+// A.3 — dentro del panel, cada seccion declara su permiso con `can:`; recepcion
+// entra al panel pero no a planes, espacios, facturacion, eventos ni reportes.
+// B — La sesion del panel caduca antes que la del portal: se usa en una
+// recepcion, en un equipo compartido y a la vista de quien pase.
+Route::middleware(['auth', 'verified', 'portal:operativo', 'no.suspendida', 'inactividad:60'])->group(function () {
     Route::get('dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
-    Route::resource('planes', PlanesController::class)->except(['show']);
-    Route::resource('espacios', EspaciosController::class)->except(['show']);
+    Route::middleware('can:gestionar-planes')->group(function () {
+        Route::resource('planes', PlanesController::class)->except(['show']);
+    });
 
-    Route::get('miembros', [MiembrosController::class, 'index'])->name('miembros.index');
-    Route::get('miembros/{miembro}', [MiembrosController::class, 'show'])->name('miembros.show');
-    Route::post('miembros/{miembro}/suscripcion', [MiembrosController::class, 'crearSuscripcion'])->name('miembros.suscripcion');
-    Route::patch('miembros/{miembro}/faceid', [MiembrosController::class, 'toggleFaceId'])->name('miembros.faceid');
-    Route::patch('miembros/{miembro}/companion', [MiembrosController::class, 'setCompanion'])->name('miembros.companion');
+    Route::middleware('can:gestionar-espacios')->group(function () {
+        Route::resource('espacios', EspaciosController::class)->except(['show']);
+    });
 
-    Route::get('reservas', [ReservasController::class, 'index'])->name('reservas.index');
-    Route::patch('reservas/{reserva}', [ReservasController::class, 'update'])->name('reservas.update');
-    Route::delete('reservas/{reserva}', [ReservasController::class, 'destroy'])->name('reservas.destroy');
+    Route::middleware('can:ver-miembros')->group(function () {
+        Route::get('miembros', [MiembrosController::class, 'index'])->name('miembros.index');
+        Route::get('miembros/{miembro}', [MiembrosController::class, 'show'])->name('miembros.show');
+    });
 
-    Route::get('checkins', [CheckinAdminController::class, 'index'])->name('checkins.index');
-    Route::post('checkins/entrada', [CheckinAdminController::class, 'entrada'])->name('checkins.entrada');
-    Route::post('checkins/{checkin}/salida', [CheckinAdminController::class, 'salida'])->name('checkins.salida');
+    Route::middleware('can:editar-miembros')->group(function () {
+        Route::post('miembros/{miembro}/suscripcion', [MiembrosController::class, 'crearSuscripcion'])->name('miembros.suscripcion');
+        Route::patch('miembros/{miembro}/faceid', [MiembrosController::class, 'toggleFaceId'])->name('miembros.faceid');
+        Route::patch('miembros/{miembro}/companion', [MiembrosController::class, 'setCompanion'])->name('miembros.companion');
+    });
 
-    Route::get('facturas', [FacturasController::class, 'index'])->name('facturas.index');
-    Route::post('facturas/{factura}/pagar', [FacturasController::class, 'pagar'])->name('facturas.pagar');
+    Route::middleware('can:gestionar-reservas')->group(function () {
+        Route::get('reservas', [ReservasController::class, 'index'])->name('reservas.index');
+        Route::patch('reservas/{reserva}', [ReservasController::class, 'update'])->name('reservas.update');
+        Route::delete('reservas/{reserva}', [ReservasController::class, 'destroy'])->name('reservas.destroy');
+    });
 
-    Route::get('anuncios', [AnunciosController::class, 'index'])->name('anuncios.index');
-    Route::post('anuncios', [AnunciosController::class, 'store'])->name('anuncios.store');
-    Route::put('anuncios/{anuncio}', [AnunciosController::class, 'update'])->name('anuncios.update');
-    Route::delete('anuncios/{anuncio}', [AnunciosController::class, 'destroy'])->name('anuncios.destroy');
+    Route::middleware('can:operar-checkins')->group(function () {
+        Route::get('checkins', [CheckinAdminController::class, 'index'])->name('checkins.index');
+        Route::post('checkins/entrada', [CheckinAdminController::class, 'entrada'])->name('checkins.entrada');
+        Route::post('checkins/{checkin}/salida', [CheckinAdminController::class, 'salida'])->name('checkins.salida');
+    });
 
-    // Eventos admin
-    Route::get('admin/eventos', [EventosController::class, 'index'])->name('eventos.admin.index');
-    Route::get('admin/eventos/crear', [EventosController::class, 'create'])->name('eventos.admin.create');
-    Route::post('admin/eventos', [EventosController::class, 'store'])->name('eventos.admin.store');
-    Route::get('admin/eventos/{evento}/editar', [EventosController::class, 'edit'])->name('eventos.admin.edit');
-    Route::patch('admin/eventos/{evento}', [EventosController::class, 'update'])->name('eventos.admin.update');
-    Route::delete('admin/eventos/{evento}', [EventosController::class, 'destroy'])->name('eventos.admin.destroy');
+    Route::middleware('can:gestionar-facturacion')->group(function () {
+        Route::get('facturas', [FacturasController::class, 'index'])->name('facturas.index');
+        Route::post('facturas/{factura}/pagar', [FacturasController::class, 'pagar'])->name('facturas.pagar');
+    });
 
-    Route::get('reportes', [ReportesController::class, 'index'])->name('reportes.index');
+    Route::middleware('can:gestionar-anuncios')->group(function () {
+        Route::get('anuncios', [AnunciosController::class, 'index'])->name('anuncios.index');
+        Route::post('anuncios', [AnunciosController::class, 'store'])->name('anuncios.store');
+        Route::put('anuncios/{anuncio}', [AnunciosController::class, 'update'])->name('anuncios.update');
+        Route::delete('anuncios/{anuncio}', [AnunciosController::class, 'destroy'])->name('anuncios.destroy');
+    });
+
+    // Eventos del sitio publico: es contenido de cara al exterior, no operacion diaria.
+    Route::middleware('can:gestionar-eventos')->group(function () {
+        Route::get('admin/eventos', [EventosController::class, 'index'])->name('eventos.admin.index');
+        Route::get('admin/eventos/crear', [EventosController::class, 'create'])->name('eventos.admin.create');
+        Route::post('admin/eventos', [EventosController::class, 'store'])->name('eventos.admin.store');
+        Route::get('admin/eventos/{evento}/editar', [EventosController::class, 'edit'])->name('eventos.admin.edit');
+        Route::patch('admin/eventos/{evento}', [EventosController::class, 'update'])->name('eventos.admin.update');
+        Route::delete('admin/eventos/{evento}', [EventosController::class, 'destroy'])->name('eventos.admin.destroy');
+    });
+
+    Route::middleware('can:ver-reportes')->group(function () {
+        Route::get('reportes', [ReportesController::class, 'index'])->name('reportes.index');
+    });
+
+    // B — Bitacora completa de autenticacion.
+    Route::middleware('can:ver-bitacora')->group(function () {
+        Route::get('bitacora', [BitacoraController::class, 'index'])->name('bitacora.index');
+    });
 });
 
 // --- PORTAL MIEMBRO ---
-Route::middleware(['auth', 'miembro'])->prefix('portal')->name('portal.')->group(function () {
+// A.2 — `verified` faltaba en este grupo, que es justo donde cae todo el mundo
+// al registrarse: nadie verificaba su correo.
+Route::middleware(['auth', 'verified', 'portal:miembro', 'no.suspendida', 'inactividad:240'])->prefix('portal')->name('portal.')->group(function () {
     Route::get('/', [PortalDashboard::class, 'index'])->name('dashboard');
 
     Route::get('reservar', [PortalReservas::class, 'create'])->name('reservar');
@@ -141,11 +176,24 @@ Route::middleware(['auth', 'miembro'])->prefix('portal')->name('portal.')->group
     Route::post('checkin/salida', [PortalCheckin::class, 'salida'])->name('checkin.salida');
 });
 
-// Profile
+// Perfil
 Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
+
+    // Cambiar el correo pide la contrasena actual como campo del formulario;
+    // la regla vive en ProfileUpdateRequest, que solo la exige cuando el correo
+    // cambia de verdad.
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
-    Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
+
+    // B — Borrar la cuenta es irreversible: ademas del campo de contrasena que
+    // ya pedia, va detras de password.confirm.
+    Route::delete('/profile', [ProfileController::class, 'destroy'])
+        ->middleware('password.confirm')
+        ->name('profile.destroy');
 });
 
-require __DIR__.'/auth.php';
+// F — Todas las pantallas de acceso comparten la prueba social del panel de
+// marca. Va aqui y no en `HandleInertiaRequests` para no pagar dos consultas
+// en cada peticion del resto del sitio.
+Route::middleware(\App\Http\Middleware\CompartirMarcaDeAcceso::class)
+    ->group(__DIR__.'/auth.php');

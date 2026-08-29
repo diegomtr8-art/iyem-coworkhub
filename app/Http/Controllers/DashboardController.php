@@ -16,7 +16,7 @@ class DashboardController extends Controller
         $hoy = Carbon::today();
         $mesActual = Carbon::now()->startOfMonth();
 
-        $miembrosActivos = User::where('tipo', 'miembro')
+        $miembrosActivos = User::miembros()
             ->whereHas('suscripciones', fn($q) => $q->where('estatus', 'Activa'))
             ->count();
 

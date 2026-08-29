@@ -114,4 +114,22 @@ return [
 
     'password_timeout' => env('AUTH_PASSWORD_TIMEOUT', 10800),
 
+    /*
+    |--------------------------------------------------------------------------
+    | Caducidad del enlace de verificacion de correo
+    |--------------------------------------------------------------------------
+    |
+    | A.2 — Minutos que vive el enlace firmado que se manda al registrarse.
+    | Laravel usa 60 por defecto, pero estaba implicito: se deja escrito para
+    | que se vea que es una decision y no un descuido.
+    |
+    | El enlace es ademas de un solo uso: el hash firmado incluye un nonce que
+    | se borra al verificar. Ver App\Models\User::getEmailForVerification().
+    |
+    */
+
+    'verification' => [
+        'expire' => env('AUTH_VERIFICATION_EXPIRE', 60),
+    ],
+
 ];
