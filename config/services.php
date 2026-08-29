@@ -35,4 +35,22 @@ return [
         ],
     ],
 
+
+    /*
+    |--------------------------------------------------------------------------
+    | Acceso con Google
+    |--------------------------------------------------------------------------
+    | El `redirect` **no** se toma nunca de la peticion: se compone aqui, contra
+    | el host canonico. Un `redirect_uri` que venga del request convierte el
+    | flujo en un redirector abierto.
+    |
+    | Esta misma URL tiene que estar dada de alta en Google Cloud Console, en
+    | «URIs de redireccionamiento autorizados» del ID de cliente OAuth.
+    */
+    'google' => [
+        'client_id'     => env('GOOGLE_CLIENT_ID'),
+        'client_secret' => env('GOOGLE_CLIENT_SECRET'),
+        'redirect'      => env('GOOGLE_REDIRECT_URI'),
+    ],
+
 ];

@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Enums\EventoAuth;
 use App\Models\EventoAutenticacion;
+use App\Models\IdentidadSocial;
 use App\Support\SesionesActivas;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -30,6 +31,16 @@ class SeguridadController extends Controller
         return Inertia::render('Seguridad/Index', [
             'sesiones'          => $this->sesiones->listar($usuario, $request->session()->getId()),
             'sesionesLegibles'  => $this->sesiones->disponible(),
+
+            // C — Cuentas externas vinculadas, y si se puede soltar alguna.
+            'identidades'       => $usuario->identidades()->get()->map(fn (IdentidadSocial $i) => [
+                'id'          => $i->id,
+                'etiqueta'    => $i->etiqueta,
+                'correo'      => $i->correo,
+                'vinculadaEn' => $i->created_at?->format('d/m/Y'),
+            ]),
+            'tieneContrasena'   => $usuario->tieneContrasena(),
+            'metodosDeAcceso'   => $usuario->metodosDeAcceso(),
             'eventos'           => EventoAutenticacion::de($usuario)
                 ->recientes()
                 ->limit(50)
@@ -64,6 +75,39 @@ class SeguridadController extends Controller
         return back()->with('success', $cerradas === 0
             ? 'No había otras sesiones abiertas.'
             : "Se cerraron {$cerradas} sesión" . ($cerradas === 1 ? '' : 'es') . ' en otros dispositivos.');
+    }
+
+    /**
+     * C — Desvincular una cuenta externa.
+     *
+     * **Nunca se suelta el ultimo metodo de acceso.** Una persona que entro con
+     * Google y no puso contrasena, al desvincular Google se quedaria fuera de
+     * su propia cuenta sin ninguna via de volver: ni contrasena que recuperar,
+     * ni identidad con la que entrar. Se comprueba en el servidor, no
+     * escondiendo el boton.
+     */
+    public function desvincular(Request $request, IdentidadSocial $identidad): RedirectResponse
+    {
+        $usuario = $request->user();
+
+        // Sin este `abort` se podria soltar la identidad de otra persona
+        // pasando su identificador.
+        abort_unless($identidad->user_id === $usuario->id, 403);
+
+        if ($usuario->metodosDeAcceso() <= 1) {
+            return back()->with('error', 'Es tu unica forma de entrar a Nodico. Pon una contrasena antes de desvincularla.');
+        }
+
+        $proveedor = $identidad->proveedor;
+        $identidad->delete();
+
+        EventoAutenticacion::registrar(
+            EventoAuth::DesvinculoSocial,
+            $usuario,
+            contexto: ['proveedor' => $proveedor],
+        );
+
+        return back()->with('success', 'Cuenta de ' . ucfirst($proveedor) . ' desvinculada.');
     }
 
     public function cerrarUna(Request $request, string $sesion): RedirectResponse

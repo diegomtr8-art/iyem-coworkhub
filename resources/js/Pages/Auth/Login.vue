@@ -3,8 +3,9 @@ import AuthLayout from '@/Layouts/AuthLayout.vue'
 import AccesosExternos from '@/Components/Auth/AccesosExternos.vue'
 import CampoTexto from '@/Components/Auth/CampoTexto.vue'
 import Boton from '@/Components/Public/Boton.vue'
-import { Link, useForm } from '@inertiajs/vue3'
+import { Link, router, useForm } from '@inertiajs/vue3'
 import { Loader2 } from 'lucide-vue-next'
+import { ref } from 'vue'
 
 defineProps<{ canResetPassword?: boolean; status?: string }>()
 
@@ -16,6 +17,19 @@ const form = useForm({
 
 const enviar = () =>
   form.post(route('login'), { onFinish: () => form.reset('password') })
+
+// C — El enlace mágico reutiliza el correo que ya está escrito arriba. Si está
+// vacío no se manda nada: pedirlo «a ciegas» acabaría enviando enlaces a
+// direcciones tecleadas por error.
+const faltaCorreo = ref(false)
+
+function pedirEnlaceMagico() {
+  faltaCorreo.value = form.email.trim() === ''
+
+  if (faltaCorreo.value) return
+
+  router.post(route('enlace-magico.enviar'), { email: form.email })
+}
 </script>
 
 <template>
@@ -38,7 +52,11 @@ const enviar = () =>
       {{ status }}
     </p>
 
-    <AccesosExternos />
+    <AccesosExternos @enlace-magico="pedirEnlaceMagico" />
+
+    <p v-if="faltaCorreo" class="-mt-4 mb-6 font-body text-sm text-red-600" role="alert">
+      Escribe tu correo abajo y vuelve a pulsar: es a donde mandaremos el enlace.
+    </p>
 
     <form novalidate @submit.prevent="enviar">
       <div class="grid gap-5">

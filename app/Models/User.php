@@ -74,6 +74,28 @@ class User extends Authenticatable implements MustVerifyEmail
 
     public function cuentaActiva(): bool { return $this->estado->puedeOperar(); }
 
+    // ── Metodos de acceso ───────────────────────────────────────────────────
+
+    /**
+     * Quien entra con Google no tiene contrasena, y eso es legitimo: su metodo
+     * de acceso es la identidad externa.
+     */
+    public function tieneContrasena(): bool
+    {
+        return filled($this->attributes['password'] ?? null);
+    }
+
+    /**
+     * Cuantas formas distintas tiene esta persona de entrar a su cuenta.
+     *
+     * Es lo que impide desvincular la ultima: quedarse en cero significa
+     * perder la cuenta, y desde dentro del propio panel de seguridad.
+     */
+    public function metodosDeAcceso(): int
+    {
+        return ($this->tieneContrasena() ? 1 : 0) + $this->identidades()->count();
+    }
+
     /** Unica via para cambiar el rol. `forceFill` porque `tipo` esta fuera de `$fillable`. */
     public function asignarRol(RolUsuario $rol): static
     {
@@ -177,6 +199,9 @@ class User extends Authenticatable implements MustVerifyEmail
     }
 
     // ── Relaciones ──────────────────────────────────────────────────────────
+
+    public function identidades()    { return $this->hasMany(IdentidadSocial::class); }
+    public function enlacesMagicos() { return $this->hasMany(EnlaceMagico::class); }
 
     public function suscripciones()  { return $this->hasMany(Suscripcion::class); }
     public function suscripcionActiva() { return $this->hasOne(Suscripcion::class)->where('estatus', 'Activa')->latest(); }

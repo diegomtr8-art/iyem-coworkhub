@@ -38,7 +38,6 @@ class HandleInertiaRequests extends Middleware
             // el boton no es control de acceso.
             'proveedores' => [
                 'google'       => (bool) config('nodico.acceso.google'),
-                'apple'        => (bool) config('nodico.acceso.apple'),
                 'enlaceMagico' => (bool) config('nodico.acceso.enlace_magico'),
             ],
 

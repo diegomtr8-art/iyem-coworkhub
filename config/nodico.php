@@ -87,13 +87,16 @@ return [
     | apagado el boton **no se renderiza** y la ruta responde 404: no basta con
     | esconderlo en el front.
     |
-    | Apple queda implementado pero apagado hasta que Nodico tenga cuenta de
-    | Apple Developer (99 USD/ano). Los pasos exactos para encenderlo van en
-    | docs/AUTH-PROVEEDORES.md.
+    | **Apple no esta aqui a proposito.** No se implemento: el paquete oficial
+    | `socialiteproviders/apple` no es instalable en este hosting —depende de
+    | `lcobucci/jwt`, que exige `ext-sodium`, y esa extension no existe ni en el
+    | CLI ni en el PHP-FPM de Hostinger— y Nodico tampoco tiene aun cuenta de
+    | Apple Developer. Un interruptor que encendiera un boton sin flujo detras
+    | seria peor que no tenerlo. Todo lo necesario para implementarlo el dia que
+    | haga falta esta en docs/AUTH-PROVEEDORES.md.
     */
     'acceso' => [
         'google'        => (bool) env('NODICO_GOOGLE_LOGIN_ENABLED', false),
-        'apple'         => (bool) env('NODICO_APPLE_LOGIN_ENABLED', false),
         'enlace_magico' => (bool) env('NODICO_ENLACE_MAGICO_ENABLED', false),
     ],
     'sufijo_titulo' => 'Nódico',

@@ -2,9 +2,11 @@
 
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\Auth\ConfirmablePasswordController;
+use App\Http\Controllers\Auth\EnlaceMagicoController;
 use App\Http\Controllers\Auth\EmailVerificationNotificationController;
 use App\Http\Controllers\Auth\EmailVerificationPromptController;
 use App\Http\Controllers\Auth\NewPasswordController;
+use App\Http\Controllers\Auth\OAuthController;
 use App\Http\Controllers\Auth\PasswordController;
 use App\Http\Controllers\Auth\PasswordResetLinkController;
 use App\Http\Controllers\Auth\RegisteredUserController;
@@ -41,6 +43,39 @@ Route::middleware('guest')->group(function () {
     Route::post('forgot-password', [PasswordResetLinkController::class, 'store'])
         ->middleware('throttle:recuperacion')
         ->name('password.email');
+
+    /*
+     * C — Acceso con proveedor externo.
+     *
+     * `{proveedor}` va acotado por expresion regular ademas de por la lista
+     * blanca del controlador: sin eso, el segmento de la URL decide que driver
+     * de Socialite se instancia.
+     */
+    Route::get('acceso/{proveedor}', [OAuthController::class, 'redirigir'])
+        ->whereIn('proveedor', ['google'])
+        ->middleware('throttle:acceso')
+        ->name('oauth.redirigir');
+
+    Route::get('acceso/{proveedor}/retorno', [OAuthController::class, 'retorno'])
+        ->whereIn('proveedor', ['google'])
+        ->middleware('throttle:acceso')
+        ->name('oauth.retorno');
+
+    /*
+     * C — Enlace magico. El limite es el mismo que el de recuperacion: los dos
+     * mandan al buzon de otra persona un enlace con poder sobre su cuenta.
+     */
+    Route::post('enlace-magico', [EnlaceMagicoController::class, 'enviar'])
+        ->middleware('throttle:recuperacion')
+        ->name('enlace-magico.enviar');
+
+    Route::get('enlace-magico/enviado', [EnlaceMagicoController::class, 'enviado'])
+        ->name('enlace-magico.enviado');
+
+    Route::get('enlace-magico/{token}', [EnlaceMagicoController::class, 'entrar'])
+        ->where('token', '[A-Za-z0-9]{48}')
+        ->middleware('throttle:acceso')
+        ->name('enlace-magico.entrar');
 
     Route::get('reset-password/{token}', [NewPasswordController::class, 'create'])
         ->name('password.reset');
@@ -110,5 +145,8 @@ Route::middleware('auth')->group(function () {
 
         Route::delete('seguridad/sesiones/{sesion}', [SeguridadController::class, 'cerrarUna'])
             ->name('seguridad.cerrar-una');
+
+        Route::delete('seguridad/identidades/{identidad}', [SeguridadController::class, 'desvincular'])
+            ->name('seguridad.desvincular');
     });
 });
