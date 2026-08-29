@@ -6,13 +6,43 @@ import ScrollReveal from '@/Components/Public/ScrollReveal.vue'
 import SectionHeading from '@/Components/Public/SectionHeading.vue'
 import PublicLayout from '@/Layouts/PublicLayout.vue'
 
+/**
+ * Descripciones redactadas para esta versión: el original de Odoo solo tenía
+ * los nombres sueltos. PENDIENTE de validación por Nódico.
+ * «Democratización del acceso a espacios de calidad» era un título de tres
+ * líneas; se acorta a «Democratización del acceso» y lo demás pasa al cuerpo.
+ */
 const valores = [
-  { icono: '/img/nodico/valor-creatividad.webp', titulo: 'Creatividad' },
-  { icono: '/img/nodico/valor-colaboracion.webp', titulo: 'Colaboración' },
-  { icono: '/img/nodico/valor-innovacion.webp', titulo: 'Innovación' },
-  { icono: '/img/nodico/valor-diversidad-inclusion.webp', titulo: 'Diversidad e inclusión' },
-  { icono: '/img/nodico/valor-democratizacion.webp', titulo: 'Democratización del acceso a espacios de calidad' },
-  { icono: '/img/nodico/valor-comunidad.webp', titulo: 'Comunidad' },
+  {
+    icono: '/img/nodico/valor-creatividad.webp',
+    titulo: 'Creatividad',
+    descripcion: 'Espacios y encuentros pensados para que las ideas nuevas tengan dónde aparecer.',
+  },
+  {
+    icono: '/img/nodico/valor-colaboracion.webp',
+    titulo: 'Colaboración',
+    descripcion: 'Lo que uno sabe le sirve al de al lado. Aquí eso se provoca a propósito.',
+  },
+  {
+    icono: '/img/nodico/valor-innovacion.webp',
+    titulo: 'Innovación',
+    descripcion: 'Probar, equivocarse y volver a probar, con la comunidad como red de apoyo.',
+  },
+  {
+    icono: '/img/nodico/valor-diversidad-inclusion.webp',
+    titulo: 'Diversidad e inclusión',
+    descripcion: 'Cabe todo el mundo: cualquier edad, cualquier sector, cualquier punto de partida.',
+  },
+  {
+    icono: '/img/nodico/valor-democratizacion.webp',
+    titulo: 'Democratización del acceso',
+    descripcion: 'Un espacio de calidad no debería ser un privilegio. Por eso los precios son los que son.',
+  },
+  {
+    icono: '/img/nodico/valor-comunidad.webp',
+    titulo: 'Comunidad',
+    descripcion: 'Más que compartir escritorio: compartir contactos, clientes y camino.',
+  },
 ]
 </script>
 
@@ -136,37 +166,30 @@ const valores = [
           <SectionHeading etiqueta="Valores" titulo="Lo que nos mueve" align="center" tamano="lg" />
         </ScrollReveal>
 
-        <ScrollReveal class="mt-14">
-          <ul class="grid overflow-hidden rounded-3xl bg-white shadow-sombra ring-1 ring-dark/[.07] sm:grid-cols-2 lg:grid-cols-3">
-            <li
-              v-for="(valor, i) in valores"
-              :key="valor.titulo"
-              class="group flex items-center gap-5 border-dark/[.08] p-7 transition-colors duration-300
-                     hover:bg-cream-50 sm:p-8
-                     [&:not(:last-child)]:border-b
-                     sm:[&:nth-child(-n+4)]:border-b sm:[&:nth-last-child(-n+2)]:border-b-0
-                     sm:[&:nth-child(odd)]:border-r
-                     lg:[&:nth-child(-n+3)]:border-b lg:[&:nth-last-child(-n+3)]:border-b-0
-                     lg:[&:nth-child(3n)]:border-r-0 lg:[&:not(:nth-child(3n))]:border-r"
+        <ScrollReveal :stagger="70" as="ul" class="mt-14 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+          <li v-for="valor in valores" :key="valor.titulo">
+            <article
+              class="group flex h-full flex-col rounded-3xl bg-white p-7 shadow-sombra-sm ring-1 ring-dark/[.07]
+                     transition-all duration-300 ease-salida hover:-translate-y-1 hover:shadow-sombra"
             >
               <img
                 :src="valor.icono"
                 alt=""
                 aria-hidden="true"
-                width="96"
-                height="96"
+                width="160"
+                height="160"
                 loading="lazy"
                 decoding="async"
-                class="h-14 w-14 shrink-0 object-contain transition-transform duration-500 ease-salida group-hover:scale-110"
+                class="mb-5 h-12 w-12 object-contain transition-transform duration-500 ease-salida group-hover:scale-110"
               />
-              <div>
-                <p class="etiqueta-tecnica text-dark/55" aria-hidden="true">{{ String(i + 1).padStart(2, '0') }}</p>
-                <p class="mt-2 font-display text-base font-bold leading-snug text-dark sm:text-lg">
-                  {{ valor.titulo }}
-                </p>
-              </div>
-            </li>
-          </ul>
+              <h3 class="font-display text-lg font-bold leading-snug text-dark">
+                {{ valor.titulo }}
+              </h3>
+              <p class="mt-2.5 font-body text-sm leading-relaxed text-dark/65">
+                {{ valor.descripcion }}
+              </p>
+            </article>
+          </li>
         </ScrollReveal>
       </div>
     </section>

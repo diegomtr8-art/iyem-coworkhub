@@ -156,3 +156,63 @@ pero `vite.config.js` sólo registra `resources/js/app.js` como entrada. En dev 
 producción el manifest no contiene esas páginas y Laravel lanza
 `Unable to locate file in Vite manifest`. Inertia ya carga las páginas vía `import.meta.glob`,
 así que se elimina esa segunda entrada.
+
+---
+
+# Cambios de texto de la Fase 5 — a validar por Nódico
+
+Al revisar las cuatro páginas interiores en el navegador aparecieron textos
+heredados de Odoo que eran **redundantes, vagos o directamente repetidos**. Se
+corrigieron; aquí queda el registro para que Nódico los valide.
+
+## Redundancia literal en `/eventos`
+
+Las dos salas traían **exactamente el mismo párrafo de 60 palabras** y **la misma
+lista de once elementos**, repetidos íntegros en cada ficha. Leer dos veces lo
+mismo en la misma pantalla no aporta nada.
+
+- La descripción pasa a un único párrafo de entrada, antes de las dos salas.
+- «Incluye» se muestra una sola vez, como «Ambas salas incluyen».
+- Cada ficha conserva solo lo suyo: foto, nombre y datos técnicos.
+
+Si algún día las salas dejan de ser idénticas, hay que volver a mostrar
+descripción y equipamiento por sala. Está anotado en el código.
+
+## Puntos finales sobrantes
+
+Los elementos de «Incluye» venían como `Proyector.`, `Sillas.`, `Mesas.`… En una
+lista de una sola palabra el punto final sobra. Retirados.
+
+## Descripciones de plan que decían lo mismo dos veces
+
+| Plan | Antes | Ahora |
+|---|---|---|
+| Nódico Flex | «Pensada para jóvenes emprendedores, estudiantes o personas que solo necesitan entrar al espacio de cowork por unas horas y tener acceso a la comunidad emprendedora. **Es una opción accesible para quienes están empezando y quieren conectar, trabajar un rato o explorar el ecosistema.**» — dos frases para la misma idea | «Para quien está empezando y necesita el espacio unas horas: entrar, trabajar un rato, conectar con la comunidad y explorar el ecosistema emprendedor.» |
+| Nodo Match | «Pensada para jóvenes emprendedores, ofrece una variedad más amplia de servicios y beneficios diseñados para impulsar el desarrollo de proyectos innovadores y fomentar la colaboración en un entorno dinámico.» — relleno que **omitía su único diferenciador: que es para dos personas** | «La misma libertad que Nodo Pro, pero para dos personas: pensada para socios o duplas que trabajan juntos todos los días.» |
+
+## Valor con nombre de tres líneas en `/nosotros`
+
+«Democratización del acceso a espacios de calidad» ocupaba tres renglones como
+título de tarjeta. Se acorta a **«Democratización del acceso»** y el resto pasa al
+cuerpo: *«Un espacio de calidad no debería ser un privilegio. Por eso los precios
+son los que son.»*
+
+## Texto nuevo redactado en esta fase
+
+El original no tenía descripciones en servicios, beneficios ni valores: eran
+títulos sueltos, y por eso esas secciones se sentían flojas. **Las redacté yo y
+están pendientes de validación**:
+
+- 6 descripciones de servicio (portada)
+- 5 descripciones de beneficio (portada)
+- 6 descripciones de valor (`/nosotros`)
+
+## Lo que sigue sin resolver
+
+- **CNT-03** · Salabtún no tiene Instagram ni URL propia, así que su ficha sigue
+  sin destino. Hace falta la dirección.
+- **Discrepancia #1** · Las dos salas tienen datos idénticos en todos los campos.
+  Confirmado en pantalla al ponerlas lado a lado. Sigue pendiente saber si la
+  tercera tarjeta de 150 pax del original era una sala real.
+- **Fotos** · Los beneficios usan fotos del espacio, no de cada beneficio; no hay
+  foto real de la sala de creación de contenido; la de Salabtún es de 512 px.

@@ -5,11 +5,21 @@ import Meta from '@/Components/Public/Meta.vue'
 import ScrollReveal from '@/Components/Public/ScrollReveal.vue'
 import SectionHeading from '@/Components/Public/SectionHeading.vue'
 import PublicLayout from '@/Layouts/PublicLayout.vue'
+import type { Salon } from '@/tipos'
 import { Check } from 'lucide-vue-next'
+import { computed } from 'vue'
 
-defineProps<{ salones?: any[] }>()
+const props = defineProps<{ salones?: Salon[] }>()
 
-const ficha = (salon: any) => [
+/**
+ * Descripción y equipamiento son idénticos en las dos salas, así que se
+ * muestran una sola vez. Si algún día difieren, esto deja de aplicar y
+ * habría que volver a mostrarlos por sala.
+ */
+const descripcionComun = computed(() => props.salones?.[0]?.descripcion ?? '')
+const incluyeComun = computed(() => props.salones?.[0]?.incluye ?? [])
+
+const ficha = (salon: Salon) => [
   ['Medidas', salon.medidas],
   ['Costo por hora', `$${Number(salon.precio_hora).toLocaleString('es-MX')} mxn`],
   ['Capacidad', `${salon.capacidad} personas`],
@@ -66,50 +76,71 @@ const ficha = (salon: any) => [
 
     <!-- Salones -->
     <section class="bg-cream py-20 lg:py-28">
-      <div class="mx-auto max-w-7xl space-y-20 px-5 sm:px-8 lg:space-y-28">
-        <ScrollReveal v-for="(salon, i) in salones ?? []" :key="salon.id ?? salon.nombre" as="article">
-          <div class="grid items-start gap-12 lg:grid-cols-2 lg:gap-16">
-            <img
-              v-if="salon.imagen"
-              :src="salon.imagen"
-              :alt="`Salón ${salon.nombre} de Nódico`"
-              width="1000"
-              height="750"
-              loading="lazy"
-              decoding="async"
-              class="aspect-[4/3] w-full rounded-3xl object-cover shadow-sombra"
-              :class="i % 2 === 1 ? 'lg:order-2' : ''"
-            />
+      <div class="mx-auto max-w-7xl px-5 sm:px-8">
+        <!--
+          Las dos salas comparten descripción y equipamiento palabra por palabra.
+          En el original de Odoo el párrafo y la lista de once elementos se
+          repetían íntegros en cada ficha; aquí se dicen una sola vez.
+        -->
+        <ScrollReveal class="mx-auto max-w-3xl text-center">
+          <p class="font-body text-cuerpo-lg leading-relaxed text-dark/70">
+            {{ descripcionComun }}
+          </p>
+        </ScrollReveal>
 
-            <div :class="i % 2 === 1 ? 'lg:order-1' : ''">
-              <SectionHeading :etiqueta="`Sala 0${i + 1}`" :titulo="salon.nombre" tamano="lg" />
+        <div class="mt-14 grid gap-6 lg:grid-cols-2">
+          <ScrollReveal
+            v-for="(salon, i) in salones ?? []"
+            :key="salon.id ?? salon.nombre"
+            :delay="i * 90"
+            as="article"
+            class="h-full"
+          >
+            <div class="flex h-full flex-col overflow-hidden rounded-3xl bg-white shadow-sombra ring-1 ring-dark/[.07]">
+              <img
+                v-if="salon.imagen"
+                :src="salon.imagen"
+                :alt="`Salón ${salon.nombre} de Nódico`"
+                width="1920"
+                height="1440"
+                loading="lazy"
+                decoding="async"
+                class="aspect-[16/10] w-full object-cover"
+              />
 
-              <p v-if="salon.descripcion" class="mt-7 font-body text-cuerpo leading-relaxed text-dark/70">
-                {{ salon.descripcion }}
-              </p>
+              <div class="flex flex-1 flex-col p-7 sm:p-8">
+                <p class="etiqueta-tecnica text-dark/55">Sala 0{{ i + 1 }}</p>
+                <h2 class="mt-3 font-display text-display-sm font-extrabold text-dark">
+                  {{ salon.nombre }}
+                </h2>
 
-              <!-- Ficha técnica -->
-              <dl class="mt-9 grid grid-cols-2 gap-x-8 gap-y-5 rounded-3xl bg-white p-7 shadow-sombra-sm ring-1 ring-dark/[.07] sm:grid-cols-3">
-                <div v-for="[etiqueta, valor] in ficha(salon)" :key="etiqueta">
-                  <dt class="etiqueta-tecnica text-dark/55">{{ etiqueta }}</dt>
-                  <dd class="mt-2 font-display text-base font-bold text-dark">{{ valor }}</dd>
-                </div>
-              </dl>
-
-              <template v-if="salon.incluye?.length">
-                <h3 class="mt-10 font-display text-lg font-bold text-dark">Incluye</h3>
-                <ul class="mt-5 grid gap-x-6 gap-y-2.5 sm:grid-cols-2">
-                  <li v-for="item in salon.incluye" :key="item" class="flex items-center gap-2.5">
-                    <Check class="h-4 w-4 shrink-0 text-nodo-500" aria-hidden="true" />
-                    <span class="font-body text-sm text-dark/75">{{ item }}</span>
-                  </li>
-                </ul>
-              </template>
+                <dl class="mt-7 grid grid-cols-2 gap-x-6 gap-y-5">
+                  <div v-for="[etiqueta, valor] in ficha(salon)" :key="etiqueta">
+                    <dt class="etiqueta-tecnica text-dark/55">{{ etiqueta }}</dt>
+                    <dd class="mt-1.5 font-display text-base font-bold text-dark">{{ valor }}</dd>
+                  </div>
+                </dl>
+              </div>
             </div>
+          </ScrollReveal>
+        </div>
+
+        <!-- «Incluye» es idéntico en ambas: se lista una sola vez -->
+        <ScrollReveal v-if="incluyeComun.length" class="mt-14">
+          <div class="rounded-3xl bg-white p-8 shadow-sombra-sm ring-1 ring-dark/[.07] sm:p-10">
+            <h2 class="font-display text-display-sm font-extrabold text-dark">
+              Ambas salas incluyen
+            </h2>
+            <ul class="mt-7 grid gap-x-8 gap-y-3 sm:grid-cols-2 lg:grid-cols-3">
+              <li v-for="item in incluyeComun" :key="item" class="flex items-center gap-2.5">
+                <Check class="h-4 w-4 shrink-0 text-nodo-500" aria-hidden="true" />
+                <span class="font-body text-sm text-dark/75">{{ item }}</span>
+              </li>
+            </ul>
           </div>
         </ScrollReveal>
 
-        <ScrollReveal v-if="!salones?.length">
+        <ScrollReveal v-if="!salones?.length" class="mt-14">
           <SectionHeading
             titulo="Salones en actualización"
             align="center"

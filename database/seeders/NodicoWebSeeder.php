@@ -108,7 +108,7 @@ class NodicoWebSeeder extends Seeder
                 'color'            => '#FFDD00',
                 'stripe_url'       => 'https://buy.stripe.com/6oUdR36FQ0v951r4wr6Zy04',
                 'descripcion_corta' => 'Opción accesible para jóvenes emprendedores o estudiantes que necesitan el espacio por horas.',
-                'descripcion_larga' => 'Pensada para jóvenes emprendedores, estudiantes o personas que solo necesitan entrar al espacio de cowork por unas horas y tener acceso a la comunidad emprendedora. Es una opción accesible para quienes están empezando y quieren conectar, trabajar un rato o explorar el ecosistema.',
+                'descripcion_larga' => 'Para quien está empezando y necesita el espacio unas horas: entrar, trabajar un rato, conectar con la comunidad y explorar el ecosistema emprendedor.',
                 'beneficios'       => [
                     '4 días acceso al coworking',
                     '4 horas en sala de creación de contenido (1 por día)',
@@ -149,7 +149,7 @@ class NodicoWebSeeder extends Seeder
                 'color'            => '#864B95',
                 'stripe_url'       => 'https://buy.stripe.com/28EcMZc0agu73Xn6Ez6Zy02',
                 'descripcion_corta' => 'Ideal para emprendedores, freelancers y creadores de contenido que requieren un espacio estable para trabajar.',
-                'descripcion_larga' => 'Pensada para jóvenes emprendedores, ofrece una variedad más amplia de servicios y beneficios diseñados para impulsar el desarrollo de proyectos innovadores y fomentar la colaboración en un entorno dinámico.',
+                'descripcion_larga' => 'La misma libertad que Nodo Pro, pero para dos personas: pensada para socios o duplas que trabajan juntos todos los días.',
                 'beneficios'       => [
                     'Acceso completo al coworking',
                     '20 horas al mes en oficinas privadas y sala de juntas (2 horas por día)',
@@ -180,17 +180,17 @@ class NodicoWebSeeder extends Seeder
     private function salones(): void
     {
         $incluye = [
-            'Proyector.',
-            'Sistema de sonido.',
-            'Servicio de internet.',
-            'Sillas.',
-            'Mesas.',
-            'Manteles.',
-            'Base de micrófono.',
-            'Extensiones.',
-            'Adaptador HDMI.',
-            'Mesa de registro.',
-            'Pódium.',
+            'Proyector',
+            'Sistema de sonido',
+            'Servicio de internet',
+            'Sillas',
+            'Mesas',
+            'Manteles',
+            'Base de micrófono',
+            'Extensiones',
+            'Adaptador HDMI',
+            'Mesa de registro',
+            'Pódium',
         ];
 
         $descripcion = 'Esta sala para eventos ha sido diseñada para ofrecer un ambiente profesional, '
