@@ -55,9 +55,12 @@ return [
     |--------------------------------------------------------------------------
     | SEO
     |--------------------------------------------------------------------------
-    | `host_canonico` fija de una vez si el sitio vive con o sin www. Mientras
-    | esté en null, la canónica usa el host de la petición tal cual.
-    | PENDIENTE: Diego debe decidir para producción.
+    | `host_canonico` fija el origen de la canónica. Diego decidió el 29 de
+    | agosto de 2026: **el sitio vive sin www**, o sea `https://nodico.com.mx`.
+    |
+    | Se deja por entorno en vez de fijo, porque staging tiene su propio host.
+    | Si no se define, se usa `app.url`, que ya apunta al host correcto en cada
+    | entorno; nunca el host de la petición, que es manipulable.
     */
     'host_canonico' => env('NODICO_HOST_CANONICO'),
     'sufijo_titulo' => 'Nódico',

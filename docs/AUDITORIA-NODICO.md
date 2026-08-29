@@ -263,7 +263,7 @@ como estaba redactado, con la razón.
 | # | Estado | Qué se hizo |
 |---|---|---|
 | SEO-01 | OK | `Meta.vue` emite Open Graph y Twitter Card; imágenes sociales 1200x630 generadas (`tools/og.php`). |
-| SEO-02 | ~ | Canónica implementada y compartida desde el middleware, pero **`nodico.host_canonico` queda en `null`: falta saber si producción va con `www` o sin él.** |
+| SEO-02 | OK | **Sin www** (decisión de Diego, 29/08/2026): `https://nodico.com.mx`. El origen sale de `nodico.host_canonico` o, si no está definido, de `app.url`, y se le quita un `www.` inicial si lo lleva. Ya **no** cae al host de la petición: con `trustProxies(at: '*')`, `X-Forwarded-Host` dejaba elegir el host que salía en la canónica, en `og:url` y en el JSON-LD. Pruebas: `test_la_canonica_ignora_el_host_de_la_peticion`, `test_la_canonica_cae_a_app_url`. |
 | SEO-03 | OK | JSON-LD: `LocalBusiness` en el middleware, `OfferCatalog` en membresías y `Event` en comunidad. |
 | SEO-04 | OK | El sufijo «— Nódico» se centraliza en `Meta.vue`. |
 | SEO-05 | OK | `sitemap.xml` dinámico. Prueba: `test_el_sitemap_lista_todas_las_paginas`. |
@@ -318,10 +318,9 @@ el servidor en la fase 7.
 
 ## Lo que necesita tu respuesta
 
-1. **SEO-02** - ¿producción va con `www` o sin él?
-2. **CNT-02** - ¿confirmas el directorio solo en base de datos, sin CRUD, para no tocar `/dashboard`?
-3. **CNT-03** - ¿a dónde debe llevar la ficha de Salabtún?
-4. **Discrepancia #1** - la tercera tarjeta «Yucatán Emprende 1» con 150 pax, ¿es una sala real o un duplicado? Hoy las dos salas tienen datos idénticos en todos los campos.
-5. **BE-04** - el aviso de privacidad y los términos siguen sin validación jurídica del IYEM.
-6. **IMG-08 / IMG-09** - falta la foto original de Salabtún y el logo en vectorial.
-7. Las **17 líneas de texto** que redacté (6 servicios, 5 beneficios, 6 valores) y las descripciones de plan reescritas necesitan el visto bueno de Nódico. Las fotos de beneficios son del espacio, no de cada beneficio, y no hay foto real del estudio de creación de contenido.
+1. **CNT-02** - ¿confirmas el directorio solo en base de datos, sin CRUD, para no tocar `/dashboard`?
+2. **CNT-03** - ¿a dónde debe llevar la ficha de Salabtún?
+3. **Discrepancia #1** - la tercera tarjeta «Yucatán Emprende 1» con 150 pax, ¿es una sala real o un duplicado? Hoy las dos salas tienen datos idénticos en todos los campos.
+4. **BE-04** - el aviso de privacidad y los términos siguen sin validación jurídica del IYEM.
+5. **IMG-08 / IMG-09** - falta la foto original de Salabtún y el logo en vectorial.
+6. Las **17 líneas de texto** que redacté (6 servicios, 5 beneficios, 6 valores) y las descripciones de plan reescritas necesitan el visto bueno de Nódico. Las fotos de beneficios son del espacio, no de cada beneficio, y no hay foto real del estudio de creación de contenido.

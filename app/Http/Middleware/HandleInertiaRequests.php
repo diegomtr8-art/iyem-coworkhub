@@ -47,31 +47,35 @@ class HandleInertiaRequests extends Middleware
 
             // SEO-01..04 — todo lo que consume <Meta>.
             'seo' => [
-                'origen'   => $this->origenCanonico($request),
-                'canonica' => $this->origenCanonico($request) . $request->getPathInfo(),
-                'negocio'  => $this->fichaNegocio($request),
+                'origen'   => $this->origenCanonico(),
+                'canonica' => $this->origenCanonico() . $request->getPathInfo(),
+                'negocio'  => $this->fichaNegocio(),
             ],
         ];
     }
 
     /**
-     * SEO-02 — host canónico. Mientras `nodico.host_canonico` esté sin definir
-     * se usa el host de la petición; en producción hay que fijarlo para decidir
-     * de una vez si el sitio vive con o sin www.
+     * SEO-02 — origen canónico. **El sitio vive sin www** (decisión de Diego del
+     * 29/08/2026), así que un `www.` al principio del host se quita siempre:
+     * quien llegue por www sigue apuntando a la misma URL canónica.
+     *
+     * Ya no se cae al host de la petición. Con `trustProxies(at: '*')`,
+     * `getSchemeAndHttpHost()` respeta la cabecera `X-Forwarded-Host`, de modo
+     * que cualquiera podía elegir el host que aparecía en la canónica, en
+     * `og:url` y en el JSON-LD. `app.url` ya apunta al host correcto en cada
+     * entorno y no depende de la petición.
      */
-    private function origenCanonico(Request $request): string
+    private function origenCanonico(): string
     {
-        $host = config('nodico.host_canonico');
+        $origen = rtrim(config('nodico.host_canonico') ?: config('app.url'), '/');
 
-        return $host
-            ? rtrim($host, '/')
-            : $request->getSchemeAndHttpHost();
+        return preg_replace('#^(https?://)www\\.#i', '$1', $origen);
     }
 
     /** SEO-03 — LocalBusiness con los datos que ya están en config/nodico.php. */
-    private function fichaNegocio(Request $request): array
+    private function fichaNegocio(): array
     {
-        $origen = $this->origenCanonico($request);
+        $origen = $this->origenCanonico();
 
         return [
             '@context'    => 'https://schema.org',

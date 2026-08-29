@@ -191,6 +191,33 @@ class AuditoriaTest extends TestCase
         $this->assertStringContainsString('hero-inicio', $html);
     }
 
+    /**
+     * SEO-02 — el sitio vive sin www, y la canónica no puede depender del host
+     * que mande quien pide: con `trustProxies(at: '*')`, `X-Forwarded-Host`
+     * dejaba elegir el host que salía en la canónica, en `og:url` y en el
+     * JSON-LD.
+     */
+    public function test_la_canonica_ignora_el_host_de_la_peticion(): void
+    {
+        config(['nodico.host_canonico' => 'https://www.nodico.com.mx/']);
+
+        $this->get('/nosotros', ['X-Forwarded-Host' => 'sitio-de-otro.example'])
+            ->assertInertia(fn (AssertableInertia $page) => $page
+                ->where('seo.origen', 'https://nodico.com.mx')
+                ->where('seo.canonica', 'https://nodico.com.mx/nosotros')
+                ->where('seo.negocio.url', 'https://nodico.com.mx'));
+    }
+
+    /** SEO-02 — sin `host_canonico`, el origen sale de `app.url`, no del host. */
+    public function test_la_canonica_cae_a_app_url(): void
+    {
+        config(['nodico.host_canonico' => null, 'app.url' => 'https://nodico.com.mx']);
+
+        $this->get('/membresias', ['X-Forwarded-Host' => 'sitio-de-otro.example'])
+            ->assertInertia(fn (AssertableInertia $page) => $page
+                ->where('seo.canonica', 'https://nodico.com.mx/membresias'));
+    }
+
     /** BE-04 — los textos legales salen de archivos, no del controlador. */
     public function test_las_paginas_legales_vienen_de_markdown(): void
     {
