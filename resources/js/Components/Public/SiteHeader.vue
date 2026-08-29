@@ -1,10 +1,18 @@
 <script setup lang="ts">
-import { Link, usePage } from '@inertiajs/vue3'
-import { Menu, X } from 'lucide-vue-next'
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { atraparFoco, useBloqueoScroll, useInerteFuera } from '@/composables/useBloqueoScroll'
+import { Link, router, usePage } from '@inertiajs/vue3'
+import { ChevronDown, LogOut, Menu, X } from 'lucide-vue-next'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 
 const abierto = ref(false)
 const conFondo = ref(false)
+const menuCuentaAbierto = ref(false)
+
+const dialogo = ref<HTMLElement | null>(null)
+const botonMenu = ref<HTMLElement | null>(null)
+
+const { bloquear, liberar } = useBloqueoScroll()
+const { activar: activarInerte, desactivar: desactivarInerte } = useInerteFuera()
 
 const enlaces = [
   { label: 'Inicio', ruta: 'home' },
@@ -16,6 +24,10 @@ const enlaces = [
 
 const page = usePage()
 const rutaActual = computed(() => page.url.split('?')[0])
+const usuario = computed(() => (page.props.auth as any)?.user ?? null)
+const puedeEntrar = computed(() => Boolean((page.props as any).canLogin))
+const puedeRegistrarse = computed(() => Boolean((page.props as any).canRegister))
+const esAdmin = computed(() => usuario.value?.tipo === 'admin')
 
 function esActivo(ruta: string) {
   const destino = new URL(route(ruta), window.location.origin).pathname
@@ -24,34 +36,70 @@ function esActivo(ruta: string) {
 
 const onScroll = () => (conFondo.value = window.scrollY > 40)
 
-function alternar() {
-  abierto.value = !abierto.value
-  document.body.style.overflow = abierto.value ? 'hidden' : ''
+function abrirMenu() {
+  abierto.value = true
+  bloquear()
+  nextTick(() => {
+    activarInerte(dialogo.value)
+    dialogo.value?.querySelector<HTMLElement>('a, button')?.focus()
+  })
 }
 
-function cerrar() {
+function cerrarMenu(devolverFoco = true) {
+  if (!abierto.value) return
   abierto.value = false
-  document.body.style.overflow = ''
+  desactivarInerte()
+  liberar()
+  if (devolverFoco) nextTick(() => botonMenu.value?.focus())
+}
+
+function alternarMenu() {
+  abierto.value ? cerrarMenu() : abrirMenu()
 }
 
 function alPulsarTecla(e: KeyboardEvent) {
-  if (e.key === 'Escape' && abierto.value) cerrar()
+  if (e.key === 'Escape') {
+    menuCuentaAbierto.value = false
+    if (abierto.value) {
+      e.preventDefault()
+      cerrarMenu()
+    }
+
+    return
+  }
+
+  if (abierto.value) atraparFoco(e, dialogo.value)
+}
+
+function alClicarFuera(e: MouseEvent) {
+  const objetivo = e.target as HTMLElement
+  if (! objetivo.closest('[data-menu-cuenta]')) menuCuentaAbierto.value = false
 }
 
 onMounted(() => {
   onScroll()
   window.addEventListener('scroll', onScroll, { passive: true })
   document.addEventListener('keydown', alPulsarTecla)
+  document.addEventListener('click', alClicarFuera)
 })
 
 onBeforeUnmount(() => {
   window.removeEventListener('scroll', onScroll)
   document.removeEventListener('keydown', alPulsarTecla)
-  document.body.style.overflow = ''
+  document.removeEventListener('click', alClicarFuera)
+  desactivarInerte()
+  liberar()
 })
 
-// Al navegar se cierra el menú.
-watch(rutaActual, cerrar)
+// Al navegar se cierra el menú, sin robarle el foco al destino.
+watch(rutaActual, () => {
+  cerrarMenu(false)
+  menuCuentaAbierto.value = false
+})
+
+function cerrarSesion() {
+  router.post(route('logout'))
+}
 </script>
 
 <template>
@@ -59,8 +107,13 @@ watch(rutaActual, cerrar)
     class="fixed inset-x-0 top-0 z-50 transition-all duration-300 ease-salida"
     :class="conFondo && !abierto ? 'bg-tinta/90 shadow-sombra backdrop-blur-md' : 'bg-gradient-to-b from-tinta/70 to-transparent'"
   >
-    <nav class="mx-auto flex max-w-7xl items-center justify-between px-5 py-4 sm:px-8" aria-label="Navegación principal">
-      <Link :href="route('home')" class="shrink-0 rounded" @click="cerrar">
+    <!-- Tres zonas con grid: logo · navegación centrada · acciones.
+         Con posicionamiento absoluto el nav se encimaba con el logo a 1024 px. -->
+    <nav
+      class="mx-auto grid max-w-7xl grid-cols-[auto_1fr_auto] items-center gap-6 px-5 py-4 sm:px-8"
+      aria-label="Navegación principal"
+    >
+      <Link :href="route('home')" class="shrink-0 rounded" @click="cerrarMenu(false)">
         <img
           src="/img/nodico/logo-nodico-blanco.png"
           alt="Nódico — inicio"
@@ -70,7 +123,9 @@ watch(rutaActual, cerrar)
         />
       </Link>
 
-      <ul class="hidden items-center gap-9 lg:flex">
+      <!-- Se oculta ya en xl para que entre 1024 y 1280 px no se apretujen los
+           cinco enlaces con las dos acciones. -->
+      <ul class="hidden items-center justify-center gap-7 xl:flex">
         <li v-for="enlace in enlaces" :key="enlace.ruta">
           <Link
             :href="route(enlace.ruta)"
@@ -85,31 +140,82 @@ watch(rutaActual, cerrar)
             />
           </Link>
         </li>
-        <li>
-          <Link
-            :href="route('membresias')"
-            class="inline-flex min-h-[44px] items-center rounded-xl bg-nodo-400 px-5 py-2
-                   font-display text-sm font-bold text-dark transition hover:-translate-y-0.5 hover:shadow-sombra"
-          >
-            Únete
-          </Link>
-        </li>
       </ul>
 
-      <button
-        type="button"
-        class="flex h-11 w-11 items-center justify-center rounded text-white transition hover:text-nodo-400 lg:hidden"
-        :aria-expanded="abierto"
-        aria-controls="menu-movil"
-        :aria-label="abierto ? 'Cerrar menú' : 'Abrir menú'"
-        @click="alternar"
-      >
-        <X v-if="abierto" class="h-7 w-7" aria-hidden="true" />
-        <Menu v-else class="h-7 w-7" aria-hidden="true" />
-      </button>
+      <div class="col-start-3 flex items-center justify-end gap-3">
+        <div v-if="usuario" class="relative hidden xl:block" data-menu-cuenta>
+          <button
+            type="button"
+            class="flex min-h-[44px] items-center gap-2 rounded-xl px-3 font-body text-sm text-white transition hover:text-nodo-400"
+            :aria-expanded="menuCuentaAbierto"
+            aria-haspopup="menu"
+            @click="menuCuentaAbierto = !menuCuentaAbierto"
+          >
+            <span class="flex h-8 w-8 items-center justify-center rounded-full bg-nodo-400 font-display text-xs font-bold uppercase text-dark">
+              {{ usuario.name?.charAt(0) }}
+            </span>
+            {{ usuario.name?.split(' ')[0] }}
+            <ChevronDown class="h-4 w-4" aria-hidden="true" />
+          </button>
+
+          <div
+            v-if="menuCuentaAbierto"
+            role="menu"
+            class="absolute right-0 mt-2 w-52 overflow-hidden rounded-xl bg-white shadow-sombra ring-1 ring-dark/10"
+          >
+            <Link
+              :href="esAdmin ? route('dashboard') : route('portal.dashboard')"
+              role="menuitem"
+              class="flex min-h-[44px] items-center px-4 font-body text-sm text-dark transition hover:bg-cream"
+            >
+              {{ esAdmin ? 'Dashboard' : 'Mi portal' }}
+            </Link>
+            <button
+              type="button"
+              role="menuitem"
+              class="flex min-h-[44px] w-full items-center gap-2 px-4 font-body text-sm text-dark transition hover:bg-cream"
+              @click="cerrarSesion"
+            >
+              <LogOut class="h-4 w-4" aria-hidden="true" />
+              Cerrar sesión
+            </button>
+          </div>
+        </div>
+
+        <template v-else>
+          <Link
+            v-if="puedeEntrar"
+            :href="route('login')"
+            class="hidden min-h-[44px] items-center px-2 font-body text-sm font-medium text-white transition hover:text-nodo-400 xl:flex"
+          >
+            Iniciar sesión
+          </Link>
+          <Link
+            v-if="puedeRegistrarse"
+            :href="route('register')"
+            class="hidden min-h-[44px] items-center rounded-xl bg-nodo-400 px-5 font-display text-sm font-bold text-dark transition hover:-translate-y-0.5 hover:shadow-sombra xl:flex"
+          >
+            Registrarse
+          </Link>
+        </template>
+
+        <button
+          ref="botonMenu"
+          type="button"
+          class="flex h-11 w-11 items-center justify-center rounded text-white transition hover:text-nodo-400 xl:hidden"
+          :aria-expanded="abierto"
+          aria-controls="menu-movil"
+          :aria-label="abierto ? 'Cerrar menú' : 'Abrir menú'"
+          @click="alternarMenu"
+        >
+          <X v-if="abierto" class="h-7 w-7" aria-hidden="true" />
+          <Menu v-else class="h-7 w-7" aria-hidden="true" />
+        </button>
+      </div>
     </nav>
 
-    <!-- Menú móvil a pantalla completa -->
+    <!-- A11Y-01 — diálogo real: atrapa el foco, marca el resto como inert y
+         solo cierra al tocar el fondo, no cualquier hueco del contenedor. -->
     <Transition
       enter-active-class="transition-all duration-300 ease-salida"
       enter-from-class="opacity-0 -translate-y-4"
@@ -119,36 +225,77 @@ watch(rutaActual, cerrar)
       <div
         v-if="abierto"
         id="menu-movil"
-        class="fixed inset-0 top-0 z-40 flex h-[100svh] flex-col bg-tinta lg:hidden"
-        @click.self="cerrar"
+        ref="dialogo"
+        role="dialog"
+        aria-modal="true"
+        aria-label="Menú de navegación"
+        class="fixed inset-0 top-0 z-40 h-[100svh] bg-tinta xl:hidden"
       >
-        <ul class="flex flex-1 flex-col justify-center gap-2 px-6 pb-24 pt-24">
-          <li v-for="(enlace, i) in enlaces" :key="enlace.ruta">
-            <Link
-              :href="route(enlace.ruta)"
-              :aria-current="esActivo(enlace.ruta) ? 'page' : undefined"
-              class="flex min-h-[56px] items-baseline gap-4 py-2 font-display text-4xl font-extrabold
-                     transition-colors sm:text-5xl"
-              :class="esActivo(enlace.ruta) ? 'text-nodo-400' : 'text-white hover:text-nodo-400'"
-              @click="cerrar"
-            >
-              <span class="etiqueta-tecnica text-white/35" aria-hidden="true">
-                0{{ i + 1 }}
-              </span>
-              {{ enlace.label }}
-            </Link>
-          </li>
-        </ul>
+        <div class="absolute inset-0" aria-hidden="true" @click="cerrarMenu()" />
 
-        <div class="pb-segura px-6">
-          <Link
-            :href="route('membresias')"
-            class="flex min-h-[56px] w-full items-center justify-center rounded-xl bg-nodo-400
-                   px-6 py-4 font-display text-base font-bold text-dark"
-            @click="cerrar"
-          >
-            Únete a Nódico
-          </Link>
+        <div class="relative flex h-full flex-col">
+          <ul class="flex flex-1 flex-col justify-center gap-1 px-6 pb-6 pt-24">
+            <li v-for="(enlace, i) in enlaces" :key="enlace.ruta">
+              <Link
+                :href="route(enlace.ruta)"
+                :aria-current="esActivo(enlace.ruta) ? 'page' : undefined"
+                class="flex min-h-[56px] items-baseline gap-4 py-1.5 font-display text-4xl font-extrabold transition-colors sm:text-5xl"
+                :class="esActivo(enlace.ruta) ? 'text-nodo-400' : 'text-white hover:text-nodo-400'"
+                @click="cerrarMenu(false)"
+              >
+                <span class="etiqueta-tecnica text-white/65" aria-hidden="true">0{{ i + 1 }}</span>
+                {{ enlace.label }}
+              </Link>
+            </li>
+          </ul>
+
+          <div class="pb-segura space-y-3 px-6">
+            <template v-if="usuario">
+              <Link
+                :href="esAdmin ? route('dashboard') : route('portal.dashboard')"
+                class="flex min-h-[56px] w-full items-center justify-center rounded-xl bg-nodo-400 px-6 font-display text-base font-bold text-dark"
+                @click="cerrarMenu(false)"
+              >
+                {{ esAdmin ? 'Dashboard' : 'Mi portal' }}
+              </Link>
+              <button
+                type="button"
+                class="flex min-h-[56px] w-full items-center justify-center gap-2 rounded-xl border border-white/25 px-6 font-display text-base font-bold text-white"
+                @click="cerrarSesion"
+              >
+                <LogOut class="h-4 w-4" aria-hidden="true" />
+                Cerrar sesión
+              </button>
+            </template>
+
+            <template v-else>
+              <Link
+                :href="route('membresias')"
+                class="flex min-h-[56px] w-full items-center justify-center rounded-xl bg-nodo-400 px-6 font-display text-base font-bold text-dark"
+                @click="cerrarMenu(false)"
+              >
+                Únete a Nódico
+              </Link>
+              <div class="grid grid-cols-2 gap-3">
+                <Link
+                  v-if="puedeEntrar"
+                  :href="route('login')"
+                  class="flex min-h-[56px] items-center justify-center rounded-xl border border-white/25 px-4 font-display text-base font-bold text-white"
+                  @click="cerrarMenu(false)"
+                >
+                  Iniciar sesión
+                </Link>
+                <Link
+                  v-if="puedeRegistrarse"
+                  :href="route('register')"
+                  class="flex min-h-[56px] items-center justify-center rounded-xl border border-white/25 px-4 font-display text-base font-bold text-white"
+                  @click="cerrarMenu(false)"
+                >
+                  Registrarse
+                </Link>
+              </div>
+            </template>
+          </div>
         </div>
       </div>
     </Transition>

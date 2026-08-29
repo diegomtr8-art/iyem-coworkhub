@@ -160,7 +160,7 @@ const valores = [
                 class="h-14 w-14 shrink-0 object-contain transition-transform duration-500 ease-salida group-hover:scale-110"
               />
               <div>
-                <p class="etiqueta-tecnica text-dark/30">{{ String(i + 1).padStart(2, '0') }}</p>
+                <p class="etiqueta-tecnica text-dark/55" aria-hidden="true">{{ String(i + 1).padStart(2, '0') }}</p>
                 <p class="mt-2 font-display text-base font-bold leading-snug text-dark sm:text-lg">
                   {{ valor.titulo }}
                 </p>

@@ -44,7 +44,7 @@ function volverArriba() {
             <h2 class="max-w-2xl font-display text-display-md font-extrabold text-dark">
               ¿Listo para empezar?
             </h2>
-            <p class="mt-4 max-w-lg font-body text-cuerpo-lg text-dark/70">
+            <p class="mt-4 max-w-lg font-body text-cuerpo-lg text-dark/85">
               Elige tu membresía y trabaja desde el primer día en la comunidad emprendedora de Yucatán.
             </p>
           </div>
@@ -131,7 +131,7 @@ function volverArriba() {
                 <Clock class="mt-0.5 h-4 w-4 shrink-0 text-nodo-400" aria-hidden="true" />
                 <div>
                   <p class="font-body text-sm text-white/65">{{ nodico.horarios }}</p>
-                  <p v-if="nodico.horariosDetalle" class="font-body text-sm text-white/35">
+                  <p v-if="nodico.horariosDetalle" class="font-body text-sm text-white/60">
                     {{ nodico.horariosDetalle }}
                   </p>
                 </div>
@@ -160,7 +160,7 @@ function volverArriba() {
         <!-- Aliados + facturación -->
         <div class="mt-16 grid gap-10 border-t border-white/10 pt-10 lg:grid-cols-[1.4fr_1fr]">
           <div>
-            <h2 class="etiqueta-tecnica text-white/35">Con el respaldo de</h2>
+            <h2 class="etiqueta-tecnica text-white/60">Con el respaldo de</h2>
             <ul class="mt-6 flex flex-wrap items-center gap-x-10 gap-y-6">
               <li v-for="aliado in aliados" :key="aliado.nombre">
                 <img
@@ -176,7 +176,7 @@ function volverArriba() {
             </ul>
           </div>
 
-          <p class="font-body text-sm leading-relaxed text-white/45">
+          <p class="font-body text-sm leading-relaxed text-white/65">
             Para solicitar su factura, escriba a
             <a
               :href="`mailto:${nodico.email}?subject=Solicitud%20de%20factura`"
@@ -190,7 +190,7 @@ function volverArriba() {
       <!-- Barra inferior -->
       <div class="border-t border-white/10">
         <div class="pb-segura mx-auto flex max-w-7xl flex-col gap-4 px-5 pt-6 sm:px-8 lg:flex-row lg:items-center lg:justify-between">
-          <p class="max-w-2xl font-body text-xs leading-relaxed text-white/40">
+          <p class="max-w-2xl font-body text-xs leading-relaxed text-white/60">
             Nódico es una marca registrada del Instituto Yucateco de Emprendedores.
             Todos los derechos reservados. © {{ anio }}
           </p>

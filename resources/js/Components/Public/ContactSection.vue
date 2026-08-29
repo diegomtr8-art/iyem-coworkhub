@@ -189,7 +189,9 @@ function enviar() {
 
         <!-- Tarjeta elevada del formulario -->
         <div class="self-start rounded-3xl bg-white p-6 shadow-sombra-lg ring-1 ring-dark/[.07] sm:p-9 lg:sticky lg:top-28">
-          <form novalidate @submit.prevent="enviar">
+          <!-- A11Y-06: `relative` para que el honeypot en left:-9999px se
+               posicione contra el formulario y no contra un ancestro incierto. -->
+          <form class="relative" novalidate @submit.prevent="enviar">
             <!-- Trampa antibots: fuera de pantalla, nunca enfocable -->
             <div class="absolute left-[-9999px]" aria-hidden="true">
               <label for="contacto-sitio-web">No llenar</label>

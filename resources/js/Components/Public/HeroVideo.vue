@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import Boton from '@/Components/Public/Boton.vue'
+import { atraparFoco, useBloqueoScroll } from '@/composables/useBloqueoScroll'
 import { Clock, MapPin, Pause, Phone, Play, Volume2, VolumeX, X } from 'lucide-vue-next'
 import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
 
@@ -22,7 +23,7 @@ const marco = ref<HTMLIFrameElement | null>(null)
 const modal = ref<HTMLElement | null>(null)
 const botonCerrar = ref<HTMLElement | null>(null)
 
-const esIPhone = ref(false)
+const esTactil = ref(false)
 const sinMovimiento = ref(false)
 const cargarFondo = ref(false)
 const modalAbierto = ref(false)
@@ -32,6 +33,7 @@ const enPausa = ref(false)
 const videoVisible = ref(false)
 
 let focoPrevio: HTMLElement | null = null
+const { bloquear, liberar } = useBloqueoScroll()
 let temporizadorVideo: number | undefined
 /** Cualquiera de estos gestos adelanta la carga del video. */
 const disparadores = ['scroll', 'pointerdown', 'keydown', 'wheel', 'touchstart'] as const
@@ -68,7 +70,7 @@ const modalSrc = computed(() =>
   '?autoplay=1&rel=0&modestbranding=1&playsinline=1',
 )
 
-const usaVideoFondo = computed(() => !esIPhone.value && !sinMovimiento.value)
+const usaVideoFondo = computed(() => !esTactil.value && !sinMovimiento.value)
 
 /** Los navegadores solo permiten quitar el silencio a partir de un gesto del usuario. */
 function ordenar(func: string, args: unknown[] = []) {
@@ -110,13 +112,13 @@ function abrirModal() {
   }
   focoPrevio = document.activeElement as HTMLElement
   modalAbierto.value = true
-  document.body.style.overflow = 'hidden'
+  bloquear()
   nextTick(() => botonCerrar.value?.focus())
 }
 
 function cerrarModal() {
   modalAbierto.value = false
-  document.body.style.overflow = ''
+  liberar()
   focoPrevio?.focus()
 }
 
@@ -129,27 +131,14 @@ function alPulsarTecla(e: KeyboardEvent) {
     return
   }
 
-  if (e.key !== 'Tab' || !modal.value) return
-
-  const enfocables = modal.value.querySelectorAll<HTMLElement>(
-    'button, [href], iframe, input, select, textarea, [tabindex]:not([tabindex="-1"])',
-  )
-  if (!enfocables.length) return
-
-  const primero = enfocables[0]
-  const ultimo = enfocables[enfocables.length - 1]
-
-  if (e.shiftKey && document.activeElement === primero) {
-    e.preventDefault()
-    ultimo.focus()
-  } else if (!e.shiftKey && document.activeElement === ultimo) {
-    e.preventDefault()
-    primero.focus()
-  }
+  atraparFoco(e, modal.value)
 }
 
 onMounted(() => {
-  esIPhone.value = /iPhone|iPod/.test(navigator.userAgent)
+  // FE-05: decidir por capacidad, no por userAgent. El iPad moderno se
+  // anuncia como Mac y recibia el video de fondo pese a las mismas
+  // restricciones de reproduccion.
+  esTactil.value = window.matchMedia('(hover: none) and (pointer: coarse)').matches
   sinMovimiento.value = window.matchMedia('(prefers-reduced-motion: reduce)').matches
 
   document.addEventListener('keydown', alPulsarTecla)
@@ -171,7 +160,7 @@ onMounted(() => {
 onBeforeUnmount(() => {
   document.removeEventListener('keydown', alPulsarTecla)
   limpiarDisparadores()
-  document.body.style.overflow = ''
+  liberar()
 })
 </script>
 

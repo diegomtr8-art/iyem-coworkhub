@@ -120,7 +120,7 @@ const fichaSalon = computed(() => {
                 class="h-14 w-14 shrink-0 object-contain transition-transform duration-500 ease-salida group-hover:scale-110"
               />
               <div>
-                <p class="etiqueta-tecnica text-dark/30">{{ String(i + 1).padStart(2, '0') }}</p>
+                <p class="etiqueta-tecnica text-dark/55" aria-hidden="true">{{ String(i + 1).padStart(2, '0') }}</p>
                 <p class="mt-2 font-display text-base font-bold leading-snug text-dark sm:text-lg">
                   {{ servicio.titulo }}
                 </p>
@@ -228,7 +228,7 @@ const fichaSalon = computed(() => {
             Tu day-pass siempre es gratuito.
           </p>
 
-          <p class="mt-7 max-w-lg font-body text-cuerpo-lg text-dark/70">
+          <p class="mt-7 max-w-lg font-body text-cuerpo-lg text-dark/80">
             Si tu negocio está fuera de Mérida y necesitas un lugar para tener una junta,
             trabajar un rato o presentar tu proyecto, el espacio es tuyo sin costo.
           </p>
@@ -267,7 +267,7 @@ const fichaSalon = computed(() => {
 
           <dl class="mt-10 grid grid-cols-2 gap-x-8 gap-y-5 sm:grid-cols-3">
             <div v-for="[etiqueta, valor] in fichaSalon" :key="etiqueta">
-              <dt class="etiqueta-tecnica text-white/40">{{ etiqueta }}</dt>
+              <dt class="etiqueta-tecnica text-white/60">{{ etiqueta }}</dt>
               <dd class="mt-2 font-display text-lg font-bold text-white">{{ valor }}</dd>
             </div>
           </dl>

@@ -22,7 +22,7 @@ withDefaults(defineProps<{
       v-if="etiqueta"
       class="etiqueta-tecnica mb-5 flex items-center gap-3"
       :class="[
-        tono === 'claro' ? 'text-nodo-400' : 'text-dark/45',
+        tono === 'claro' ? 'text-nodo-400' : 'text-dark/55',
         align === 'center' ? 'justify-center' : '',
       ]"
     >

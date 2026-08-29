@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import { ChevronLeft, ChevronRight, Check, Star } from 'lucide-vue-next'
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import type { Plan } from '@/tipos'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 
 const props = withDefaults(defineProps<{
-  planes: any[]
+  planes: Plan[]
   /** En /membresias se muestran los beneficios completos; en la portada, un resumen. */
   detallado?: boolean
 }>(), {
@@ -17,17 +18,23 @@ const sinMovimiento = ref(false)
 
 let temporizador: number | undefined
 let observadorTamano: ResizeObserver | undefined
+let reanudar: number | undefined
 let arrastrando = false
+let arrastreConRaton = false
 let inicioX = 0
 let inicioScroll = 0
 let recorrido = 0
 
 const total = computed(() => props.planes.length)
 
+// FE-13: si la lista cambia de tamano quedaban referencias a nodos ya
+// desmontados. Se vacia y Vue vuelve a poblarla en el render.
+watch(total, () => { tarjetas.value = [] })
+
 const precio = (valor: number) =>
   Number(valor).toLocaleString('es-MX', { style: 'currency', currency: 'MXN', minimumFractionDigits: 0 })
 
-const titulo = (plan: any) =>
+const titulo = (plan: Plan) =>
   (plan.personas ?? 1) > 1 ? `${plan.nombre} (${plan.personas} pax)` : plan.nombre
 
 /** Desplaza para dejar centrada la tarjeta `i`. */
@@ -44,8 +51,15 @@ function irA(i: number, suave = true) {
   indiceActivo.value = i
 }
 
-const anterior = () => irA(Math.max(0, indiceActivo.value - 1))
-const siguiente = () => irA(Math.min(total.value - 1, indiceActivo.value + 1))
+function anterior() {
+  pausarTrasInteractuar()
+  irA(Math.max(0, indiceActivo.value - 1))
+}
+
+function siguiente() {
+  pausarTrasInteractuar()
+  irA(Math.min(total.value - 1, indiceActivo.value + 1))
+}
 
 /** Recalcula qué tarjeta está más cerca del centro del contenedor. */
 function alDesplazar() {
@@ -75,25 +89,38 @@ function arrancarAutoplay() {
   temporizador = window.setInterval(() => {
     const siguienteIndice = indiceActivo.value >= total.value - 1 ? 0 : indiceActivo.value + 1
     irA(siguienteIndice)
-  }, 5000)
+  }, 6000)
+}
+
+/**
+ * FE-04 — tras un swipe el autoplay se reanudaba de inmediato y arrastraba la
+ * tarjeta que la persona acababa de elegir. Ahora espera 12 s desde la ultima
+ * interaccion.
+ */
+function pausarTrasInteractuar() {
+  detenerAutoplay()
+  if (reanudar) window.clearTimeout(reanudar)
+  reanudar = window.setTimeout(arrancarAutoplay, 12000)
 }
 
 function detenerAutoplay() {
-  if (!temporizador) return
-  window.clearInterval(temporizador)
-  temporizador = undefined
+  if (temporizador) {
+    window.clearInterval(temporizador)
+    temporizador = undefined
+  }
 }
 
 // ── Arrastre con ratón ──────────────────────────────────────────────
 function alPresionar(e: PointerEvent) {
   if (e.pointerType !== 'mouse' || !pista.value) return
   arrastrando = true
+  arrastreConRaton = true
   recorrido = 0
   inicioX = e.clientX
   inicioScroll = pista.value.scrollLeft
   // El snap pelea con el desplazamiento manual; se desactiva mientras se arrastra.
   pista.value.style.scrollSnapType = 'none'
-  detenerAutoplay()
+  pausarTrasInteractuar()
 }
 
 function alMover(e: PointerEvent) {
@@ -110,9 +137,13 @@ function alSoltar() {
   irA(indiceActivo.value)
 }
 
-/** Tras arrastrar, el click sobre el CTA no debe dispararse. */
+/**
+ * Tras arrastrar, el click sobre el CTA no debe dispararse.
+ * FE-14: 6 px era menos que el temblor normal de un dedo y se perdian toques
+ * en iPhone. Se sube a 12 px y solo aplica cuando se arrastro con raton.
+ */
 function alHacerClic(e: MouseEvent) {
-  if (recorrido > 6) {
+  if (arrastreConRaton && recorrido > 12) {
     e.preventDefault()
     e.stopPropagation()
     recorrido = 0
@@ -154,6 +185,7 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
   detenerAutoplay()
+  if (reanudar) window.clearTimeout(reanudar)
   observadorTamano?.disconnect()
 })
 </script>
@@ -168,6 +200,7 @@ onBeforeUnmount(() => {
     @pointerenter="detenerAutoplay"
     @pointerleave="arrancarAutoplay"
     @focusin="detenerAutoplay"
+    @focusout="arrancarAutoplay"
   >
     <!-- Flechas: solo desktop, el móvil usa swipe -->
     <button
@@ -197,8 +230,11 @@ onBeforeUnmount(() => {
     <div
       ref="pista"
       tabindex="0"
+      role="group"
+      aria-label="Membresías, desplázate con las flechas izquierda y derecha"
       class="sin-scrollbar flex snap-x snap-mandatory gap-5 overflow-x-auto scroll-smooth py-10
-             focus-visible:outline-none"
+             focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4
+             focus-visible:outline-nodo-500"
       :class="arrastrando ? 'cursor-grabbing select-none' : 'cursor-grab'"
       @scroll.passive="alDesplazar"
       @pointerdown="alPresionar"
@@ -275,16 +311,17 @@ onBeforeUnmount(() => {
       </article>
     </div>
 
-    <!-- Puntos indicadores: protagonistas en móvil -->
-    <div class="mt-2 flex items-center justify-center gap-2.5 lg:hidden">
+    <!-- A11Y-03: patrón de pestañas; `aria-current` no era el valor adecuado -->
+    <div class="mt-2 flex items-center justify-center gap-2.5 lg:hidden" role="tablist" aria-label="Membresías">
       <button
         v-for="(plan, i) in planes"
         :key="`punto-${i}`"
         type="button"
+        role="tab"
         class="flex h-11 w-11 items-center justify-center"
         :aria-label="`Ir a ${titulo(plan)}`"
-        :aria-current="indiceActivo === i ? 'true' : undefined"
-        @click="irA(i)"
+        :aria-selected="indiceActivo === i"
+        @click="pausarTrasInteractuar(); irA(i)"
       >
         <span
           class="block h-2 rounded-full transition-all duration-300"
@@ -292,5 +329,10 @@ onBeforeUnmount(() => {
         />
       </button>
     </div>
+
+    <!-- Con autoplay, un lector de pantalla no se enteraba del cambio. -->
+    <p class="sr-only" role="status" aria-live="polite">
+      Membresía {{ indiceActivo + 1 }} de {{ total }}: {{ titulo(planes[indiceActivo]) }}
+    </p>
   </div>
 </template>

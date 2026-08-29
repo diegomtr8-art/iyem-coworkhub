@@ -91,7 +91,7 @@ const ficha = (salon: any) => [
               <!-- Ficha técnica -->
               <dl class="mt-9 grid grid-cols-2 gap-x-8 gap-y-5 rounded-3xl bg-white p-7 shadow-sombra-sm ring-1 ring-dark/[.07] sm:grid-cols-3">
                 <div v-for="[etiqueta, valor] in ficha(salon)" :key="etiqueta">
-                  <dt class="etiqueta-tecnica text-dark/35">{{ etiqueta }}</dt>
+                  <dt class="etiqueta-tecnica text-dark/55">{{ etiqueta }}</dt>
                   <dd class="mt-2 font-display text-base font-bold text-dark">{{ valor }}</dd>
                 </div>
               </dl>
@@ -148,12 +148,12 @@ const ficha = (salon: any) => [
 
           <ScrollReveal from="right" class="grid gap-4 sm:grid-cols-2">
             <div class="rounded-3xl bg-white/[.06] p-7 ring-1 ring-white/10">
-              <p class="etiqueta-tecnica text-white/40">Hasta 25 pax</p>
+              <p class="etiqueta-tecnica text-white/60">Hasta 25 pax</p>
               <p class="mt-3 font-display text-4xl font-extrabold text-nodo-400">$45</p>
               <p class="mt-1 font-body text-sm text-white/55">MXN por persona</p>
             </div>
             <div class="rounded-3xl bg-white/[.06] p-7 ring-1 ring-white/10">
-              <p class="etiqueta-tecnica text-white/40">Desde 100 pax</p>
+              <p class="etiqueta-tecnica text-white/60">Desde 100 pax</p>
               <p class="mt-3 font-display text-4xl font-extrabold text-nodo-400">$35</p>
               <p class="mt-1 font-body text-sm text-white/55">MXN por persona</p>
             </div>

@@ -61,7 +61,7 @@ const comoFunciona = [
           Precios competitivos
         </h1>
 
-        <p class="mt-7 max-w-2xl font-body text-cuerpo-lg text-dark/70">
+        <p class="mt-7 max-w-2xl font-body text-cuerpo-lg text-dark/80">
           Cuatro planes para etapas distintas: desde un día suelto hasta acceso ilimitado para dos
           personas. Todos incluyen comunidad, café y wifi.
         </p>
@@ -133,7 +133,7 @@ const comoFunciona = [
               <span class="flex h-12 w-12 items-center justify-center rounded-2xl bg-nodo-400">
                 <component :is="paso.icono" class="h-5 w-5 text-dark" aria-hidden="true" />
               </span>
-              <span class="etiqueta-tecnica text-white/35" aria-hidden="true">
+              <span class="etiqueta-tecnica text-white/60" aria-hidden="true">
                 0{{ i + 1 }}
               </span>
             </div>
@@ -143,7 +143,7 @@ const comoFunciona = [
           </div>
         </ScrollReveal>
 
-        <p class="mx-auto mt-12 max-w-2xl text-center font-body text-sm text-white/45">
+        <p class="mx-auto mt-12 max-w-2xl text-center font-body text-sm text-white/65">
           ¿Eres emprendedor o artesano del interior del estado? Tu day-pass siempre es gratuito:
           escríbenos y te damos acceso sin costo.
         </p>

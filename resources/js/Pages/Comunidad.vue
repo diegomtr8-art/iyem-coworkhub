@@ -249,7 +249,7 @@ const fechaLarga = (valor: string) =>
                   <h3 class="font-display text-base font-bold text-dark">{{ negocio.nombre }}</h3>
                   <p class="mt-0.5 font-body text-sm text-dark/50">@{{ negocio.instagram }}</p>
                 </div>
-                <Instagram class="h-5 w-5 shrink-0 text-dark/30 transition group-hover:text-dark" aria-hidden="true" />
+                <Instagram class="h-5 w-5 shrink-0 text-dark/55 transition group-hover:text-dark" aria-hidden="true" />
               </div>
             </a>
           </li>
