@@ -151,6 +151,7 @@ class RolesYPortalesTest extends TestCase
             'email'                 => 'intrusa@example.com',
             'password'              => 'MiClaveNodico2026',
             'password_confirmation' => 'MiClaveNodico2026',
+            'acepta_legales'        => true,
             'tipo'                  => RolUsuario::Admin->value,
             'estado_cuenta'         => EstadoCuenta::Activa->value,
         ]);
@@ -189,6 +190,7 @@ class RolesYPortalesTest extends TestCase
             'email'                 => 'nueva@example.com',
             'password'              => 'MiClaveNodico2026',
             'password_confirmation' => 'MiClaveNodico2026',
+            'acepta_legales'        => true,
         ]);
 
         $usuario = User::where('email', 'nueva@example.com')->firstOrFail();

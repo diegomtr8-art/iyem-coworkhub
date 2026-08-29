@@ -6,6 +6,7 @@ use App\Enums\EstadoCuenta;
 use App\Enums\RolUsuario;
 use App\Http\Controllers\Controller;
 use App\Models\Comunicado;
+use App\Models\Consentimiento;
 use App\Models\User;
 use App\Notifications\CuentaYaExiste;
 use Illuminate\Auth\Events\Registered;
@@ -50,6 +51,17 @@ class RegisteredUserController extends Controller
             'telefono'  => 'nullable|string|max:20',
             'empresa'   => 'nullable|string|max:255',
             'ocupacion' => 'nullable|string|max:255',
+
+            /*
+             * E — La casilla legal se valida **en el servidor**.
+             *
+             * En el formulario ya bloquea el envio, pero eso es cortesia: sin
+             * esta regla bastaria un `curl` para crear cuentas sin
+             * consentimiento, y la constancia que guardamos seria falsa.
+             */
+            'acepta_legales' => 'accepted',
+        ], [
+            'acepta_legales.accepted' => 'Para crear tu cuenta necesitas aceptar el aviso de privacidad y los terminos.',
         ]);
 
         $correo = Str::lower(trim($datos['email']));
@@ -59,7 +71,7 @@ class RegisteredUserController extends Controller
 
             $enviado = $this->avisarQueYaExiste($existente);
         } else {
-            $enviado = $this->crearMiembro($datos, $correo);
+            $enviado = $this->crearMiembro($datos, $correo, $request);
         }
 
         return redirect()
@@ -91,7 +103,7 @@ class RegisteredUserController extends Controller
      *
      * @return bool si el correo de verificación llegó a salir
      */
-    private function crearMiembro(array $datos, string $correo): bool
+    private function crearMiembro(array $datos, string $correo, Request $request): bool
     {
         $usuario = new User();
 
@@ -113,6 +125,10 @@ class RegisteredUserController extends Controller
             'estado_cuenta' => EstadoCuenta::Pendiente->value,
             'face_id_ok'    => false,
         ])->save();
+
+        // E — La constancia se guarda con la version aceptada, la fecha y la IP,
+        // que es lo que sirve el dia que alguien lo reclame.
+        Consentimiento::registrar($usuario, $request);
 
         Comunicado::create([
             'user_id' => $usuario->id,

@@ -80,6 +80,24 @@ class WelcomeController extends Controller
      */
     private function documentoLegal(string $nombre)
     {
+        // E — El parseo y la version viven en `DocumentosLegales`, para que no
+        // haya dos lecturas distintas del mismo archivo.
+        $clave = collect(\App\Support\DocumentosLegales::DOCUMENTOS)
+            ->search(fn ($d) => $d['archivo'] === $nombre);
+
+        if ($clave !== false) {
+            $doc = app(\App\Support\DocumentosLegales::class)->leer($clave);
+
+            return Inertia::render('Legal/Documento', [
+                ...$this->authProps(),
+                'titulo'      => $doc['titulo'],
+                'descripcion' => $doc['descripcion'],
+                'version'     => $doc['version'],
+                'provisional' => $doc['provisional'],
+                'contenido'   => $doc['contenido'],
+            ]);
+        }
+
         $ruta = resource_path("legal/{$nombre}.md");
         abort_unless(is_file($ruta), 404);
 

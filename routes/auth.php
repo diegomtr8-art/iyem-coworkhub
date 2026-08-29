@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\Auth\ConfirmablePasswordController;
+use App\Http\Controllers\Auth\ConsentimientoController;
 use App\Http\Controllers\Auth\DesafioDosFactoresController;
 use App\Http\Controllers\Auth\DosFactoresController;
 use App\Http\Controllers\Auth\EnlaceMagicoController;
@@ -126,6 +127,19 @@ Route::middleware('auth')->group(function () {
 
     Route::post('logout', [AuthenticatedSessionController::class, 'destroy'])
         ->name('logout');
+
+    /*
+     * E — Consentimiento.
+     *
+     * **Sin** `consentimiento.vigente`, igual que la pantalla de cuenta
+     * suspendida: si la ruta que es destino de la redireccion llevara el
+     * middleware que redirige, se llamaria a si misma para siempre.
+     */
+    Route::get('consentimiento', [ConsentimientoController::class, 'mostrar'])
+        ->name('consentimiento');
+
+    Route::post('consentimiento', [ConsentimientoController::class, 'guardar'])
+        ->name('consentimiento.guardar');
 
     /*
      * A.5 — Cuenta suspendida.

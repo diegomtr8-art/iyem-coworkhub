@@ -1,6 +1,7 @@
 ---
 titulo: Términos y condiciones
 descripcion: Términos y condiciones de uso del sitio y de las membresías de Nódico.
+version: 1.0-provisional
 provisional: true
 ---
 

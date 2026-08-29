@@ -90,6 +90,35 @@ class User extends Authenticatable implements MustVerifyEmail
     }
 
     /**
+     * E — Documentos legales cuya version vigente esta sin aceptar.
+     *
+     * Se compara **version por version**, no un si/no: cuando el IYEM publique
+     * una version nueva, quien tenga aceptada la anterior vuelve a aparecer
+     * aqui y se le pide de nuevo.
+     *
+     * @return array<int, string>
+     */
+    public function consentimientosPendientes(): array
+    {
+        $vigentes = app(\App\Support\DocumentosLegales::class)->versiones();
+
+        $aceptados = $this->consentimientos()
+            ->get(['documento', 'version'])
+            ->map(fn ($c) => $c->documento . '@' . $c->version)
+            ->all();
+
+        $pendientes = [];
+
+        foreach ($vigentes as $documento => $version) {
+            if (! in_array($documento . '@' . $version, $aceptados, true)) {
+                $pendientes[] = $documento;
+            }
+        }
+
+        return $pendientes;
+    }
+
+    /**
      * D — El segundo factor solo cuenta como activo si se **confirmo** con un
      * codigo real.
      *
@@ -219,6 +248,7 @@ class User extends Authenticatable implements MustVerifyEmail
     // ── Relaciones ──────────────────────────────────────────────────────────
 
     public function identidades()    { return $this->hasMany(IdentidadSocial::class); }
+    public function consentimientos()       { return $this->hasMany(Consentimiento::class); }
     public function codigosRecuperacion()   { return $this->hasMany(CodigoRecuperacion::class); }
     public function dispositivosConfiables(){ return $this->hasMany(DispositivoConfiable::class); }
     public function enlacesMagicos() { return $this->hasMany(EnlaceMagico::class); }

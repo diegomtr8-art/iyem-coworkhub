@@ -64,6 +64,7 @@ class SeguridadDelAccesoTest extends TestCase
             'email'                 => 'ya@example.com',
             'password'              => self::CLAVE,
             'password_confirmation' => self::CLAVE,
+            'acepta_legales'        => true,
         ]);
 
         // Mismo destino que un alta nueva y ninguna sesión abierta.
@@ -87,6 +88,7 @@ class SeguridadDelAccesoTest extends TestCase
             'name'                  => 'Quien Sea',
             'password'              => self::CLAVE,
             'password_confirmation' => self::CLAVE,
+            'acepta_legales'        => true,
         ];
 
         $this->post('/register', $datos + ['email' => 'nueva@example.com']);
@@ -262,6 +264,7 @@ class SeguridadDelAccesoTest extends TestCase
                 'current_password'      => 'password',
                 'password'              => self::CLAVE,
                 'password_confirmation' => self::CLAVE,
+            'acepta_legales'        => true,
             ])
             ->assertSessionHasNoErrors();
 

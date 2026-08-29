@@ -41,6 +41,7 @@ class RegistrationTest extends TestCase
             'email'                 => 'nueva@example.com',
             'password'              => self::CLAVE,
             'password_confirmation' => self::CLAVE,
+            'acepta_legales'        => true,
         ]);
 
         $this->assertGuest();
@@ -64,6 +65,7 @@ class RegistrationTest extends TestCase
             'email'                 => 'nueva@example.com',
             'password'              => self::CLAVE,
             'password_confirmation' => self::CLAVE,
+            'acepta_legales'        => true,
         ]);
 
         $this->get(route('registro.revisa-tu-correo'))
@@ -121,6 +123,7 @@ class RegistrationTest extends TestCase
             'email'                 => 'nueva@example.com',
             'password'              => self::CLAVE,
             'password_confirmation' => self::CLAVE,
+            'acepta_legales'        => true,
         ]);
 
         // Ni 500 ni excepcion: la persona llega a la misma pantalla de siempre.
@@ -154,6 +157,7 @@ class RegistrationTest extends TestCase
             'email'                 => 'ya@example.com',
             'password'              => self::CLAVE,
             'password_confirmation' => self::CLAVE,
+            'acepta_legales'        => true,
         ])
             ->assertRedirect(route('registro.revisa-tu-correo', absolute: false))
             ->assertSessionHas('correo_enviado', false);
@@ -189,6 +193,7 @@ class RegistrationTest extends TestCase
                 'email'                 => 'otra' . strlen($intento) . '@example.com',
                 'password'              => $intento,
                 'password_confirmation' => $intento,
+            'acepta_legales'        => true,
             ])->assertSessionHasErrors('password');
         }
 
