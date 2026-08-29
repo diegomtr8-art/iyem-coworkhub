@@ -47,6 +47,11 @@ class ConsentimientoController extends Controller
             // Ya habia aceptado algo antes: el texto cambia de «antes de
             // entrar» a «actualizamos nuestros terminos».
             'esActualizacion' => $usuario->consentimientos()->exists(),
+
+            // El texto no puede dar por hecho como entro. Decirle «entraste con
+            // tu cuenta externa» a quien uso su contrasena es sencillamente
+            // falso, y aparece justo en la pantalla donde se le pide confiar.
+            'viaExterna' => $usuario->identidades()->exists(),
         ]);
     }
 
