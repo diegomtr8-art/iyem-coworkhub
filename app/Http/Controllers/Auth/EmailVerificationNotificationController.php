@@ -21,6 +21,11 @@ class EmailVerificationNotificationController extends Controller
         // en cualquier momento hay como mucho un enlace de verificacion vivo.
         $request->user()->sendEmailVerificationNotification();
 
-        return back()->with('status', 'verification-link-sent');
+        return back()->with(
+            'status',
+            $request->user()->correoDeVerificacionEnviado
+                ? 'verification-link-sent'
+                : 'verification-link-failed',
+        );
     }
 }

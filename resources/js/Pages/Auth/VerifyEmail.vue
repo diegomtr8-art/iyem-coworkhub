@@ -9,6 +9,7 @@ const props = defineProps<{ status?: string; correo?: string }>()
 const form = useForm({})
 
 const enviado = computed(() => props.status === 'verification-link-sent')
+const fallo = computed(() => props.status === 'verification-link-failed')
 
 const reenviar = () => form.post(route('verification.send'), { preserveScroll: true })
 
@@ -34,6 +35,15 @@ const salir = () => router.post(route('logout'))
       role="status"
     >
       Listo, mandamos un enlace nuevo. El anterior dejó de servir.
+    </p>
+
+    <p
+      v-else-if="fallo"
+      class="mt-6 border-l-4 border-red-600 bg-red-50 px-4 py-3 font-body text-cuerpo text-dark"
+      role="alert"
+    >
+      No pudimos enviar el correo por un problema nuestro. Inténtalo en unos minutos;
+      si sigue igual, escríbenos y activamos tu cuenta a mano.
     </p>
 
     <div class="mt-8 border-2 border-dark bg-white p-6 shadow-dura-sm">

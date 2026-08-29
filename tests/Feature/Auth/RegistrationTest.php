@@ -7,7 +7,11 @@ use App\Enums\RolUsuario;
 use App\Models\User;
 use Illuminate\Auth\Notifications\VerifyEmail;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Notification;
+use Symfony\Component\Mailer\Exception\TransportException;
+use Symfony\Component\Mailer\SentMessage;
+use Symfony\Component\Mailer\Transport\AbstractTransport;
 use Tests\TestCase;
 
 class RegistrationTest extends TestCase
@@ -90,6 +94,90 @@ class RegistrationTest extends TestCase
         $miembro = User::factory()->miembro()->create();
 
         $this->actingAs($miembro)->get('/portal')->assertOk();
+    }
+
+    /**
+     * Regresion encontrada en prueba.nodico.com.mx el 29/08/2026.
+     *
+     * Con el SMTP mal configurado, la `TransportException` subia hasta el
+     * controlador y el registro devolvia un **500 despues de haber creado la
+     * cuenta**: la persona veia una pantalla de error, la cuenta quedaba
+     * huerfana y sin verificar, y al reintentar se topaba con que su correo
+     * «ya existia».
+     *
+     * Que el correo no salga es un problema de operacion; que se lleve por
+     * delante el registro es un defecto.
+     *
+     * Se usa un transporte que falla de verdad, no un doble: asi la prueba
+     * recorre el mismo camino que recorrio el fallo real, desde la
+     * notificacion hasta el controlador.
+     */
+    public function test_si_el_correo_no_sale_el_registro_no_se_cae(): void
+    {
+        $this->transporteQueSiempreFalla();
+
+        $respuesta = $this->post('/register', [
+            'name'                  => 'Persona Nueva',
+            'email'                 => 'nueva@example.com',
+            'password'              => self::CLAVE,
+            'password_confirmation' => self::CLAVE,
+        ]);
+
+        // Ni 500 ni excepcion: la persona llega a la misma pantalla de siempre.
+        $respuesta->assertRedirect(route('registro.revisa-tu-correo', absolute: false));
+        $respuesta->assertSessionHas('correo_enviado', false);
+
+        // Y la cuenta quedo creada, no a medias.
+        $this->assertDatabaseHas('users', ['email' => 'nueva@example.com']);
+
+        // La pantalla lo dice, en vez de mandar a esperar un correo inexistente.
+        $this->get(route('registro.revisa-tu-correo'))
+            ->assertOk()
+            ->assertInertia(fn ($pagina) => $pagina
+                ->component('Auth/RevisaTuCorreo')
+                ->where('correoEnviado', false));
+    }
+
+    /**
+     * El mismo fallo por el camino del correo ya registrado. Los dos tienen que
+     * comportarse igual: si uno se cayera y el otro no, el 500 delataria cual
+     * de los dos fue, que es justo lo que la fase B vino a cerrar.
+     */
+    public function test_si_el_correo_no_sale_el_alta_repetida_tampoco_se_cae(): void
+    {
+        User::factory()->create(['email' => 'ya@example.com']);
+
+        $this->transporteQueSiempreFalla();
+
+        $this->post('/register', [
+            'name'                  => 'Otra Persona',
+            'email'                 => 'ya@example.com',
+            'password'              => self::CLAVE,
+            'password_confirmation' => self::CLAVE,
+        ])
+            ->assertRedirect(route('registro.revisa-tu-correo', absolute: false))
+            ->assertSessionHas('correo_enviado', false);
+    }
+
+    /** Un SMTP que acepta la conexion y rechaza la autenticacion. */
+    private function transporteQueSiempreFalla(): void
+    {
+        Mail::extend('siempre_falla', fn () => new class extends AbstractTransport {
+            protected function doSend(SentMessage $mensaje): void
+            {
+                throw new TransportException('535 5.7.8 Error: authentication failed');
+            }
+
+            public function __toString(): string
+            {
+                return 'siempre_falla://';
+            }
+        });
+
+        config([
+            'mail.default' => 'siempre_falla',
+            'mail.mailers.siempre_falla' => ['transport' => 'siempre_falla'],
+        ]);
     }
 
     /** B — Las reglas de contraseña aplican también en el alta. */

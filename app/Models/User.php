@@ -9,7 +9,9 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
+use Throwable;
 
 class User extends Authenticatable implements MustVerifyEmail
 {
@@ -109,11 +111,43 @@ class User extends Authenticatable implements MustVerifyEmail
         return $this->email . '|' . (string) ($this->attributes['verificacion_nonce'] ?? '');
     }
 
+    /**
+      * Queda en `false` cuando el correo de verificación no llegó a salir.
+      *
+      * No se persiste: solo vive durante la petición que intentó enviarlo, que
+      * es quien tiene que decidir qué contarle a la persona.
+      */
+    public bool $correoDeVerificacionEnviado = true;
+
+    /**
+     * Envía el correo de verificación **sin dejar que su fallo tumbe la
+     * petición**.
+     *
+     * Comprobado en prueba.nodico.com.mx el 29/08/2026: con el SMTP mal
+     * configurado, la `TransportException` subía hasta el controlador y el
+     * registro devolvía un 500 **después** de haber creado la cuenta. La
+     * persona veía una pantalla de error, la cuenta quedaba huérfana y sin
+     * verificar, y al reintentar se topaba con que su correo «ya existía».
+     *
+     * Que el correo no salga es un problema de operación; que se lleve por
+     * delante el registro es un defecto. Se registra en el log y quien llama
+     * decide el mensaje.
+     */
     public function sendEmailVerificationNotification(): void
     {
         $this->forceFill(['verificacion_nonce' => Str::random(40)])->save();
 
-        parent::sendEmailVerificationNotification();
+        try {
+            parent::sendEmailVerificationNotification();
+            $this->correoDeVerificacionEnviado = true;
+        } catch (Throwable $e) {
+            $this->correoDeVerificacionEnviado = false;
+
+            Log::error('No se pudo enviar el correo de verificacion.', [
+                'usuario' => $this->id,
+                'motivo'  => $e->getMessage(),
+            ]);
+        }
     }
 
     /**

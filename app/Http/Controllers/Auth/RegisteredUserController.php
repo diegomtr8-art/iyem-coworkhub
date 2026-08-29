@@ -12,6 +12,7 @@ use Illuminate\Auth\Events\Registered;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rules;
 use Inertia\Inertia;
@@ -56,14 +57,17 @@ class RegisteredUserController extends Controller
         if ($existente = User::where('email', $correo)->first()) {
             $this->fingirAlta($datos['password']);
 
-            $existente->notify(new CuentaYaExiste());
+            $enviado = $this->avisarQueYaExiste($existente);
         } else {
-            $this->crearMiembro($datos, $correo);
+            $enviado = $this->crearMiembro($datos, $correo);
         }
 
         return redirect()
             ->route('registro.revisa-tu-correo')
-            ->with('correo', $correo);
+            ->with('correo', $correo)
+            // Los dos caminos informan igual de que el correo no salió: si solo
+            // avisara uno, el aviso delataría cuál de los dos fue.
+            ->with('correo_enviado', $enviado);
     }
 
     /** Pantalla común a los dos caminos. */
@@ -76,13 +80,18 @@ class RegisteredUserController extends Controller
             return redirect()->route('register');
         }
 
-        return Inertia::render('Auth/RevisaTuCorreo', ['correo' => $correo]);
+        return Inertia::render('Auth/RevisaTuCorreo', [
+            'correo'        => $correo,
+            'correoEnviado' => (bool) $request->session()->get('correo_enviado', true),
+        ]);
     }
 
     /**
      * @param  array<string, mixed>  $datos
+     *
+     * @return bool si el correo de verificación llegó a salir
      */
-    private function crearMiembro(array $datos, string $correo): void
+    private function crearMiembro(array $datos, string $correo): bool
     {
         $usuario = new User();
 
@@ -113,8 +122,29 @@ class RegisteredUserController extends Controller
             'leido'   => false,
         ]);
 
-        // Dispara el envío del correo de verificación.
+        // Dispara el envío del correo de verificación. Un fallo del SMTP ya no
+        // tumba la petición: `User::sendEmailVerificationNotification()` lo
+        // atrapa y lo deja anotado.
         event(new Registered($usuario));
+
+        return $usuario->correoDeVerificacionEnviado;
+    }
+
+    /** @return bool si el aviso llegó a salir */
+    private function avisarQueYaExiste(User $existente): bool
+    {
+        try {
+            $existente->notify(new CuentaYaExiste());
+
+            return true;
+        } catch (\Throwable $e) {
+            Log::error('No se pudo enviar el aviso de cuenta existente.', [
+                'usuario' => $existente->id,
+                'motivo'  => $e->getMessage(),
+            ]);
+
+            return false;
+        }
     }
 
     /**
