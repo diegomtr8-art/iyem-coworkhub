@@ -170,3 +170,17 @@ body.cursor-click #cursor-outer { width: 24px; height: 24px; background: rgba(25
     scroll-behavior: auto !important;
   }
 }
+
+/* ── Documento legal renderizado desde Markdown ── */
+.documento-legal h2 {
+  @apply mt-12 font-display text-display-sm font-extrabold text-dark first:mt-0;
+}
+.documento-legal p {
+  @apply mt-4 font-body text-cuerpo leading-relaxed text-dark/75;
+}
+.documento-legal ul {
+  @apply mt-4 list-disc space-y-2 pl-5 font-body text-cuerpo text-dark/75;
+}
+.documento-legal a {
+  @apply text-dark underline underline-offset-2;
+}

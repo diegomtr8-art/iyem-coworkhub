@@ -36,7 +36,12 @@ class ContactoController extends Controller
             'comentarios' => 'comentarios',
         ]);
 
-        $contacto = Contacto::create($data + ['ip' => $request->ip()]);
+        // BE-03: se guarda el teléfono normalizado a E.164 y también tal cual
+        // lo escribió la persona, para no perder su formato.
+        $contacto = Contacto::create($data + [
+            'ip'            => $request->ip(),
+            'telefono_e164' => $this->normalizarTelefono($data['telefono'] ?? null),
+        ]);
 
         // Copia interna para el panel de administración.
         if ($admin = User::where('tipo', 'admin')->first()) {
@@ -63,5 +68,35 @@ class ContactoController extends Controller
         }
 
         return back()->with('contacto_ok', true);
+    }
+
+    /**
+     * BE-03 — normaliza a E.164 asumiendo México (+52) cuando no viene prefijo.
+     * Devuelve null si no hay suficientes dígitos para ser un teléfono.
+     */
+    private function normalizarTelefono(?string $valor): ?string
+    {
+        if (! $valor) {
+            return null;
+        }
+
+        $tieneMas = str_starts_with(trim($valor), '+');
+        $digitos = preg_replace('/\D/', '', $valor);
+
+        if (strlen($digitos) < 10) {
+            return null;
+        }
+
+        if ($tieneMas) {
+            return '+' . $digitos;
+        }
+
+        // 10 dígitos = número nacional mexicano.
+        if (strlen($digitos) === 10) {
+            return '+52' . $digitos;
+        }
+
+        // Ya trae lada de país.
+        return '+' . $digitos;
     }
 }

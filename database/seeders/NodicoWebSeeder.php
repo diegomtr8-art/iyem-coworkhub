@@ -3,6 +3,7 @@
 namespace Database\Seeders;
 
 use App\Models\Ajuste;
+use App\Models\DirectorioEmprendedor;
 use App\Models\Espacio;
 use App\Models\Plane;
 use Illuminate\Database\Seeder;
@@ -20,6 +21,36 @@ class NodicoWebSeeder extends Seeder
         $this->planes();
         $this->salones();
         $this->ajustes();
+        $this->directorio();
+    }
+
+    /**
+     * CNT-02 — directorio de emprendedores y destacado de la semana.
+     * Antes vivian dentro de Comunidad.vue.
+     */
+    private function directorio(): void
+    {
+        $emprendedores = [
+            [
+                'nombre'    => 'Salabtún',
+                'instagram' => null,
+                'foto'      => '/img/nodico/emprendedor-semana-salabtun.webp',
+                'descripcion' => 'Sal artesanal única de las charcas mayas de Celestún, Yucatán. Cosechada desde hace más de 600 años, combina tradición y naturaleza en un proceso heredado de generación en generación. Durante la temporada seca, los salineros recolectan delicadas hojuelas de sal, mientras los flamencos rosados ayudan a mantener limpio este ecosistema sagrado.',
+                'destacado_semana' => true,
+                'orden'     => 0,
+            ],
+            ['nombre' => 'Ahimsa Daram', 'instagram' => 'ahimsadaram', 'foto' => '/img/nodico/dir-ahimsa-daram.webp', 'orden' => 1],
+            ['nombre' => 'Zentto',       'instagram' => 'zentto.mid',  'foto' => '/img/nodico/dir-zentto.webp',       'orden' => 2],
+            ['nombre' => 'SaboReli',     'instagram' => 'saborelimx',  'foto' => '/img/nodico/dir-saboreli.webp',     'orden' => 3],
+            ['nombre' => 'Kinimitas',    'instagram' => 'kinimitas',   'foto' => '/img/nodico/dir-kinimitas.webp',    'orden' => 4],
+        ];
+
+        foreach ($emprendedores as $datos) {
+            DirectorioEmprendedor::updateOrCreate(
+                ['nombre' => $datos['nombre']],
+                $datos + ['activo' => true]
+            );
+        }
     }
 
     /**
@@ -57,7 +88,6 @@ class NodicoWebSeeder extends Seeder
                 'periodo_label'    => 'por 1 día',
                 'cta_label'        => 'Empezar Ahora',
                 'color'            => '#EF7E88',
-                'imagen'           => '/img/nodico/plan-day-pass.webp',
                 'stripe_url'       => 'https://buy.stripe.com/00waER7JU4Lp65v0gb6Zy05',
                 'descripcion_corta' => 'Espacio pensado para estudiantes, freelancers ocasionales o quienes necesitan trabajar por un día.',
                 'descripcion_larga' => 'Ideal para estudiantes, freelancers ocasionales o personas que solo necesitan el espacio por un día. Perfecto para trabajar en un proyecto puntual.',
@@ -76,7 +106,6 @@ class NodicoWebSeeder extends Seeder
                 'periodo_label'    => 'por 4 días',
                 'cta_label'        => 'Empezar Ahora',
                 'color'            => '#FFDD00',
-                'imagen'           => '/img/nodico/plan-nodico-flex.webp',
                 'stripe_url'       => 'https://buy.stripe.com/6oUdR36FQ0v951r4wr6Zy04',
                 'descripcion_corta' => 'Opción accesible para jóvenes emprendedores o estudiantes que necesitan el espacio por horas.',
                 'descripcion_larga' => 'Pensada para jóvenes emprendedores, estudiantes o personas que solo necesitan entrar al espacio de cowork por unas horas y tener acceso a la comunidad emprendedora. Es una opción accesible para quienes están empezando y quieren conectar, trabajar un rato o explorar el ecosistema.',
@@ -95,7 +124,6 @@ class NodicoWebSeeder extends Seeder
                 'periodo_label'    => 'al mes',
                 'cta_label'        => 'Contrata Ahora',
                 'color'            => '#D6E265',
-                'imagen'           => '/img/nodico/plan-nodo-pro.webp',
                 'stripe_url'       => 'https://buy.stripe.com/6oU8wJggq91FeC1e716Zy03',
                 'descripcion_corta' => 'Perfecta para emprendedores y creadores que buscan un espacio de trabajo constante.',
                 'descripcion_larga' => 'Ideal para emprendedores activos, freelancers o creadores de contenido que necesitan un lugar de trabajo constante. Incluye asesoría, uso de salas y horas de creación de contenido.',
@@ -119,7 +147,6 @@ class NodicoWebSeeder extends Seeder
                 'periodo_label'    => 'por 1 mes',
                 'cta_label'        => 'Empezar Ahora',
                 'color'            => '#864B95',
-                'imagen'           => '/img/nodico/plan-nodo-match.webp',
                 'stripe_url'       => 'https://buy.stripe.com/28EcMZc0agu73Xn6Ez6Zy02',
                 'descripcion_corta' => 'Ideal para emprendedores, freelancers y creadores de contenido que requieren un espacio estable para trabajar.',
                 'descripcion_larga' => 'Pensada para jóvenes emprendedores, ofrece una variedad más amplia de servicios y beneficios diseñados para impulsar el desarrollo de proyectos innovadores y fomentar la colaboración en un entorno dinámico.',

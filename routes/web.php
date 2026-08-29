@@ -27,7 +27,7 @@ Route::get('/membresias',  [WelcomeController::class, 'membresias'])->name('memb
 Route::get('/eventos',     [WelcomeController::class, 'salones'])->name('eventos');
 Route::get('/actividades', [WelcomeController::class, 'comunidad'])->name('actividades');
 Route::post('/contacto',   [ContactoController::class, 'store'])
-    ->middleware('throttle:5,1')
+    ->middleware('throttle:contacto')
     ->name('contacto.store');
 
 Route::get('/aviso-de-privacidad', [WelcomeController::class, 'privacidad'])->name('privacidad');

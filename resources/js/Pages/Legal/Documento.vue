@@ -6,8 +6,8 @@ import { AlertTriangle } from 'lucide-vue-next'
 defineProps<{
   titulo: string
   descripcion: string
-  /** Secciones del documento: título + párrafos. */
-  secciones: { titulo: string; parrafos: string[] }[]
+  /** HTML ya renderizado desde resources/legal/*.md (BE-04). */
+  contenido: string
   provisional?: boolean
 }>()
 </script>
@@ -42,16 +42,9 @@ defineProps<{
           </p>
         </div>
 
-        <div class="space-y-12">
-          <div v-for="seccion in secciones" :key="seccion.titulo">
-            <h2 class="font-display text-display-sm font-extrabold text-dark">{{ seccion.titulo }}</h2>
-            <div class="mt-4 space-y-4">
-              <p v-for="(parrafo, i) in seccion.parrafos" :key="i" class="font-body text-cuerpo leading-relaxed text-dark/75">
-                {{ parrafo }}
-              </p>
-            </div>
-          </div>
-        </div>
+        <!-- El HTML lo genera Str::markdown() en el servidor sobre un archivo
+             del repositorio, no sobre entrada de usuario. -->
+        <div class="documento-legal" v-html="contenido" />
       </div>
     </section>
   </PublicLayout>

@@ -3,21 +3,24 @@
 namespace App\Http\Controllers;
 
 use App\Models\Ajuste;
+use App\Models\DirectorioEmprendedor;
 use App\Models\Espacio;
 use App\Models\Evento;
 use App\Models\Plane;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Str;
 use Inertia\Inertia;
 
 class WelcomeController extends Controller
 {
     public function index()
     {
+        // BE-01: la prop `eventos` se enviaba en cada carga y Welcome.vue nunca
+        // la declaraba ni la usaba. Retirada.
         return Inertia::render('Welcome', [
             ...$this->authProps(),
             'planes'         => Plane::publicos()->get(),
             'salon'          => Espacio::salonesPublicados()->first(),
-            'eventos'        => Evento::activos()->proximos()->limit(3)->get(),
             'instagramPosts' => Ajuste::obtener('instagram_posts', []),
         ]);
     }
@@ -54,68 +57,52 @@ class WelcomeController extends Controller
             'salon'          => Espacio::salonesPublicados()->first(),
             'lumaEmbed'      => config('nodico.luma_embed'),
             'instagramPosts' => Ajuste::obtener('instagram_posts', []),
+            // CNT-02: directorio y destacado salen de la BD, no del componente.
+            'directorio'     => DirectorioEmprendedor::publicos()->where('destacado_semana', false)->get(),
+            'destacado'      => DirectorioEmprendedor::deLaSemana()->first(),
         ]);
     }
 
     public function privacidad()
     {
-        return Inertia::render('Legal/Documento', [
-            ...$this->authProps(),
-            'titulo'      => 'Aviso de privacidad',
-            'descripcion' => 'Aviso de privacidad de Nódico, el coworking del Instituto Yucateco de Emprendedores.',
-            'provisional' => true,
-            'secciones'   => [
-                [
-                    'titulo'   => 'Responsable de los datos',
-                    'parrafos' => [
-                        'El Instituto Yucateco de Emprendedores (IYEM), titular de la marca Nódico, es el responsable del tratamiento de los datos personales que usted proporcione a través de este sitio.',
-                    ],
-                ],
-                [
-                    'titulo'   => 'Datos que recabamos',
-                    'parrafos' => [
-                        'A través del formulario de contacto recabamos nombre, teléfono, correo electrónico, empresa, asunto y el mensaje que usted escriba.',
-                        'Estos datos se utilizan únicamente para responder su solicitud y darle seguimiento comercial sobre las membresías y servicios de Nódico.',
-                    ],
-                ],
-                [
-                    'titulo'   => 'Ejercicio de derechos ARCO',
-                    'parrafos' => [
-                        'Puede solicitar el acceso, rectificación, cancelación u oposición al tratamiento de sus datos escribiendo a contacto@nodico.com.mx.',
-                    ],
-                ],
-            ],
-        ]);
+        return $this->documentoLegal('aviso-de-privacidad');
     }
 
     public function terminos()
     {
+        return $this->documentoLegal('terminos');
+    }
+
+    /**
+     * BE-04 — los textos legales viven en resources/legal/*.md, no incrustados
+     * en el controlador, para que el área jurídica pueda revisarlos y editarlos
+     * sin tocar código.
+     */
+    private function documentoLegal(string $nombre)
+    {
+        $ruta = resource_path("legal/{$nombre}.md");
+        abort_unless(is_file($ruta), 404);
+
+        $crudo = file_get_contents($ruta);
+
+        // Cabecera sencilla clave: valor al inicio del archivo.
+        $meta = [];
+        if (preg_match('/^---\R(.*?)\R---\R(.*)$/s', $crudo, $m)) {
+            foreach (preg_split('/\R/', $m[1]) as $linea) {
+                if (str_contains($linea, ':')) {
+                    [$clave, $valor] = explode(':', $linea, 2);
+                    $meta[trim($clave)] = trim($valor);
+                }
+            }
+            $crudo = $m[2];
+        }
+
         return Inertia::render('Legal/Documento', [
             ...$this->authProps(),
-            'titulo'      => 'Términos y condiciones',
-            'descripcion' => 'Términos y condiciones de uso del sitio y de las membresías de Nódico.',
-            'provisional' => true,
-            'secciones'   => [
-                [
-                    'titulo'   => 'Objeto',
-                    'parrafos' => [
-                        'Estos términos regulan el uso del sitio de Nódico y la contratación de sus membresías y servicios de renta de salones.',
-                    ],
-                ],
-                [
-                    'titulo'   => 'Membresías y pagos',
-                    'parrafos' => [
-                        'Los precios publicados están expresados en pesos mexicanos. El cobro se procesa a través de Stripe; Nódico no almacena datos de tarjetas.',
-                        'La vigencia de cada membresia corresponde al periodo indicado en su descripción.',
-                    ],
-                ],
-                [
-                    'titulo'   => 'Uso del espacio',
-                    'parrafos' => [
-                        'El acceso al espacio requiere el registro previo del miembro. Nódico se reserva el derecho de admisión conforme a su reglamento interno.',
-                    ],
-                ],
-            ],
+            'titulo'      => $meta['titulo'] ?? Str::headline($nombre),
+            'descripcion' => $meta['descripcion'] ?? '',
+            'provisional' => ($meta['provisional'] ?? 'false') === 'true',
+            'contenido'   => Str::markdown($crudo),
         ]);
     }
 

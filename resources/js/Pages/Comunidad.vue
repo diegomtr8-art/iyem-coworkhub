@@ -15,19 +15,15 @@ const props = defineProps<{
   salon?: any | null
   lumaEmbed?: string
   instagramPosts?: string[]
+  /** CNT-02: ambos vienen de la tabla directorio_emprendedores. */
+  directorio?: any[]
+  destacado?: any | null
 }>()
 
 const page = usePage()
 const nodico = computed(() => (page.props.nodico ?? {}) as any)
 
 const eventos = computed(() => [...(props.proximos ?? []), ...(props.pasados ?? [])].slice(0, 6))
-
-const directorio = [
-  { nombre: 'Ahimsa Daram', foto: '/img/nodico/dir-ahimsa-daram.webp', instagram: 'ahimsadaram' },
-  { nombre: 'Zentto', foto: '/img/nodico/dir-zentto.webp', instagram: 'zentto.mid' },
-  { nombre: 'SaboReli', foto: '/img/nodico/dir-saboreli.webp', instagram: 'saborelimx' },
-  { nombre: 'Kinimitas', foto: '/img/nodico/dir-kinimitas.webp', instagram: 'kinimitas' },
-]
 
 const fechaLarga = (valor: string) =>
   new Date(valor).toLocaleDateString('es-MX', { day: 'numeric', month: 'long', year: 'numeric' })
@@ -77,13 +73,29 @@ const fechaLarga = (valor: string) =>
     </section>
 
     <!-- Contenido reciente -->
-    <section v-if="eventos.length" class="bg-cream py-20 lg:py-24">
+    <section class="bg-cream py-20 lg:py-24">
       <div class="mx-auto max-w-7xl px-5 sm:px-8">
         <ScrollReveal>
           <SectionHeading etiqueta="Agenda" titulo="Nuestro contenido más reciente" tamano="lg" />
         </ScrollReveal>
 
-        <ScrollReveal :stagger="70" class="mt-12 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+        <!-- CNT-01: sin eventos cargados la sección ya no desaparece; remite
+             al calendario, que es la fuente viva. -->
+        <ScrollReveal v-if="!eventos.length" class="mt-12">
+          <div class="rounded-3xl bg-white p-10 text-center shadow-sombra-sm ring-1 ring-dark/[.07]">
+            <p class="font-body text-cuerpo-lg text-dark/70">
+              Todavía no hay actividades cargadas en la agenda.
+            </p>
+            <p class="mt-3 font-body text-cuerpo text-dark/55">
+              Los talleres del mes están siempre al día en el calendario, aquí abajo.
+            </p>
+            <Boton href="#talleres" variante="oscuro" class="mt-8" flecha>
+              Ver los talleres del mes
+            </Boton>
+          </div>
+        </ScrollReveal>
+
+        <ScrollReveal v-else :stagger="70" class="mt-12 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
           <article
             v-for="evento in eventos"
             :key="evento.id"
@@ -116,7 +128,7 @@ const fechaLarga = (valor: string) =>
     </section>
 
     <!-- Talleres del mes: calendario de Luma integrado -->
-    <section class="bg-tinta py-20 lg:py-28">
+    <section id="talleres" class="bg-tinta py-20 lg:py-28">
       <div class="mx-auto max-w-7xl px-5 sm:px-8">
         <div class="grid gap-12 lg:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)] lg:gap-16">
           <ScrollReveal from="left">
@@ -151,14 +163,15 @@ const fechaLarga = (valor: string) =>
       </div>
     </section>
 
-    <!-- Emprendedor de la semana -->
-    <section id="emprendedor-semana" class="bg-cream py-20 lg:py-28">
+    <!-- Emprendedor de la semana (CNT-02: viene de la BD) -->
+    <section v-if="destacado" id="emprendedor-semana" class="bg-cream py-20 lg:py-28">
       <div class="mx-auto grid max-w-7xl items-center gap-14 px-5 sm:px-8 lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)] lg:gap-20">
         <ScrollReveal from="left">
           <div class="rounded-3xl bg-white p-10 shadow-sombra ring-1 ring-dark/[.07]">
             <img
-              src="/img/nodico/emprendedor-semana-salabtun.webp"
-              alt="Salabtún, sal artesanal de las charcas mayas de Celestún"
+              v-if="destacado.foto"
+              :src="destacado.foto"
+              :alt="destacado.nombre"
               width="600"
               height="600"
               loading="lazy"
@@ -169,15 +182,16 @@ const fechaLarga = (valor: string) =>
         </ScrollReveal>
 
         <ScrollReveal from="right">
-          <SectionHeading etiqueta="Emprendedor de la semana" titulo="Salabtún" tamano="lg" />
-          <p class="mt-7 font-body text-cuerpo-lg leading-relaxed text-dark/70">
-            Salabtún es una sal artesanal única de las charcas mayas de Celestún, Yucatán. Cosechada
-            desde hace más de 600 años, combina tradición y naturaleza en un proceso heredado de
-            generación en generación. Durante la temporada seca, los salineros recolectan delicadas
-            hojuelas de sal, mientras los flamencos rosados ayudan a mantener limpio este ecosistema
-            sagrado. El resultado es una mezcla orgánica que enriquece la gastronomía yucateca y
-            conserva viva la herencia maya.
+          <SectionHeading etiqueta="Emprendedor de la semana" :titulo="destacado.nombre" tamano="lg" />
+
+          <p v-if="destacado.descripcion" class="mt-7 font-body text-cuerpo-lg leading-relaxed text-dark/70">
+            {{ destacado.descripcion }}
           </p>
+
+          <!-- CNT-03: el "Saber más…" se había perdido en la migración. -->
+          <Boton v-if="destacado.enlace" :href="destacado.enlace" externo variante="oscuro" class="mt-8" flecha>
+            Conocer {{ destacado.nombre }}
+          </Boton>
         </ScrollReveal>
       </div>
     </section>
