@@ -47,7 +47,28 @@ if (is_file('resources/css/app.css')) {
 $grupos = ['imagen' => 0, 'fuente' => 0, 'icono SVG' => 0];
 $detalle = [];
 
+// El navegador descarga UNA variante por imagen, no todas: se agrupan las
+// derivadas de srcset y se cuenta solo la que tocaria en cada escenario.
+$familias = [];
 foreach (array_keys($referencias) as $ruta) {
+    if (preg_match('#^(.*)-(640|1280|1920)\.webp$#', $ruta, $m)) {
+        $familias[$m[1] . '.webp'][(int) $m[2]] = $ruta;
+    }
+}
+
+$movil = 0;
+foreach ($familias as $base => $vars) {
+    ksort($vars);
+    // En movil entra la de 640 si existe.
+    $elegida = $vars[640] ?? reset($vars);
+    $movil += bytes('public' . $elegida);
+}
+
+foreach (array_keys($referencias) as $ruta) {
+    // Las derivadas no suman al total de escritorio: ahi va la original.
+    if (preg_match('#-(640|1280|1920)\.webp$#', $ruta)) {
+        continue;
+    }
     $archivo = 'public' . $ruta;
     $b = bytes($archivo);
     if (! $b) {
@@ -103,4 +124,16 @@ printf("  %-12s %12s%s", 'js', kb($js), PHP_EOL);
 printf("  %-12s %12s%s", 'css', kb($css), PHP_EOL);
 
 $total = array_sum($grupos) + $js + $css;
-echo PHP_EOL . '  TOTAL: ' . kb($total) . PHP_EOL . PHP_EOL;
+echo PHP_EOL . '  TOTAL escritorio: ' . kb($total) . PHP_EOL;
+
+if ($familias) {
+    // En movil, las imagenes con variantes se sustituyen por la de 640.
+    $imagenesConVariante = 0;
+    foreach (array_keys($familias) as $base) {
+        $imagenesConVariante += bytes('public' . $base);
+    }
+    $totalMovil = $total - $imagenesConVariante + $movil;
+    echo '  TOTAL movil (640w):   ' . kb($totalMovil) . PHP_EOL;
+}
+
+echo PHP_EOL;

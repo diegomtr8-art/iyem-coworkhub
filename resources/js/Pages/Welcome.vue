@@ -21,12 +21,12 @@ const page = usePage()
 const nodico = computed(() => (page.props.nodico ?? {}) as any)
 
 const servicios = [
-  { icono: '/img/nodico/icono-espacio-colaborativo.svg', titulo: 'Espacio colaborativo de trabajo' },
-  { icono: '/img/nodico/icono-wifi.svg', titulo: 'Wifi con 200 MB de velocidad' },
-  { icono: '/img/nodico/icono-sala-contenido.svg', titulo: 'Sala profesional de creación de contenido' },
-  { icono: '/img/nodico/icono-paqueteria.svg', titulo: 'Servicios de recepción de paquetería' },
-  { icono: '/img/nodico/icono-invitados.svg', titulo: 'Hasta 5 invitados gratuitos al mes por membresía' },
-  { icono: '/img/nodico/icono-cafe-agua.svg', titulo: 'Café y agua durante todo el día' },
+  { icono: '/img/nodico/icono-espacio-colaborativo.webp', titulo: 'Espacio colaborativo de trabajo' },
+  { icono: '/img/nodico/icono-wifi.webp', titulo: 'Wifi con 200 MB de velocidad' },
+  { icono: '/img/nodico/icono-sala-contenido.webp', titulo: 'Sala profesional de creación de contenido' },
+  { icono: '/img/nodico/icono-paqueteria.webp', titulo: 'Servicios de recepción de paquetería' },
+  { icono: '/img/nodico/icono-invitados.webp', titulo: 'Hasta 5 invitados gratuitos al mes por membresía' },
+  { icono: '/img/nodico/icono-cafe-agua.webp', titulo: 'Café y agua durante todo el día' },
 ]
 
 const beneficios = [
@@ -136,10 +136,12 @@ const fichaSalon = computed(() => {
     <section class="relative isolate overflow-hidden bg-tinta">
       <img
         src="/img/nodico/nosotros-hero.webp"
+        srcset="/img/nodico/nosotros-hero-640.webp 640w, /img/nodico/nosotros-hero-1280.webp 1280w, /img/nodico/nosotros-hero.webp 1920w"
+        sizes="100vw"
         alt=""
         aria-hidden="true"
-        width="1000"
-        height="750"
+        width="1920"
+        height="1280"
         loading="lazy"
         decoding="async"
         class="absolute inset-0 -z-20 h-full w-full object-cover"
@@ -202,9 +204,11 @@ const fichaSalon = computed(() => {
         <ScrollReveal from="left">
           <img
             src="/img/nodico/daypass-emprendedor.webp"
+        srcset="/img/nodico/daypass-emprendedor-640.webp 640w, /img/nodico/daypass-emprendedor-1280.webp 1280w, /img/nodico/daypass-emprendedor.webp 1677w"
+        sizes="(min-width: 1024px) 50vw, 100vw"
             alt="Emprendedores del interior del estado trabajando en Nódico"
-            width="1000"
-            height="750"
+            width="1677"
+            height="1920"
             loading="lazy"
             decoding="async"
             class="aspect-[4/3] w-full rounded-3xl object-cover shadow-sombra-lg"
@@ -241,6 +245,8 @@ const fichaSalon = computed(() => {
     <section class="relative isolate overflow-hidden bg-tinta">
       <img
         src="/img/nodico/salon-yucatan-emprende-2.webp"
+        srcset="/img/nodico/salon-yucatan-emprende-2-640.webp 640w, /img/nodico/salon-yucatan-emprende-2-1280.webp 1280w, /img/nodico/salon-yucatan-emprende-2.webp 1920w"
+        sizes="100vw"
         alt="Salón de eventos de Nódico montado para una conferencia"
         width="1920"
         height="1440"

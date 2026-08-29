@@ -2,7 +2,6 @@
 import { useForm, usePage } from '@inertiajs/vue3'
 import { Clock, Loader2, Mail, MapPin, Phone } from 'lucide-vue-next'
 import { computed, reactive, ref, watch } from 'vue'
-import { toast } from 'vue-sonner'
 
 const page = usePage()
 const nodico = computed(() => (page.props.nodico ?? {}) as any)
@@ -25,6 +24,10 @@ const campos = [
   { name: 'empresa',  label: 'Su empresa', type: 'text',  autocomplete: 'organization', inputmode: 'text',  requerido: false },
   { name: 'asunto',   label: 'Asunto',     type: 'text',  autocomplete: 'off',          inputmode: 'text',  requerido: false },
 ] as const
+
+// PERF-03: el iframe de Google no se monta hasta que la persona lo pide, para
+// no cargar ~300 KB ni la cookie de Google en cada visita a las cinco paginas.
+const mapaActivo = ref(false)
 
 const tocado = reactive<Record<string, boolean>>({})
 const enviado = ref(false)
@@ -64,9 +67,7 @@ const hayErrores = computed(() =>
 const contactoOk = computed(() => (page.props.flash as any)?.contacto_ok)
 
 watch(contactoOk, (ok) => {
-  if (!ok) return
-  enviado.value = true
-  toast.success('¡Gracias! Recibimos tu mensaje.')
+  if (ok) enviado.value = true
 })
 
 function enviar() {
@@ -79,7 +80,6 @@ function enviar() {
       form.reset()
       Object.keys(tocado).forEach((k) => (tocado[k] = false))
     },
-    onError: () => toast.error('Revisa los campos marcados e inténtalo de nuevo.'),
   })
 }
 </script>
@@ -155,15 +155,35 @@ function enviar() {
             </div>
           </dl>
 
-          <!-- Mapa de Google embebido, sin clave de API -->
+          <!-- Mapa como fachada: el iframe solo se monta al pulsar -->
           <div v-if="nodico.mapsEmbed" class="mt-10 overflow-hidden rounded-3xl shadow-sombra ring-1 ring-dark/[.07]">
             <iframe
+              v-if="mapaActivo"
               :src="nodico.mapsEmbed"
               title="Ubicación de Nódico en Google Maps"
               loading="lazy"
               referrerpolicy="no-referrer-when-downgrade"
               class="h-[320px] w-full border-0 sm:h-[380px]"
             />
+
+            <button
+              v-else
+              type="button"
+              class="group flex h-[320px] w-full flex-col items-center justify-center gap-4 bg-cream-200
+                     transition hover:bg-cream-dark sm:h-[380px]"
+              @click="mapaActivo = true"
+            >
+              <span
+                class="flex h-14 w-14 items-center justify-center rounded-full bg-nodo-400
+                       transition duration-300 ease-salida group-hover:scale-110"
+              >
+                <MapPin class="h-6 w-6 text-dark" aria-hidden="true" />
+              </span>
+              <span class="font-display text-base font-bold text-dark">Ver el mapa</span>
+              <span class="max-w-xs px-6 text-center font-body text-sm text-dark/60">
+                Se carga desde Google Maps al pulsar
+              </span>
+            </button>
           </div>
         </div>
 

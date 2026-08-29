@@ -4,27 +4,38 @@ import SiteHeader from '@/Components/Public/SiteHeader.vue'
 import StagingBanner from '@/Components/Public/StagingBanner.vue'
 import Lenis from 'lenis'
 import { onBeforeUnmount, onMounted } from 'vue'
-import { Toaster } from 'vue-sonner'
-import 'vue-sonner/style.css'
 
 let lenis: Lenis | undefined
 let raf: number | undefined
+
+/** PERF-02: el bucle de lenis no debe correr con la pestaña oculta. */
+function alCambiarVisibilidad() {
+  if (document.hidden) {
+    if (raf !== undefined) cancelAnimationFrame(raf)
+    raf = undefined
+  } else if (lenis && raf === undefined) {
+    raf = requestAnimationFrame(tick)
+  }
+}
+
+function tick(time: number) {
+  lenis?.raf(time)
+  raf = requestAnimationFrame(tick)
+}
 
 onMounted(() => {
   // El scroll suave se omite si el usuario pidió menos movimiento.
   if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
 
   lenis = new Lenis({ duration: 1.1, smoothWheel: true })
-
-  const tick = (time: number) => {
-    lenis?.raf(time)
-    raf = requestAnimationFrame(tick)
-  }
   raf = requestAnimationFrame(tick)
+  document.addEventListener('visibilitychange', alCambiarVisibilidad)
 })
 
 onBeforeUnmount(() => {
+  document.removeEventListener('visibilitychange', alCambiarVisibilidad)
   if (raf !== undefined) cancelAnimationFrame(raf)
+  raf = undefined
   lenis?.destroy()
   lenis = undefined
 })
@@ -50,6 +61,5 @@ onBeforeUnmount(() => {
 
     <SiteFooter />
     <StagingBanner />
-    <Toaster position="bottom-right" rich-colors />
   </div>
 </template>

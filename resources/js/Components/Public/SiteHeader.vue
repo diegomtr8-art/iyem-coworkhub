@@ -64,8 +64,8 @@ watch(rutaActual, cerrar)
         <img
           src="/img/nodico/logo-nodico-blanco.png"
           alt="Nódico — inicio"
-          width="180"
-          height="58"
+          width="480"
+          height="159"
           class="h-9 w-auto sm:h-10"
         />
       </Link>

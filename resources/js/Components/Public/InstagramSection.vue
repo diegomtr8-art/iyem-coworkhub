@@ -108,8 +108,8 @@ function vigilar(code: string) {
               src="/img/nodico/logo-nodico-blanco.png"
               alt=""
               aria-hidden="true"
-              width="1920"
-              height="637"
+              width="480"
+              height="159"
               loading="lazy"
               class="h-8 w-auto"
             />

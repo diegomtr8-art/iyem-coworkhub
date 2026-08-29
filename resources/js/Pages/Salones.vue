@@ -34,9 +34,11 @@ const ficha = (salon: any) => [
     <section class="relative isolate flex min-h-[62svh] items-end overflow-hidden bg-tinta">
       <img
         src="/img/nodico/salon-yucatan-emprende-1.webp"
+        srcset="/img/nodico/salon-yucatan-emprende-1-640.webp 640w, /img/nodico/salon-yucatan-emprende-1.webp 1079w"
+        sizes="100vw"
         alt="Salón Yucatán Emprende montado para un evento"
-        width="1000"
-        height="750"
+        width="1079"
+        height="1920"
         fetchpriority="high"
         decoding="async"
         class="absolute inset-0 -z-20 h-full w-full object-cover"
@@ -123,10 +125,12 @@ const ficha = (salon: any) => [
     <section class="relative isolate overflow-hidden bg-tinta">
       <img
         src="/img/nodico/salon-detalle.webp"
+        srcset="/img/nodico/salon-detalle-640.webp 640w, /img/nodico/salon-detalle-1280.webp 1280w, /img/nodico/salon-detalle.webp 1920w"
+        sizes="100vw"
         alt=""
         aria-hidden="true"
-        width="1000"
-        height="750"
+        width="1920"
+        height="1079"
         loading="lazy"
         decoding="async"
         class="absolute inset-0 -z-20 h-full w-full object-cover"

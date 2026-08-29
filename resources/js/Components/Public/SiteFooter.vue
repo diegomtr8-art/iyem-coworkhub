@@ -65,8 +65,8 @@ function volverArriba() {
             <img
               src="/img/nodico/logo-nodico-blanco.png"
               alt="Nódico"
-              width="180"
-              height="58"
+              width="480"
+              height="159"
               loading="lazy"
               class="h-11 w-auto"
             />

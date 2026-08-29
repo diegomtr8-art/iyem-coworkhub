@@ -180,8 +180,8 @@ onBeforeUnmount(() => {
     <img
       :src="poster"
       :alt="posterAlt"
-      width="1079"
-      height="1920"
+      srcset="/img/nodico/hero-inicio-640.webp 640w, /img/nodico/hero-inicio-1280.webp 1280w, /img/nodico/hero-inicio.webp 1079w"
+      sizes="100vw"
       fetchpriority="high"
       decoding="async"
       class="absolute inset-0 -z-20 h-full w-full object-cover object-[center_58%]"
@@ -194,8 +194,8 @@ onBeforeUnmount(() => {
         title="Video institucional de Nódico"
         tabindex="-1"
         allow="autoplay; encrypted-media"
-        class="pointer-events-none absolute left-1/2 top-1/2 h-[100vh] w-[177.78vh] min-h-[56.25vw] min-w-[100vw]
-               -translate-x-1/2 -translate-y-1/2 scale-[1.35] border-0 transition-opacity duration-700 ease-suave"
+        class="pointer-events-none absolute left-1/2 top-1/2 h-[100svh] w-[177.78svh] min-h-[56.25vw] min-w-[100vw]
+               -translate-x-1/2 -translate-y-1/2 scale-[1.12] border-0 transition-opacity duration-700 ease-suave"
         :class="videoVisible ? 'opacity-100' : 'opacity-0'"
         @load="alCargarVideo"
       />

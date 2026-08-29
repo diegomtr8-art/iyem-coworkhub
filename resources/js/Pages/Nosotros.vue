@@ -7,12 +7,12 @@ import PublicLayout from '@/Layouts/PublicLayout.vue'
 import { Head } from '@inertiajs/vue3'
 
 const valores = [
-  { icono: '/img/nodico/valor-creatividad.svg', titulo: 'Creatividad' },
-  { icono: '/img/nodico/valor-colaboracion.svg', titulo: 'Colaboración' },
-  { icono: '/img/nodico/valor-innovacion.svg', titulo: 'Innovación' },
-  { icono: '/img/nodico/valor-diversidad-inclusion.svg', titulo: 'Diversidad e inclusión' },
-  { icono: '/img/nodico/valor-democratizacion.svg', titulo: 'Democratización del acceso a espacios de calidad' },
-  { icono: '/img/nodico/valor-comunidad.svg', titulo: 'Comunidad' },
+  { icono: '/img/nodico/valor-creatividad.webp', titulo: 'Creatividad' },
+  { icono: '/img/nodico/valor-colaboracion.webp', titulo: 'Colaboración' },
+  { icono: '/img/nodico/valor-innovacion.webp', titulo: 'Innovación' },
+  { icono: '/img/nodico/valor-diversidad-inclusion.webp', titulo: 'Diversidad e inclusión' },
+  { icono: '/img/nodico/valor-democratizacion.webp', titulo: 'Democratización del acceso a espacios de calidad' },
+  { icono: '/img/nodico/valor-comunidad.webp', titulo: 'Comunidad' },
 ]
 </script>
 
@@ -30,9 +30,11 @@ const valores = [
     <section class="relative isolate flex min-h-[62svh] items-end overflow-hidden bg-tinta">
       <img
         src="/img/nodico/nosotros-hero.webp"
+        srcset="/img/nodico/nosotros-hero-640.webp 640w, /img/nodico/nosotros-hero-1280.webp 1280w, /img/nodico/nosotros-hero.webp 1920w"
+        sizes="100vw"
         alt="Miembros de la comunidad Nódico"
-        width="1000"
-        height="750"
+        width="1920"
+        height="1280"
         fetchpriority="high"
         decoding="async"
         class="absolute inset-0 -z-20 h-full w-full object-cover object-center"
@@ -67,9 +69,11 @@ const valores = [
         <ScrollReveal from="left">
           <img
             src="/img/nodico/mision.webp"
+        srcset="/img/nodico/mision-640.webp 640w, /img/nodico/mision-1280.webp 1280w, /img/nodico/mision.webp 1920w"
+        sizes="(min-width: 1024px) 50vw, 100vw"
             alt="Emprendedores colaborando en una mesa de trabajo de Nódico"
-            width="1000"
-            height="750"
+            width="1920"
+            height="1079"
             loading="lazy"
             decoding="async"
             class="aspect-[4/3] w-full rounded-3xl object-cover shadow-sombra"
@@ -97,10 +101,12 @@ const valores = [
     <section class="relative isolate overflow-hidden bg-tinta">
       <img
         src="/img/nodico/vision.webp"
+        srcset="/img/nodico/vision-640.webp 640w, /img/nodico/vision-1280.webp 1280w, /img/nodico/vision.webp 1920w"
+        sizes="100vw"
         alt=""
         aria-hidden="true"
-        width="1000"
-        height="750"
+        width="1920"
+        height="1079"
         loading="lazy"
         decoding="async"
         class="absolute inset-0 -z-20 h-full w-full object-cover"

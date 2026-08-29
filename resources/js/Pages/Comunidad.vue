@@ -23,10 +23,10 @@ const nodico = computed(() => (page.props.nodico ?? {}) as any)
 const eventos = computed(() => [...(props.proximos ?? []), ...(props.pasados ?? [])].slice(0, 6))
 
 const directorio = [
-  { nombre: 'Ahimsa Daram', foto: '/img/nodico/dir-ahimsa-daram.jpg', instagram: 'ahimsadaram' },
-  { nombre: 'Zentto', foto: '/img/nodico/dir-zentto.jpg', instagram: 'zentto.mid' },
+  { nombre: 'Ahimsa Daram', foto: '/img/nodico/dir-ahimsa-daram.webp', instagram: 'ahimsadaram' },
+  { nombre: 'Zentto', foto: '/img/nodico/dir-zentto.webp', instagram: 'zentto.mid' },
   { nombre: 'SaboReli', foto: '/img/nodico/dir-saboreli.webp', instagram: 'saborelimx' },
-  { nombre: 'Kinimitas', foto: '/img/nodico/dir-kinimitas.png', instagram: 'kinimitas' },
+  { nombre: 'Kinimitas', foto: '/img/nodico/dir-kinimitas.webp', instagram: 'kinimitas' },
 ]
 
 const fechaLarga = (valor: string) =>
@@ -47,10 +47,12 @@ const fechaLarga = (valor: string) =>
     <section class="relative isolate flex min-h-[58svh] items-end overflow-hidden bg-tinta">
       <img
         src="/img/nodico/comunidad-fondo.webp"
+        srcset="/img/nodico/comunidad-fondo-640.webp 640w, /img/nodico/comunidad-fondo-1280.webp 1280w, /img/nodico/comunidad-fondo.webp 1920w"
+        sizes="100vw"
         alt=""
         aria-hidden="true"
-        width="1000"
-        height="750"
+        width="1920"
+        height="960"
         fetchpriority="high"
         decoding="async"
         class="absolute inset-0 -z-20 h-full w-full object-cover"
@@ -157,8 +159,8 @@ const fechaLarga = (valor: string) =>
             <img
               src="/img/nodico/emprendedor-semana-salabtun.webp"
               alt="Salabtún, sal artesanal de las charcas mayas de Celestún"
-              width="800"
-              height="800"
+              width="600"
+              height="600"
               loading="lazy"
               decoding="async"
               class="mx-auto aspect-square w-full max-w-xs object-contain"
