@@ -44,6 +44,10 @@ DIRS_APP = [
     ("database", "database"),
     ("routes", "routes"),
     ("resources", "resources"),
+    # Las traducciones al espanol viven en la raiz del proyecto, no dentro de
+    # `resources/`. Sin esta linea, el servidor se queda con los textos de
+    # Laravel y cada error de acceso sale en ingles.
+    ("lang", "lang"),
 ]
 
 # Assets estáticos. Ojo: en este servidor van a la RAÍZ de public_html,
@@ -64,7 +68,7 @@ FILES = ["composer.json", "composer.lock"]
 # Carpetas de aplicacion que quedan dentro del document root y que Apache
 # serviria tal cual. Se les deja un .htaccess que niega todo.
 DIRS_A_BLINDAR = [
-    "app", "bootstrap", "config", "database", "resources", "routes",
+    "app", "bootstrap", "config", "database", "lang", "resources", "routes",
     "storage", "vendor", "tests", "tools", "deploy",
 ]
 
@@ -87,6 +91,7 @@ COMPROBAR_CERRADAS = [
     "/app/Http/Controllers/WelcomeController.php",
     "/config/nodico.php",
     "/database/seeders/NodicoWebSeeder.php",
+    "/lang/es/auth.php",
     "/package.json",
 ]
 
