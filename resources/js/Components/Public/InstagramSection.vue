@@ -41,11 +41,25 @@ function alFallar(code: string) {
   fallidas[code] = true
 }
 
-/** Si un embed no reporta carga en 8 s se asume caído y se muestra el respaldo. */
-function vigilar(code: string) {
-  window.setTimeout(() => {
-    if (! cargadas[code]) fallidas[code] = true
-  }, 8000)
+/**
+ * El vigilante arranca cuando la celda entra en pantalla, no al montar: los
+ * iframes van con loading="lazy" y ni siquiera habian empezado a cargar cuando
+ * expiraba el plazo, asi que tres de cuatro caian al respaldo sin motivo.
+ */
+function vigilar(el: Element | null, code: string) {
+  if (! el || typeof IntersectionObserver === 'undefined') return
+
+  const observador = new IntersectionObserver((entradas) => {
+    entradas.forEach((entrada) => {
+      if (! entrada.isIntersecting) return
+      observador.disconnect()
+      window.setTimeout(() => {
+        if (! cargadas[code]) fallidas[code] = true
+      }, 10000)
+    })
+  }, { rootMargin: '200px' })
+
+  observador.observe(el)
 }
 </script>
 
@@ -92,7 +106,7 @@ function vigilar(code: string) {
             class="h-[420px] w-full border-0"
             @load="alCargar(post.code)"
             @error="alFallar(post.code)"
-            @vue:mounted="vigilar(post.code)"
+            @vue:mounted="(n: any) => vigilar(n.el, post.code)"
           />
 
           <!-- Respaldo por celda: nunca un hueco en blanco -->

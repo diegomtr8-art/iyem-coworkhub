@@ -6,36 +6,111 @@ import Meta from '@/Components/Public/Meta.vue'
 import HeroVideo from '@/Components/Public/HeroVideo.vue'
 import InstagramSection from '@/Components/Public/InstagramSection.vue'
 import PlanesCarousel from '@/Components/Public/PlanesCarousel.vue'
+import BeneficiosPaneles from '@/Components/Public/BeneficiosPaneles.vue'
 import ScrollReveal from '@/Components/Public/ScrollReveal.vue'
+import SelloGiratorio from '@/Components/Public/SelloGiratorio.vue'
 import SectionHeading from '@/Components/Public/SectionHeading.vue'
 import PublicLayout from '@/Layouts/PublicLayout.vue'
+import { useParallax } from '@/composables/useParallax'
+import type { Plan, Salon } from '@/tipos'
 import { usePage } from '@inertiajs/vue3'
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 
 const props = defineProps<{
-  planes?: any[]
-  salon?: any | null
+  planes?: Plan[]
+  salon?: Salon | null
   instagramPosts?: string[]
 }>()
 
 const page = usePage()
 const nodico = computed(() => (page.props.nodico ?? {}) as any)
 
+/**
+ * 4.3 — mosaico asimétrico. Los dos de más peso comercial ocupan celda grande
+ * con foto; los otros cuatro van compactos.
+ * Las descripciones las redacté yo: PENDIENTE de que Nódico las valide.
+ */
 const servicios = [
-  { icono: '/img/nodico/icono-espacio-colaborativo.webp', titulo: 'Espacio colaborativo de trabajo' },
-  { icono: '/img/nodico/icono-wifi.webp', titulo: 'Wifi con 200 MB de velocidad' },
-  { icono: '/img/nodico/icono-sala-contenido.webp', titulo: 'Sala profesional de creación de contenido' },
-  { icono: '/img/nodico/icono-paqueteria.webp', titulo: 'Servicios de recepción de paquetería' },
-  { icono: '/img/nodico/icono-invitados.webp', titulo: 'Hasta 5 invitados gratuitos al mes por membresía' },
-  { icono: '/img/nodico/icono-cafe-agua.webp', titulo: 'Café y agua durante todo el día' },
+  {
+    icono: '/img/nodico/icono-espacio-colaborativo.webp',
+    titulo: 'Espacio colaborativo de trabajo',
+    descripcion: 'Escritorios en área abierta, con lugar para ti y para quien venga contigo.',
+    protagonista: true,
+    foto: '/img/nodico/mision.webp',
+  },
+  {
+    icono: '/img/nodico/icono-sala-contenido.webp',
+    titulo: 'Sala profesional de creación de contenido',
+    descripcion: 'Estudio equipado para grabar tu podcast, tus reels o tus fotos de producto.',
+    protagonista: true,
+    foto: '/img/nodico/vision.webp',
+  },
+  {
+    icono: '/img/nodico/icono-wifi.webp',
+    titulo: 'Wifi con 200 MB de velocidad',
+    descripcion: 'Suficiente para videollamadas, subir contenido y trabajar sin pausas.',
+  },
+  {
+    icono: '/img/nodico/icono-paqueteria.webp',
+    titulo: 'Recepción de paquetería',
+    descripcion: 'Recibimos tus envíos aunque no estés; te avisamos en cuanto llegan.',
+  },
+  {
+    icono: '/img/nodico/icono-invitados.webp',
+    titulo: 'Hasta 5 invitados gratuitos al mes',
+    descripcion: 'Trae a tu equipo o a un cliente sin costo adicional.',
+  },
+  {
+    icono: '/img/nodico/icono-cafe-agua.webp',
+    titulo: 'Café y agua todo el día',
+    descripcion: 'Barra libre mientras trabajas. Sin fichas ni límites.',
+  },
 ]
 
+const protagonistas = computed(() => servicios.filter((x) => x.protagonista))
+const compactos = computed(() => servicios.filter((x) => !x.protagonista))
+
+/**
+ * 4.4 — paneles expansibles. Descripciones redactadas por mí, PENDIENTES de
+ * validación. Las fotos son del espacio, no de cada beneficio concreto: varios
+ * son conceptos abstractos y no hay material específico.
+ */
 const beneficios = [
-  'Descuentos exclusivos en Tienda Herencia Viva',
-  'Directorio de servicios y productos de miembros Nódico',
-  'Acceso preferente a eventos, talleres y capacitaciones',
-  'Conexión directa con el ecosistema emprendedor local y nacional',
-  'Espacio pet friendly',
+  {
+    titulo: 'Descuentos en Tienda Herencia Viva',
+    tituloCorto: 'Descuentos',
+    descripcion: 'Precio preferente en artesanía yucateca, para ti y para los regalos de tu negocio.',
+    foto: '/img/nodico/salon-detalle.webp',
+    acento: '#FFDD00',
+  },
+  {
+    titulo: 'Directorio de miembros Nódico',
+    tituloCorto: 'Directorio',
+    descripcion: 'Tu proyecto visible ante toda la comunidad, y la comunidad disponible para ti.',
+    foto: '/img/nodico/mision.webp',
+    acento: '#D6E265',
+  },
+  {
+    titulo: 'Acceso preferente a eventos y talleres',
+    tituloCorto: 'Eventos y talleres',
+    descripcion: 'Te avisamos antes y apartas lugar antes de que se abra al público.',
+    foto: '/img/nodico/comunidad-fondo.webp',
+    acento: '#EF7E88',
+  },
+  {
+    titulo: 'Conexión con el ecosistema emprendedor',
+    tituloCorto: 'Ecosistema',
+    descripcion: 'Programas del IYEM, CANIETI y la red de incubación, a un paso de tu escritorio.',
+    foto: '/img/nodico/salon-yucatan-emprende-1.webp',
+    acento: '#864B95',
+  },
+  {
+    titulo: 'Espacio pet friendly',
+    tituloCorto: 'Pet friendly',
+    descripcion: 'Tu perro también tiene lugar aquí. Sin permisos ni explicaciones.',
+    foto: '/img/nodico/nosotros-hero.webp',
+    acento: '#FFE124',
+  },
 ]
 
 /** Si la BD viniera vacía, la portada sigue mostrando los cuatro planes reales. */
@@ -49,6 +124,10 @@ const planesFallback = [
   { nombre: 'Nodo Match', precio: 799, periodo_label: 'por 1 mes', color: '#864B95', destacado: false, personas: 2,
     descripcion_corta: 'Ideal para emprendedores, freelancers y creadores de contenido que requieren un espacio estable para trabajar.', beneficios: [] },
 ]
+
+// 4.6 — parallax suave de la foto del day-pass.
+const fotoDaypass = ref<HTMLElement | null>(null)
+const { desplazamiento } = useParallax(fotoDaypass, 56)
 
 const planesVisibles = computed(() => (props.planes?.length ? props.planes : planesFallback))
 
@@ -82,7 +161,7 @@ const fichaSalon = computed(() => {
       :maps-url="nodico.mapsUrl"
     />
 
-    <!-- Servicios — panel único dividido por finas líneas, tipo ficha técnica -->
+    <!-- 4.3 · Servicios — mosaico asimétrico -->
     <section class="bg-cream py-20 lg:py-28">
       <div class="mx-auto max-w-7xl px-5 sm:px-8">
         <ScrollReveal>
@@ -94,60 +173,81 @@ const fichaSalon = computed(() => {
           />
         </ScrollReveal>
 
-        <ScrollReveal class="mt-14">
-          <ul
-            class="grid overflow-hidden rounded-3xl bg-white shadow-sombra ring-1 ring-dark/[.07]
-                   sm:grid-cols-2 lg:grid-cols-3"
+        <div class="mt-14 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+          <!-- Protagonistas: celda grande con foto -->
+          <ScrollReveal
+            v-for="(servicio, i) in protagonistas"
+            :key="servicio.titulo"
+            :delay="i * 80"
+            class="sm:col-span-2"
           >
-            <li
-              v-for="(servicio, i) in servicios"
-              :key="servicio.titulo"
-              class="group flex items-center gap-5 border-dark/[.08] p-7 transition-colors duration-300
-                     hover:bg-cream-50 sm:p-8
-                     [&:not(:last-child)]:border-b sm:[&:nth-child(-n+4)]:border-b sm:[&:nth-last-child(-n+2)]:border-b-0
-                     sm:[&:nth-child(odd)]:border-r
-                     lg:[&:nth-child(-n+3)]:border-b lg:[&:nth-last-child(-n+3)]:border-b-0
-                     lg:[&:nth-child(3n)]:border-r-0 lg:[&:not(:nth-child(3n))]:border-r"
+            <article class="group relative isolate flex h-full min-h-[300px] flex-col justify-end overflow-hidden rounded-3xl p-8">
+              <img
+                :src="servicio.foto"
+                alt=""
+                aria-hidden="true"
+                width="1920"
+                height="1079"
+                loading="lazy"
+                decoding="async"
+                class="absolute inset-0 -z-20 h-full w-full object-cover transition-transform duration-700 ease-salida group-hover:scale-105"
+              />
+              <div class="absolute inset-0 -z-10 bg-tinta/[.72]" aria-hidden="true" />
+
+              <img
+                :src="servicio.icono"
+                alt=""
+                aria-hidden="true"
+                width="160"
+                height="160"
+                loading="lazy"
+                decoding="async"
+                class="mb-6 h-14 w-14 object-contain brightness-0 invert"
+              />
+              <h3 class="font-display text-2xl font-extrabold leading-tight text-white">
+                {{ servicio.titulo }}
+              </h3>
+              <p class="mt-3 max-w-md font-body text-cuerpo leading-relaxed text-white/80">
+                {{ servicio.descripcion }}
+              </p>
+            </article>
+          </ScrollReveal>
+
+          <!-- Compactos: icono sobre fondo claro -->
+          <ScrollReveal
+            v-for="(servicio, i) in compactos"
+            :key="`compacto-${servicio.titulo}`"
+            :delay="160 + i * 70"
+          >
+            <article
+              class="group flex h-full flex-col rounded-3xl bg-white p-7 shadow-sombra-sm ring-1 ring-dark/[.07]
+                     transition-all duration-300 ease-salida hover:-translate-y-1 hover:shadow-sombra"
             >
               <img
                 :src="servicio.icono"
                 alt=""
                 aria-hidden="true"
-                width="96"
-                height="96"
+                width="160"
+                height="160"
                 loading="lazy"
                 decoding="async"
-                class="h-14 w-14 shrink-0 object-contain transition-transform duration-500 ease-salida group-hover:scale-110"
+                class="mb-5 h-12 w-12 object-contain transition-transform duration-500 ease-salida group-hover:scale-110"
               />
-              <div>
-                <p class="etiqueta-tecnica text-dark/55" aria-hidden="true">{{ String(i + 1).padStart(2, '0') }}</p>
-                <p class="mt-2 font-display text-base font-bold leading-snug text-dark sm:text-lg">
-                  {{ servicio.titulo }}
-                </p>
-              </div>
-            </li>
-          </ul>
-        </ScrollReveal>
+              <h3 class="font-display text-lg font-bold leading-snug text-dark">
+                {{ servicio.titulo }}
+              </h3>
+              <p class="mt-2.5 font-body text-sm leading-relaxed text-dark/65">
+                {{ servicio.descripcion }}
+              </p>
+            </article>
+          </ScrollReveal>
+        </div>
       </div>
     </section>
 
-    <!-- Beneficios — foto a sangre con velo y lista a dos columnas -->
-    <section class="relative isolate overflow-hidden bg-tinta">
-      <img
-        src="/img/nodico/nosotros-hero.webp"
-        srcset="/img/nodico/nosotros-hero-640.webp 640w, /img/nodico/nosotros-hero-1280.webp 1280w, /img/nodico/nosotros-hero.webp 1920w"
-        sizes="100vw"
-        alt=""
-        aria-hidden="true"
-        width="1920"
-        height="1280"
-        loading="lazy"
-        decoding="async"
-        class="absolute inset-0 -z-20 h-full w-full object-cover"
-      />
-      <div class="absolute inset-0 -z-10 bg-tinta/90" aria-hidden="true" />
-
-      <div class="mx-auto max-w-7xl px-5 py-20 sm:px-8 lg:py-28">
+    <!-- 4.4 · Beneficios — paneles expansibles -->
+    <section class="bg-tinta py-20 lg:py-28">
+      <div class="mx-auto max-w-7xl px-5 sm:px-8">
         <ScrollReveal>
           <SectionHeading
             etiqueta="Beneficios"
@@ -157,19 +257,8 @@ const fichaSalon = computed(() => {
           />
         </ScrollReveal>
 
-        <ScrollReveal :stagger="70" as="ul" class="mt-14 grid gap-x-14 gap-y-1 lg:grid-cols-2">
-          <li
-            v-for="(beneficio, i) in beneficios"
-            :key="beneficio"
-            class="flex items-baseline gap-6 border-b border-white/10 py-6"
-          >
-            <span class="etiqueta-tecnica shrink-0 text-nodo-400" aria-hidden="true">
-              {{ String(i + 1).padStart(2, '0') }}
-            </span>
-            <p class="font-display text-lg font-bold leading-snug text-white sm:text-xl">
-              {{ beneficio }}
-            </p>
-          </li>
+        <ScrollReveal class="mt-14">
+          <BeneficiosPaneles :beneficios="beneficios" />
         </ScrollReveal>
       </div>
     </section>
@@ -197,21 +286,29 @@ const fichaSalon = computed(() => {
       </div>
     </section>
 
-    <!-- Day-pass — foto a la izquierda, dato grande a la derecha -->
-    <section class="bg-nodo-400 py-20 lg:py-24">
-      <div class="mx-auto grid max-w-7xl items-center gap-12 px-5 sm:px-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:gap-20">
+    <!-- 4.6 · Day-pass — sello giratorio, parallax y bloque estampado -->
+    <section class="overflow-hidden bg-nodo-400 py-20 lg:py-24">
+      <div class="mx-auto grid max-w-7xl items-center gap-14 px-5 sm:px-8 lg:grid-cols-2 lg:gap-20">
         <ScrollReveal from="left">
-          <img
-            src="/img/nodico/daypass-emprendedor.webp"
-        srcset="/img/nodico/daypass-emprendedor-640.webp 640w, /img/nodico/daypass-emprendedor-1280.webp 1280w, /img/nodico/daypass-emprendedor.webp 1677w"
-        sizes="(min-width: 1024px) 50vw, 100vw"
-            alt="Emprendedores del interior del estado trabajando en Nódico"
-            width="1677"
-            height="1920"
-            loading="lazy"
-            decoding="async"
-            class="aspect-[4/3] w-full rounded-3xl object-cover shadow-sombra-lg"
-          />
+          <div ref="fotoDaypass" class="relative">
+            <img
+              src="/img/nodico/daypass-emprendedor.webp"
+              srcset="/img/nodico/daypass-emprendedor-640.webp 640w, /img/nodico/daypass-emprendedor-1280.webp 1280w, /img/nodico/daypass-emprendedor.webp 1677w"
+              sizes="(min-width: 1024px) 50vw, 100vw"
+              alt="Emprendedores del interior del estado trabajando en Nódico"
+              width="1677"
+              height="1920"
+              loading="lazy"
+              decoding="async"
+              class="aspect-[4/3] w-full rounded-3xl object-cover shadow-sombra-lg will-change-transform"
+              :style="{ transform: `translate3d(0, ${desplazamiento}px, 0)` }"
+            />
+
+            <!-- Sello giratorio superpuesto en la esquina -->
+            <div class="absolute bottom-4 right-4 sm:bottom-6 sm:right-6">
+              <SelloGiratorio />
+            </div>
+          </div>
         </ScrollReveal>
 
         <ScrollReveal from="right">
@@ -224,9 +321,12 @@ const fichaSalon = computed(() => {
             ¿Eres emprendedor o artesano del interior del estado?
           </h2>
 
-          <p class="mt-8 rounded-2xl bg-dark px-7 py-6 font-display text-2xl font-extrabold text-nodo-400 sm:text-3xl">
-            Tu day-pass siempre es gratuito.
-          </p>
+          <!-- Entra como sello estampado, después del titular -->
+          <ScrollReveal from="scale" :delay="220">
+            <p class="mt-8 inline-block rotate-[-1.5deg] rounded-2xl bg-dark px-7 py-6 font-display text-2xl font-extrabold text-nodo-400 sm:text-3xl">
+              Tu day-pass siempre es gratuito.
+            </p>
+          </ScrollReveal>
 
           <p class="mt-7 max-w-lg font-body text-cuerpo-lg text-dark/80">
             Si tu negocio está fuera de Mérida y necesitas un lugar para tener una junta,

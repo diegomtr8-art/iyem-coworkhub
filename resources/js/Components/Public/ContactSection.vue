@@ -26,7 +26,7 @@ const campos = [
 ] as const
 
 // PERF-03: el iframe de Google no se monta hasta que la persona lo pide, para
-// no cargar ~300 KB ni la cookie de Google en cada visita a las cinco paginas.
+// no cargar la cookie de Google en cada visita a las cinco páginas.
 const mapaActivo = ref(false)
 
 const tocado = reactive<Record<string, boolean>>({})
@@ -82,126 +82,91 @@ function enviar() {
     },
   })
 }
+
+const telefonoHref = computed(
+  () => `tel:${nodico.value.telefonoE164 ?? (nodico.value.telefono ?? '').replace(/\s/g, '')}`,
+)
 </script>
 
 <template>
   <section id="hablemos" class="relative bg-cream py-20 lg:py-28">
     <div class="mx-auto max-w-7xl px-5 sm:px-8">
-      <div class="grid gap-12 lg:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)] lg:gap-16">
-        <!-- Columna de datos -->
-        <div>
-          <div class="mb-6 flex items-center gap-4">
-            <p class="etiqueta-tecnica shrink-0 text-dark/55">Contacto</p>
-            <span class="h-px flex-1 bg-dark/15" aria-hidden="true" />
-          </div>
+      <div class="max-w-2xl">
+        <p class="etiqueta-tecnica mb-5 flex items-center gap-3 text-dark/55">
+          <span class="h-1.5 w-1.5 rounded-full bg-nodo-400" aria-hidden="true" />
+          Contacto
+        </p>
 
-          <h2 class="font-display text-display-lg font-extrabold text-dark">Hablemos</h2>
+        <h2 class="font-display text-display-lg font-extrabold text-dark">Hablemos</h2>
 
-          <p class="mt-6 max-w-md font-body text-cuerpo-lg text-dark/70">
-            ¿Quieres conocer el espacio, cotizar un salón o resolver una duda sobre las
-            membresías? Escríbenos y te respondemos a la brevedad.
-          </p>
+        <p class="mt-6 font-body text-cuerpo-lg text-dark/70">
+          ¿Quieres conocer el espacio, cotizar un salón o resolver una duda sobre las
+          membresías? Escríbenos y te respondemos a la brevedad.
+        </p>
+      </div>
 
-          <dl class="mt-10 space-y-6">
-            <div v-if="nodico.email" class="flex gap-4">
-              <Mail class="mt-0.5 h-5 w-5 shrink-0 text-dark" aria-hidden="true" />
-              <div>
-                <dt class="etiqueta-tecnica text-dark/50">Correo</dt>
-                <dd class="mt-1.5">
-                  <a :href="`mailto:${nodico.email}`" class="font-body text-dark underline-offset-4 hover:underline">
-                    {{ nodico.email }}
-                  </a>
-                </dd>
-              </div>
-            </div>
-
-            <div v-if="nodico.telefono" class="flex gap-4">
-              <Phone class="mt-0.5 h-5 w-5 shrink-0 text-dark" aria-hidden="true" />
-              <div>
-                <dt class="etiqueta-tecnica text-dark/50">Teléfono</dt>
-                <dd class="mt-1.5">
-                  <a :href="`tel:${nodico.telefono.replace(/\s/g, '')}`" class="font-body text-dark underline-offset-4 hover:underline">
-                    {{ nodico.telefono }}
-                  </a>
-                </dd>
-              </div>
-            </div>
-
-            <div v-if="nodico.direccion" class="flex gap-4">
-              <MapPin class="mt-0.5 h-5 w-5 shrink-0 text-dark" aria-hidden="true" />
-              <div>
-                <dt class="etiqueta-tecnica text-dark/50">Dirección</dt>
-                <dd class="mt-1.5 font-body text-dark">{{ nodico.direccion }}</dd>
-                <dd v-if="nodico.mapsUrl" class="mt-3">
-                  <a
-                    :href="nodico.mapsUrl"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    class="inline-flex min-h-[44px] items-center gap-2 rounded-lg border border-dark/25 px-4 py-2
-                           font-display text-sm font-bold text-dark transition hover:border-dark hover:bg-dark hover:text-white"
-                  >
-                    Ver en Google Maps
-                  </a>
-                </dd>
-              </div>
-            </div>
-
-            <div v-if="nodico.horarios" class="flex gap-4">
-              <Clock class="mt-0.5 h-5 w-5 shrink-0 text-dark" aria-hidden="true" />
-              <div>
-                <dt class="etiqueta-tecnica text-dark/50">Horarios</dt>
-                <dd class="mt-1.5 font-body text-dark">{{ nodico.horarios }}</dd>
-              </div>
-            </div>
-          </dl>
-
-          <!-- Mapa como fachada: el iframe solo se monta al pulsar -->
-          <div v-if="nodico.mapsEmbed" class="mt-10 overflow-hidden rounded-3xl shadow-sombra ring-1 ring-dark/[.07]">
-            <iframe
-              v-if="mapaActivo"
-              :src="nodico.mapsEmbed"
-              title="Ubicación de Nódico en Google Maps"
-              loading="lazy"
-              referrerpolicy="no-referrer-when-downgrade"
-              class="h-[320px] w-full border-0 sm:h-[380px]"
-            />
-
-            <button
-              v-else
-              type="button"
-              class="group flex h-[320px] w-full flex-col items-center justify-center gap-4 bg-cream-200
-                     transition hover:bg-cream-dark sm:h-[380px]"
-              @click="mapaActivo = true"
-            >
-              <span
-                class="flex h-14 w-14 items-center justify-center rounded-full bg-nodo-400
-                       transition duration-300 ease-salida group-hover:scale-110"
-              >
-                <MapPin class="h-6 w-6 text-dark" aria-hidden="true" />
-              </span>
-              <span class="font-display text-base font-bold text-dark">Ver el mapa</span>
-              <span class="max-w-xs px-6 text-center font-body text-sm text-dark/60">
-                Se carga desde Google Maps al pulsar
-              </span>
-            </button>
-          </div>
+      <!-- 1 · Franja de datos: cuatro columnas iguales, 2x2 en iPhone -->
+      <dl class="mt-12 grid grid-cols-2 gap-px overflow-hidden rounded-3xl bg-dark/10 lg:grid-cols-4">
+        <div v-if="nodico.email" class="flex flex-col gap-2 bg-cream p-6">
+          <dt class="etiqueta-tecnica flex items-center gap-2 text-dark/55">
+            <Mail class="h-4 w-4" aria-hidden="true" /> Correo
+          </dt>
+          <dd>
+            <a :href="`mailto:${nodico.email}`" class="font-body text-sm text-dark underline-offset-4 hover:underline">
+              {{ nodico.email }}
+            </a>
+          </dd>
         </div>
 
-        <!-- Tarjeta elevada del formulario -->
-        <div class="self-start rounded-3xl bg-white p-6 shadow-sombra-lg ring-1 ring-dark/[.07] sm:p-9 lg:sticky lg:top-28">
+        <div v-if="nodico.telefono" class="flex flex-col gap-2 bg-cream p-6">
+          <dt class="etiqueta-tecnica flex items-center gap-2 text-dark/55">
+            <Phone class="h-4 w-4" aria-hidden="true" /> Teléfono
+          </dt>
+          <dd>
+            <a :href="telefonoHref" class="font-body text-sm text-dark underline-offset-4 hover:underline">
+              {{ nodico.telefono }}
+            </a>
+          </dd>
+        </div>
+
+        <div v-if="nodico.direccion" class="flex flex-col gap-2 bg-cream p-6">
+          <dt class="etiqueta-tecnica flex items-center gap-2 text-dark/55">
+            <MapPin class="h-4 w-4" aria-hidden="true" /> Dirección
+          </dt>
+          <dd class="font-body text-sm leading-relaxed text-dark">
+            {{ nodico.direccionCorta ?? nodico.direccion }}
+            <a
+              v-if="nodico.mapsUrl"
+              :href="nodico.mapsUrl"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="mt-1 block font-medium text-dark underline underline-offset-4"
+            >Cómo llegar</a>
+          </dd>
+        </div>
+
+        <div v-if="nodico.horarios" class="flex flex-col gap-2 bg-cream p-6">
+          <dt class="etiqueta-tecnica flex items-center gap-2 text-dark/55">
+            <Clock class="h-4 w-4" aria-hidden="true" /> Horarios
+          </dt>
+          <dd class="font-body text-sm text-dark">
+            {{ nodico.horarios }}
+            <span v-if="nodico.horariosDetalle" class="mt-0.5 block text-dark/55">
+              {{ nodico.horariosDetalle }}
+            </span>
+          </dd>
+        </div>
+      </dl>
+
+      <!-- 2 · Formulario y mapa a la misma altura -->
+      <div class="mt-6 grid items-stretch gap-6 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]">
+        <div class="rounded-3xl bg-white p-6 shadow-sombra-lg ring-1 ring-dark/[.07] sm:p-9">
           <!-- A11Y-06: `relative` para que el honeypot en left:-9999px se
                posicione contra el formulario y no contra un ancestro incierto. -->
           <form class="relative" novalidate @submit.prevent="enviar">
-            <!-- Trampa antibots: fuera de pantalla, nunca enfocable -->
             <div class="absolute left-[-9999px]" aria-hidden="true">
               <label for="contacto-sitio-web">No llenar</label>
-              <input
-                id="contacto-sitio-web"
-                v-model="form.sitio_web"
-                type="text"
-                tabindex="-1"
-                autocomplete="off"
-              />
+              <input id="contacto-sitio-web" v-model="form.sitio_web" type="text" tabindex="-1" autocomplete="off" />
             </div>
 
             <div class="grid gap-5 sm:grid-cols-2">
@@ -217,14 +182,12 @@ function enviar() {
                   placeholder=" "
                   class="peer min-h-[60px] w-full rounded-xl border bg-cream-50 px-4 pb-2.5 pt-7 font-body text-dark
                          transition-colors duration-200 focus:bg-white focus:outline-none focus:ring-0"
-                  :class="errorDe(campo.name)
-                    ? 'border-red-500 focus:border-red-500'
-                    : 'border-dark/15 focus:border-nodo-500'"
+                  :class="errorDe(campo.name) ? 'border-red-500 focus:border-red-500' : 'border-dark/15 focus:border-nodo-500'"
                   @blur="tocado[campo.name] = true"
                 />
                 <label
                   :for="`contacto-${campo.name}`"
-                  class="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 font-body text-dark/50
+                  class="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 font-body text-dark/55
                          transition-all duration-200 ease-salida
                          peer-focus:top-3 peer-focus:translate-y-0 peer-focus:text-xs peer-focus:text-dark/60
                          peer-[:not(:placeholder-shown)]:top-3
@@ -239,7 +202,6 @@ function enviar() {
                 </p>
               </div>
 
-              <!-- Comentarios ocupa el ancho completo -->
               <div class="relative sm:col-span-2">
                 <textarea
                   id="contacto-comentarios"
@@ -250,14 +212,12 @@ function enviar() {
                   :aria-describedby="errorDe('comentarios') ? 'error-comentarios' : undefined"
                   class="peer w-full resize-y rounded-xl border bg-cream-50 px-4 pb-3 pt-7 font-body text-dark
                          transition-colors duration-200 focus:bg-white focus:outline-none focus:ring-0"
-                  :class="errorDe('comentarios')
-                    ? 'border-red-500 focus:border-red-500'
-                    : 'border-dark/15 focus:border-nodo-500'"
+                  :class="errorDe('comentarios') ? 'border-red-500 focus:border-red-500' : 'border-dark/15 focus:border-nodo-500'"
                   @blur="tocado.comentarios = true"
                 />
                 <label
                   for="contacto-comentarios"
-                  class="pointer-events-none absolute left-4 top-6 -translate-y-1/2 font-body text-dark/50
+                  class="pointer-events-none absolute left-4 top-6 -translate-y-1/2 font-body text-dark/55
                          transition-all duration-200 ease-salida
                          peer-focus:top-4 peer-focus:text-xs peer-focus:text-dark/60
                          peer-[:not(:placeholder-shown)]:top-4
@@ -283,11 +243,7 @@ function enviar() {
               >
                 <Loader2 v-if="form.processing" class="h-5 w-5 animate-spin" aria-hidden="true" />
                 {{ form.processing ? 'Enviando…' : 'Enviar mensaje' }}
-                <span
-                  v-if="!form.processing"
-                  class="transition-transform duration-200 group-hover:translate-x-1"
-                  aria-hidden="true"
-                >→</span>
+                <span v-if="!form.processing" class="transition-transform duration-200 group-hover:translate-x-1" aria-hidden="true">→</span>
               </button>
 
               <p v-if="enviado && !form.processing" role="status" class="font-body text-sm font-medium text-dark">
@@ -295,6 +251,40 @@ function enviar() {
               </p>
             </div>
           </form>
+        </div>
+
+        <!-- Mapa como fachada (PERF-03), a la misma altura que el formulario -->
+        <div
+          v-if="nodico.mapsEmbed"
+          class="min-h-[320px] overflow-hidden rounded-3xl shadow-sombra ring-1 ring-dark/[.07]"
+        >
+          <iframe
+            v-if="mapaActivo"
+            :src="nodico.mapsEmbed"
+            title="Ubicación de Nódico en Google Maps"
+            loading="lazy"
+            referrerpolicy="no-referrer-when-downgrade"
+            class="h-full min-h-[320px] w-full border-0"
+          />
+
+          <button
+            v-else
+            type="button"
+            class="group flex h-full min-h-[320px] w-full flex-col items-center justify-center gap-4
+                   bg-cream-200 transition hover:bg-cream-dark"
+            @click="mapaActivo = true"
+          >
+            <span
+              class="flex h-14 w-14 items-center justify-center rounded-full bg-nodo-400
+                     transition duration-300 ease-salida group-hover:scale-110"
+            >
+              <MapPin class="h-6 w-6 text-dark" aria-hidden="true" />
+            </span>
+            <span class="font-display text-base font-bold text-dark">Ver el mapa</span>
+            <span class="max-w-xs px-6 text-center font-body text-sm text-dark/60">
+              Se carga desde Google Maps al pulsar
+            </span>
+          </button>
         </div>
       </div>
     </div>
