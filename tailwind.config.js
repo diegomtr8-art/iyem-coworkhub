@@ -87,6 +87,13 @@ export default {
                 // Sólida desplazada: se reserva para acentos puntuales, no para todo.
                 'dura-sm': '2px 2px 0 #2E2D2C',
                 'dura':    '6px 6px 0 #2E2D2C',
+                'dura-lg': '10px 10px 0 #2E2D2C',
+                // Sombra en color, para tarjetas sobre fondo oscuro o crema.
+                // La SKILL las documentaba desde el principio y no existían:
+                // cualquier `shadow-dura-nodo` escrito hasta hoy no pintaba nada.
+                'dura-nodo':  '6px 6px 0 #FFE124',
+                'dura-lima':  '6px 6px 0 #D6E265',
+                'dura-crema': '6px 6px 0 #F4F1EA',
             },
 
             transitionTimingFunction: {

@@ -6,9 +6,41 @@ description: Sistema de diseño «Editorial técnico» del sitio público y de l
 # Sistema de diseño de Nódico — «Editorial técnico»
 
 Aplica al **sitio público** de `coworkhub` (`resources/js/Pages/{Welcome,Nosotros,Membresias,Salones,Comunidad,Legal}`,
-`resources/js/Components/Public/`) y a las **pantallas de acceso** (`resources/js/Pages/Auth/`,
-`resources/js/Layouts/AuthLayout.vue`, `resources/js/Components/Auth/`).
-**No** aplica a `/dashboard` ni a `/portal`, que siguen con su propio lenguaje de panel.
+`resources/js/Components/Public/`), a las **pantallas de acceso** (`resources/js/Pages/Auth/`,
+`resources/js/Layouts/AuthLayout.vue`, `resources/js/Components/Auth/`) y —desde la Fase 2 de
+portales— al **portal del miembro** (`resources/js/Pages/Portal/`,
+`resources/js/Components/Portal/`, `resources/js/Layouts/PortalLayout.vue`).
+
+**No** aplica a `/dashboard`, que tiene su propio lenguaje. Ver «Los dos registros» abajo:
+no es un olvido, es una decisión.
+
+## Los dos registros
+
+El sistema se usa en dos registros distintos y confundirlos estropea los dos.
+
+**Portal del miembro (`/portal`) — cálido y claro.** El usuario es un emprendedor de 25 años
+que entra dos veces por semana desde el iPhone. Fondos `cream`, titulares Carmen Sans grandes,
+amarillo de marca como acento, bloques duros. Aire entre elementos. Se parece al sitio público
+porque es la misma marca hablándole a la misma persona; que la sesión esté iniciada no la
+convierte en administradora de sistemas.
+
+**Panel operativo (`/dashboard`) — denso y frío.** Se opera a diario, con prisa, muchas veces
+desde el mostrador con alguien esperando enfrente. Densidad de información, estado legible de
+un vistazo, cero clics de adorno. Mantiene la identidad —tipografía, `dark`, `cream`— pero
+prioriza lo urgente sobre lo bonito, y el **color semántico va separado del amarillo de marca**:
+en una herramienta, «atención» tiene que leerse como atención y no como acento.
+
+### Color semántico (solo en el panel operativo)
+
+| Tono | Uso | Color |
+|---|---|---|
+| `bien` | Todo en orden, confirmado, activo | `emerald-600` sobre claro |
+| `atencion` | Requiere acción pronto, vence, pendiente | `amber-600` sobre claro |
+| `problema` | Vencido, cancelado, rechazado, sin acceso | `red-600` sobre claro |
+| `neutro` | Informativo, histórico, cerrado | `dark/70` |
+
+**Nunca uses `nodo-400` para estado.** El amarillo es la marca; si además significa
+«atención», deja de significar ambas cosas.
 
 ## La idea
 
@@ -83,6 +115,9 @@ se salen de pantalla. Ya pasó una vez.
 
 `shadow-dura-sm` (2px) · `shadow-dura` (6px) · `shadow-dura-lg` (10px) ·
 `shadow-dura-nodo` / `shadow-dura-lima` / `shadow-dura-crema` para sombra en color.
+Los seis están en `tailwind.config.js`. (Los cuatro últimos se documentaban aquí desde el
+principio pero no existían en la configuración hasta la Fase 2 de portales: escribirlos no
+pintaba nada.)
 Easings: `ease-salida` (entradas y hover) y `ease-suave` (salidas).
 
 ## Los cuatro patrones

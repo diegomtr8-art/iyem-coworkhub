@@ -1,252 +1,602 @@
 <script setup lang="ts">
+import { computed, ref, watch } from 'vue'
+import { Head, Link, router, useForm } from '@inertiajs/vue3'
+import {
+  ChevronLeft, ChevronRight, Check, AlertCircle, CalendarX2, Users, Loader2, CalendarPlus,
+} from 'lucide-vue-next'
 import PortalLayout from '@/Layouts/PortalLayout.vue'
-import { Head, useForm } from '@inertiajs/vue3'
-import { CalendarDays, ChevronRight, Check, AlertCircle, Clock } from 'lucide-vue-next'
-import { ref, computed } from 'vue'
+import EncabezadoPortal from '@/Components/Portal/EncabezadoPortal.vue'
+import TarjetaPortal from '@/Components/Portal/TarjetaPortal.vue'
 
+/**
+ * Reservar (Fase 2.5). El corazón del portal.
+ *
+ * Tres decisiones que ordenan la pantalla:
+ *
+ * 1. **La disponibilidad se enseña, no se descubre.** El calendario ya sabe qué
+ *    días tienen hueco y la franja qué bloques están ocupados. Un formulario que
+ *    acepta cualquier hora y luego dice «ocupado» hace trabajar a la persona
+ *    para averiguar algo que el servidor ya sabía.
+ * 2. **La validación va en vivo, con el número exacto que falta.** «No te
+ *    alcanza» no sirve; «te faltan 0.5 h» sí.
+ * 3. **El resumen dice cuánto quedará después.** Nadie confirma a ciegas.
+ *
+ * La franja se elige tocando: primer toque el inicio, segundo el fin. En
+ * escritorio además se puede arrastrar. Escribir horas a mano no es una opción
+ * en un iPhone, que es donde más se va a usar esto.
+ */
 const props = defineProps<{
   espacios: any[]
   suscripcion: any
-  resumen: any
+  medidores: any[]
+  operacion: Record<string, any>
+  horizonte: { desde: string; hasta: string } | null
 }>()
 
-const step = ref(1)
-const form = useForm({
-  espacio_id: null as number | null,
-  fecha: '',
-  hora_inicio: '09:00',
-  hora_fin: '11:00',
+const GRANULARIDAD = props.operacion.granularidad_minutos ?? 30
+const DURACION_MINIMA = props.operacion.duracion_minima_horas ?? 1
+
+// ── Paso 1 · espacio ────────────────────────────────────────────────────────
+
+const espacioId = ref<number | null>(null)
+const espacio = computed(() => props.espacios.find((e) => e.id === espacioId.value) ?? null)
+
+/** Los espacios se agrupan por tipo: se elige «una sala de juntas», no la número 3. */
+const porTipo = computed(() => {
+  const grupos = new Map<string, { etiqueta: string; bolsa: string; espacios: any[] }>()
+  for (const e of props.espacios) {
+    if (!grupos.has(e.tipo)) {
+      grupos.set(e.tipo, { etiqueta: e.tipo_label, bolsa: e.bolsa, espacios: [] })
+    }
+    grupos.get(e.tipo)!.espacios.push(e)
+  }
+  return [...grupos.values()]
 })
 
-const selectedEspacio = computed(() => props.espacios.find(e => e.id === form.espacio_id))
+const medidorDe = (bolsa: string) => props.medidores.find((m) => m.bolsa === bolsa) ?? null
 
-const horas = Array.from({ length: 15 }, (_, i) => {
-  const h = 7 + i
-  return `${String(h).padStart(2, '0')}:00`
-})
-
-const duracionHoras = computed(() => {
-  if (!form.hora_inicio || !form.hora_fin) return 0
-  return (new Date(`2000-01-01 ${form.hora_fin}`).getTime() - new Date(`2000-01-01 ${form.hora_inicio}`).getTime()) / 3600000
-})
-
-const horasRestantes = computed(() => {
-  if (!selectedEspacio.value || !props.resumen) return null
-  const tipo = selectedEspacio.value.tipo
-  if (['privado', 'sala_juntas'].includes(tipo)) return props.resumen.horas_sala_restantes
-  if (['contenido', 'fotografia'].includes(tipo)) return props.resumen.horas_contenido_restantes
-  return null
-})
-
-const tieneHorasSuficientes = computed(() => {
-  if (horasRestantes.value === null) return true
-  return duracionHoras.value <= horasRestantes.value
-})
-
-const maxHorasDia = computed(() => props.resumen?.max_horas_sala_dia ?? null)
-
-const submit = () => form.post(route('portal.reservar.store'))
-
-const tipoLabel: Record<string, { label: string; emoji: string }> = {
-  privado:    { label: 'Cubículo Privado', emoji: '🏢' },
-  sala_juntas:{ label: 'Sala de Juntas',   emoji: '👥' },
-  contenido:  { label: 'Estudio Podcast',  emoji: '🎙️' },
-  fotografia: { label: 'Estudio Fotografía',emoji: '📸' },
-  coworking:  { label: 'Coworking',        emoji: '🖥️' },
+const numero = (v: number | null | undefined) => {
+  if (v === null || v === undefined) return '—'
+  return Number.isInteger(v) ? String(v) : Number(v).toFixed(1).replace(/\.0$/, '')
 }
 
-const stepLabels = ['Tipo de espacio', 'Seleccionar espacio', 'Fecha y hora', 'Confirmación']
+// ── Paso 2 · día ────────────────────────────────────────────────────────────
 
-// Agrupar espacios por tipo
-const tiposDisponibles = computed(() => {
-  const tipos = [...new Set(props.espacios.map(e => e.tipo))]
-  return tipos.filter(t => tipoLabel[t])
+const mesVisible = ref(new Date())
+const diasDelMes = ref<any[]>([])
+const cargandoMes = ref(false)
+const fecha = ref<string | null>(null)
+
+const claveDia = (d: Date) =>
+  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+
+async function cargarMes() {
+  if (!espacioId.value) return
+  cargandoMes.value = true
+  try {
+    const url = new URL(route('portal.disponibilidad'), window.location.origin)
+    url.searchParams.set('espacio_id', String(espacioId.value))
+    url.searchParams.set('fecha', claveDia(mesVisible.value))
+    url.searchParams.set('mes', '1')
+
+    const respuesta = await fetch(url, { headers: { Accept: 'application/json' } })
+    diasDelMes.value = respuesta.ok ? (await respuesta.json()).dias : []
+  } finally {
+    cargandoMes.value = false
+  }
+}
+
+/** Rejilla del mes con los huecos delante para que el 1 caiga en su día. */
+const rejilla = computed(() => {
+  const primero = new Date(mesVisible.value.getFullYear(), mesVisible.value.getMonth(), 1)
+  const huecos = (primero.getDay() + 6) % 7 // lunes primero
+  const info = new Map(diasDelMes.value.map((d) => [d.fecha, d]))
+
+  const celdas: any[] = Array.from({ length: huecos }, () => null)
+  const ultimo = new Date(mesVisible.value.getFullYear(), mesVisible.value.getMonth() + 1, 0).getDate()
+
+  for (let dia = 1; dia <= ultimo; dia++) {
+    const clave = claveDia(new Date(mesVisible.value.getFullYear(), mesVisible.value.getMonth(), dia))
+    const datos = info.get(clave)
+    celdas.push({
+      dia,
+      fecha: clave,
+      fuera: !datos,
+      abierto: datos?.abierto ?? false,
+      libres: datos?.libres ?? 0,
+      motivo: datos?.motivo_cierre ?? null,
+    })
+  }
+  return celdas
 })
 
-const espaciosFiltrados = computed(() => {
-  if (!filtroTipo.value) return props.espacios
-  return props.espacios.filter(e => e.tipo === filtroTipo.value)
+const mesLegible = computed(() =>
+  mesVisible.value.toLocaleDateString('es-MX', { month: 'long', year: 'numeric' }),
+)
+
+const puedeMesAnterior = computed(() => {
+  if (!props.horizonte) return false
+  const inicio = new Date(`${props.horizonte.desde}T12:00:00`)
+  return mesVisible.value > new Date(inicio.getFullYear(), inicio.getMonth(), 1)
 })
 
-const filtroTipo = ref<string | null>(null)
+const puedeMesSiguiente = computed(() => {
+  if (!props.horizonte) return false
+  const tope = new Date(`${props.horizonte.hasta}T12:00:00`)
+  return mesVisible.value < new Date(tope.getFullYear(), tope.getMonth(), 1)
+})
+
+function moverMes(delta: number) {
+  mesVisible.value = new Date(mesVisible.value.getFullYear(), mesVisible.value.getMonth() + delta, 1)
+  cargarMes()
+}
+
+// ── Paso 3 · horario ────────────────────────────────────────────────────────
+
+const dia = ref<any>(null)
+const cargandoDia = ref(false)
+const desde = ref<number | null>(null)
+const hasta = ref<number | null>(null)
+const arrastrando = ref(false)
+
+async function cargarDia() {
+  if (!espacioId.value || !fecha.value) return
+  cargandoDia.value = true
+  desde.value = null
+  hasta.value = null
+  try {
+    const url = new URL(route('portal.disponibilidad'), window.location.origin)
+    url.searchParams.set('espacio_id', String(espacioId.value))
+    url.searchParams.set('fecha', fecha.value)
+
+    const respuesta = await fetch(url, { headers: { Accept: 'application/json' } })
+    dia.value = respuesta.ok ? await respuesta.json() : null
+  } finally {
+    cargandoDia.value = false
+  }
+}
+
+watch(espacioId, () => {
+  fecha.value = null
+  dia.value = null
+  cargarMes()
+})
+
+watch(fecha, (valor) => { if (valor) cargarDia() })
+
+/** Rango seleccionado, siempre ordenado aunque se haya elegido de fin a inicio. */
+const rango = computed(() => {
+  if (desde.value === null) return null
+  const fin = hasta.value ?? desde.value
+  return { inicio: Math.min(desde.value, fin), fin: Math.max(desde.value, fin) }
+})
+
+const enRango = (indice: number) =>
+  !!rango.value && indice >= rango.value.inicio && indice <= rango.value.fin
+
+/**
+ * Un rango solo vale si **todos** sus bloques están libres: seleccionar de 9 a
+ * 12 saltándose un hueco ocupado a las 10 no es una reserva posible.
+ */
+const rangoContinuo = computed(() => {
+  if (!rango.value || !dia.value) return false
+  return dia.value.bloques
+    .filter((b: any) => b.indice >= rango.value!.inicio && b.indice <= rango.value!.fin)
+    .every((b: any) => b.libre)
+})
+
+const horaInicio = computed(() => {
+  if (!rango.value || !dia.value) return null
+  return dia.value.bloques.find((b: any) => b.indice === rango.value!.inicio)?.hora ?? null
+})
+
+const horaFin = computed(() => {
+  if (!rango.value) return null
+  const minutos = (rango.value.fin + 1) * GRANULARIDAD
+  return `${String(Math.floor(minutos / 60)).padStart(2, '0')}:${String(minutos % 60).padStart(2, '0')}`
+})
+
+const horas = computed(() =>
+  rango.value ? ((rango.value.fin - rango.value.inicio + 1) * GRANULARIDAD) / 60 : 0,
+)
+
+function tocarBloque(bloque: any) {
+  if (!bloque.libre) return
+  if (desde.value === null || hasta.value !== null) {
+    desde.value = bloque.indice
+    hasta.value = null
+  } else {
+    hasta.value = bloque.indice
+  }
+}
+
+function empezarArrastre(bloque: any) {
+  if (!bloque.libre) return
+  arrastrando.value = true
+  desde.value = bloque.indice
+  hasta.value = bloque.indice
+}
+
+function seguirArrastre(bloque: any) {
+  if (arrastrando.value && bloque.libre) hasta.value = bloque.indice
+}
+
+// ── Validación en vivo ──────────────────────────────────────────────────────
+
+/**
+ * Los avisos se calculan aquí y no al enviar. El servidor vuelve a validarlo
+ * todo —esto es comodidad, no seguridad— pero la persona se entera antes de
+ * pulsar nada, y con el número exacto que le falta.
+ */
+const problemas = computed<string[]>(() => {
+  const lista: string[] = []
+  if (!rango.value || !dia.value) return lista
+
+  if (!rangoContinuo.value) {
+    lista.push('Hay un bloque ocupado dentro del horario que elegiste. Elige un tramo seguido.')
+  }
+
+  if (horas.value < DURACION_MINIMA) {
+    lista.push(`La reserva mínima es de ${numero(DURACION_MINIMA)} hora.`)
+  }
+
+  const saldo = dia.value.saldo_ciclo
+  if (saldo !== null && horas.value > saldo) {
+    const faltan = (horas.value - saldo).toFixed(1).replace(/\.0$/, '')
+    lista.push(`Te faltan ${faltan} h: en este ciclo te quedan ${numero(saldo)} h de esta bolsa.`)
+  }
+
+  const tope = dia.value.tope_diario
+  if (tope !== null && dia.value.usado_ese_dia + horas.value > tope) {
+    const libres = Math.max(0, tope - dia.value.usado_ese_dia)
+    lista.push(
+      libres > 0
+        ? `Tu plan permite ${numero(tope)} h al día y ese día ya tienes ${numero(dia.value.usado_ese_dia)} h. Te queda ${numero(libres)} h.`
+        : `Tu plan permite ${numero(tope)} h al día y ese día ya las usaste.`,
+    )
+  }
+
+  return lista
+})
+
+const puedeConfirmar = computed(() =>
+  !!rango.value && problemas.value.length === 0 && !form.processing,
+)
+
+/** Cuánto quedará después: el dato que nadie debería tener que calcular. */
+const quedaraDespues = computed(() => {
+  if (!dia.value || dia.value.saldo_ciclo === null) return null
+  return Math.max(0, dia.value.saldo_ciclo - horas.value)
+})
+
+// ── Envío ───────────────────────────────────────────────────────────────────
+
+const form = useForm({ espacio_id: null as number | null, fecha: '', hora_inicio: '', hora_fin: '' })
+const confirmando = ref(false)
+
+function confirmar() {
+  form.espacio_id = espacioId.value
+  form.fecha = fecha.value!
+  form.hora_inicio = horaInicio.value!
+  form.hora_fin = horaFin.value!
+  form.post(route('portal.reservar.store'), {
+    onFinish: () => { confirmando.value = false },
+  })
+}
+
+const fechaLarga = (iso: string) =>
+  new Date(`${iso}T12:00:00`).toLocaleDateString('es-MX', {
+    weekday: 'long', day: 'numeric', month: 'long',
+  })
+
+const DIAS = ['L', 'M', 'X', 'J', 'V', 'S', 'D']
 </script>
 
 <template>
-  <Head title="Reservar espacio — NODICO" />
+  <Head title="Reservar" />
+
   <PortalLayout>
-    <div class="max-w-2xl mx-auto space-y-6">
-      <div>
-        <h1 class="text-2xl font-bold text-dark">Reservar espacio</h1>
-        <p class="text-gray-500 text-sm mt-1">Selecciona el espacio, fecha y horario que necesitas.</p>
-      </div>
+    <EncabezadoPortal
+      titulo="Reservar un espacio"
+      etiqueta="Reservar"
+      numero="01"
+      descripcion="Elige el espacio, el día y la hora. Te decimos cuánto consume antes de confirmar."
+    />
 
-      <!-- Resumen de horas disponibles -->
-      <div v-if="resumen" class="grid grid-cols-2 gap-3">
-        <div v-if="resumen.horas_sala_max" class="bg-nodo-50 rounded-xl p-3 border border-nodo-100">
-          <p class="text-xs text-nodo-700 font-semibold">Horas sala/cubículo</p>
-          <p class="text-xl font-black text-dark">{{ resumen.horas_sala_restantes?.toFixed(1) }}h</p>
-          <p class="text-xs text-nodo-600">de {{ resumen.horas_sala_max }}h disponibles</p>
-        </div>
-        <div v-if="resumen.horas_contenido_max" class="bg-nodo-50 rounded-xl p-3 border border-nodo-100">
-          <p class="text-xs text-nodo-700 font-semibold">Horas estudio</p>
-          <p class="text-xl font-black text-dark">{{ resumen.horas_contenido_restantes?.toFixed(1) }}h</p>
-          <p class="text-xs text-nodo-600">de {{ resumen.horas_contenido_max }}h disponibles</p>
-        </div>
-      </div>
+    <!-- Sin membresía o sin espacios: no hay nada que hacer aquí. -->
+    <TarjetaPortal v-if="!suscripcion" fondo="crema">
+      <p class="font-body text-cuerpo text-dark/70">
+        Necesitas una membresía activa para reservar.
+      </p>
+      <Link
+        :href="route('membresias')"
+        class="mt-4 inline-flex min-h-[48px] items-center border-2 border-dark bg-nodo-400 px-5
+               font-display text-sm font-bold text-dark hover:-translate-y-0.5 hover:shadow-dura-sm
+               transition-all duration-200 ease-salida"
+      >Ver los planes</Link>
+    </TarjetaPortal>
 
-      <!-- Sin membresía -->
-      <div v-if="!suscripcion" class="bg-amber-50 border border-amber-200 rounded-2xl p-5 flex items-start gap-3">
-        <AlertCircle :size="20" class="text-amber-500 flex-shrink-0" />
-        <div>
-          <p class="font-semibold text-amber-800 text-sm">Sin membresía activa</p>
-          <p class="text-amber-700 text-xs mt-0.5">Necesitas una membresía activa para hacer reservas. Contacta a Nodico.</p>
-        </div>
-      </div>
+    <TarjetaPortal v-else-if="!espacios.length" fondo="crema">
+      <p class="font-body text-cuerpo text-dark/70">
+        Tu plan no incluye espacios reservables. El área de coworking es de acceso libre:
+        entra cuando quieras y registra tu entrada.
+      </p>
+      <Link
+        :href="route('portal.suscripcion')"
+        class="mt-4 inline-flex min-h-[48px] items-center border-2 border-dark bg-nodo-400 px-5
+               font-display text-sm font-bold text-dark hover:-translate-y-0.5 hover:shadow-dura-sm
+               transition-all duration-200 ease-salida"
+      >Ver planes con salas</Link>
+    </TarjetaPortal>
 
-      <!-- Steps indicator -->
-      <div class="flex items-center gap-2">
-        <div v-for="(label, i) in stepLabels" :key="i" class="flex items-center gap-1.5 flex-1">
-          <div :class="['w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0',
-            step > i + 1 ? 'bg-emerald-500 text-white' :
-            step === i + 1 ? 'bg-nodo-400 text-dark' :
-            'bg-gray-200 text-gray-400']">
-            <Check v-if="step > i + 1" :size="14" />
-            <span v-else>{{ i + 1 }}</span>
+    <div v-else class="space-y-6">
+      <!-- ── Paso 1 · el espacio ──────────────────────────────────────── -->
+      <section>
+        <h2 class="etiqueta-tecnica mb-4 flex items-center gap-3 text-dark/70">
+          <span class="font-mono">01</span> ¿Qué espacio?
+          <span class="h-px flex-1 bg-dark/15" aria-hidden="true" />
+        </h2>
+
+        <div class="grid gap-4 sm:grid-cols-2">
+          <div v-for="grupo in porTipo" :key="grupo.etiqueta">
+            <p class="mb-2 font-mono text-[0.6875rem] uppercase tracking-[0.14em] text-dark/70">
+              {{ grupo.etiqueta }}
+              <template v-if="medidorDe(grupo.bolsa)">
+                ·
+                <span :class="medidorDe(grupo.bolsa)!.agotada ? 'text-coral' : ''">
+                  {{ medidorDe(grupo.bolsa)!.ilimitada
+                    ? 'sin límite'
+                    : `te quedan ${numero(medidorDe(grupo.bolsa)!.restante)} h` }}
+                </span>
+              </template>
+            </p>
+
+            <ul class="space-y-2">
+              <li v-for="e in grupo.espacios" :key="e.id">
+                <button
+                  type="button"
+                  class="flex w-full min-h-[56px] items-center justify-between gap-3 border-2 px-4 py-3
+                         text-left transition-all duration-200 ease-salida focus-visible:outline
+                         focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-dark"
+                  :class="espacioId === e.id
+                    ? 'border-dark bg-nodo-400 shadow-dura-sm'
+                    : 'border-dark/25 bg-white hover:border-dark hover:-translate-y-0.5 hover:shadow-dura-sm'"
+                  :aria-pressed="espacioId === e.id"
+                  @click="espacioId = e.id"
+                >
+                  <span class="min-w-0">
+                    <span class="block font-display text-sm font-bold text-dark">{{ e.nombre }}</span>
+                    <span class="mt-0.5 flex items-center gap-1.5 font-body text-xs text-dark/70">
+                      <Users :size="13" aria-hidden="true" /> Hasta {{ e.capacidad }}
+                    </span>
+                  </span>
+                  <Check v-if="espacioId === e.id" :size="18" class="shrink-0 text-dark" aria-hidden="true" />
+                </button>
+              </li>
+            </ul>
           </div>
-          <span :class="['text-xs hidden sm:block truncate', step === i + 1 ? 'text-nodo-600 font-medium' : 'text-gray-400']">{{ label }}</span>
-          <ChevronRight v-if="i < 3" :size="14" class="text-gray-300 flex-shrink-0" />
         </div>
-      </div>
+      </section>
 
-      <!-- Step 1: Tipo de espacio -->
-      <div v-if="step === 1" class="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
-        <h2 class="font-semibold text-dark mb-5">¿Qué tipo de espacio necesitas?</h2>
-        <div v-if="!tiposDisponibles.length" class="text-center py-6">
-          <p class="text-gray-400 text-sm">No hay espacios disponibles para tu membresía.</p>
-          <p class="text-gray-400 text-xs mt-1">Contacta a Nodico para más información.</p>
-        </div>
-        <div class="grid grid-cols-2 gap-3">
-          <button v-for="tipo in tiposDisponibles" :key="tipo"
-            @click="filtroTipo = tipo; step = 2"
-            class="flex flex-col items-center gap-3 p-5 rounded-xl border-2 border-gray-100 hover:border-nodo-400 hover:bg-nodo-50 transition-all text-center">
-            <span class="text-4xl">{{ tipoLabel[tipo]?.emoji }}</span>
-            <span class="text-sm font-semibold text-dark">{{ tipoLabel[tipo]?.label }}</span>
-          </button>
-        </div>
-      </div>
+      <!-- ── Paso 2 · el día ──────────────────────────────────────────── -->
+      <section v-if="espacio">
+        <h2 class="etiqueta-tecnica mb-4 flex items-center gap-3 text-dark/70">
+          <span class="font-mono">02</span> ¿Qué día?
+          <span class="h-px flex-1 bg-dark/15" aria-hidden="true" />
+        </h2>
 
-      <!-- Step 2: Selección de espacio -->
-      <div v-if="step === 2" class="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
-        <h2 class="font-semibold text-dark mb-4">Selecciona un espacio</h2>
-        <div class="space-y-3">
-          <button v-for="e in espaciosFiltrados" :key="e.id"
-            @click="form.espacio_id = e.id; step = 3"
-            :class="['w-full flex items-center gap-4 p-4 rounded-xl border-2 transition-all text-left',
-              form.espacio_id === e.id ? 'border-nodo-400 bg-nodo-50' : 'border-gray-100 hover:border-nodo-200 hover:bg-gray-50']">
-            <div class="text-2xl flex-shrink-0">{{ tipoLabel[e.tipo]?.emoji || '🏢' }}</div>
-            <div class="flex-1 min-w-0">
-              <p class="font-semibold text-dark text-sm">{{ e.nombre }}</p>
-              <p class="text-xs text-gray-500">Cap. {{ e.capacidad }} persona{{ e.capacidad !== 1 ? 's' : '' }}</p>
-              <div class="flex flex-wrap gap-1 mt-1">
-                <span v-for="a in (e.amenidades ?? []).slice(0, 3)" :key="a"
-                  class="text-xs bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded">{{ a }}</span>
-              </div>
+        <TarjetaPortal padding="sm">
+          <div class="mb-4 flex items-center justify-between">
+            <button
+              type="button" :disabled="!puedeMesAnterior"
+              class="flex h-11 w-11 items-center justify-center border-2 border-dark/25 text-dark
+                     transition-colors hover:border-dark disabled:opacity-30 disabled:hover:border-dark/25
+                     focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2
+                     focus-visible:outline-dark"
+              aria-label="Mes anterior" @click="moverMes(-1)"
+            ><ChevronLeft :size="18" /></button>
+
+            <p class="font-display text-base font-extrabold first-letter:uppercase text-dark">{{ mesLegible }}</p>
+
+            <button
+              type="button" :disabled="!puedeMesSiguiente"
+              class="flex h-11 w-11 items-center justify-center border-2 border-dark/25 text-dark
+                     transition-colors hover:border-dark disabled:opacity-30 disabled:hover:border-dark/25
+                     focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2
+                     focus-visible:outline-dark"
+              aria-label="Mes siguiente" @click="moverMes(1)"
+            ><ChevronRight :size="18" /></button>
+          </div>
+
+          <div class="grid grid-cols-7 gap-1" role="grid">
+            <span
+              v-for="d in DIAS" :key="d"
+              class="py-1 text-center font-mono text-[0.625rem] uppercase tracking-[0.1em] text-dark/50"
+            >{{ d }}</span>
+
+            <template v-for="(celda, i) in rejilla" :key="i">
+              <span v-if="!celda" aria-hidden="true" />
+
+              <button
+                v-else
+                type="button"
+                :disabled="!celda.abierto || celda.libres === 0"
+                class="relative flex min-h-[44px] flex-col items-center justify-center gap-0.5 border-2
+                       font-display text-sm font-bold transition-all duration-150 ease-salida
+                       disabled:cursor-not-allowed focus-visible:outline focus-visible:outline-2
+                       focus-visible:outline-offset-2 focus-visible:outline-dark"
+                :class="fecha === celda.fecha
+                  ? 'border-dark bg-dark text-white'
+                  : celda.abierto && celda.libres > 0
+                    ? 'border-dark/20 bg-white text-dark hover:border-dark'
+                    : 'border-transparent bg-cream-200/50 text-dark/30'"
+                :title="celda.motivo ?? (celda.libres === 0 ? 'Sin huecos' : `${celda.libres} bloques libres`)"
+                :aria-label="`${celda.dia}: ${celda.motivo ?? (celda.libres === 0 ? 'sin huecos' : celda.libres + ' bloques libres')}`"
+                @click="fecha = celda.fecha"
+              >
+                {{ celda.dia }}
+                <!-- El punto informa de un vistazo; el `title` y el aria dan el detalle. -->
+                <span
+                  v-if="celda.abierto && celda.libres > 0"
+                  class="h-1 w-1 rounded-full"
+                  :class="fecha === celda.fecha ? 'bg-nodo-400' : 'bg-nodo-500'"
+                  aria-hidden="true"
+                />
+              </button>
+            </template>
+          </div>
+
+          <p v-if="cargandoMes" class="mt-3 flex items-center gap-2 font-body text-xs text-dark/70">
+            <Loader2 :size="14" class="animate-spin motion-reduce:animate-none" aria-hidden="true" />
+            Buscando huecos…
+          </p>
+        </TarjetaPortal>
+      </section>
+
+      <!-- ── Paso 3 · la hora ─────────────────────────────────────────── -->
+      <section v-if="espacio && fecha">
+        <h2 class="etiqueta-tecnica mb-4 flex items-center gap-3 text-dark/70">
+          <span class="font-mono">03</span> ¿A qué hora?
+          <span class="h-px flex-1 bg-dark/15" aria-hidden="true" />
+        </h2>
+
+        <TarjetaPortal padding="sm">
+          <p class="mb-3 font-body text-sm first-letter:uppercase text-dark/70">{{ fechaLarga(fecha) }}</p>
+
+          <div v-if="cargandoDia" class="flex items-center gap-2 py-8 font-body text-sm text-dark/70">
+            <Loader2 :size="16" class="animate-spin motion-reduce:animate-none" aria-hidden="true" />
+            Cargando horarios…
+          </div>
+
+          <div v-else-if="dia && !dia.abierto" class="flex items-center gap-3 py-8 text-dark/70">
+            <CalendarX2 :size="20" aria-hidden="true" />
+            <p class="font-body text-sm">{{ dia.motivo_cierre }}</p>
+          </div>
+
+          <template v-else-if="dia">
+            <p class="mb-3 font-body text-xs text-dark/70">
+              Toca la hora de inicio y luego la de fin. Bloques de {{ GRANULARIDAD }} minutos.
+            </p>
+
+            <div
+              class="grid grid-cols-4 gap-1.5 sm:grid-cols-6 lg:grid-cols-8"
+              @pointerup="arrastrando = false"
+              @pointerleave="arrastrando = false"
+            >
+              <button
+                v-for="bloque in dia.bloques"
+                :key="bloque.indice"
+                type="button"
+                :disabled="!bloque.libre"
+                class="min-h-[44px] border-2 font-mono text-xs transition-all duration-150 ease-salida
+                       disabled:cursor-not-allowed focus-visible:outline focus-visible:outline-2
+                       focus-visible:outline-offset-2 focus-visible:outline-dark"
+                :class="enRango(bloque.indice)
+                  ? 'border-dark bg-nodo-400 text-dark'
+                  : bloque.libre
+                    ? 'border-dark/20 bg-white text-dark hover:border-dark'
+                    : 'border-transparent bg-cream-200 text-dark/35 line-through'"
+                :title="bloque.motivo === 'ocupado' ? 'Ocupado'
+                  : bloque.motivo === 'pasado' ? 'Ya pasó'
+                  : bloque.motivo === 'demasiado_pronto' ? 'Muy justo: pásate por recepción'
+                  : undefined"
+                :aria-pressed="enRango(bloque.indice)"
+                @click="tocarBloque(bloque)"
+                @pointerdown="empezarArrastre(bloque)"
+                @pointerenter="seguirArrastre(bloque)"
+              >{{ bloque.hora }}</button>
             </div>
+
+            <p class="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 font-body text-xs text-dark/60">
+              <span class="flex items-center gap-1.5">
+                <span class="h-2.5 w-2.5 border-2 border-dark bg-nodo-400" aria-hidden="true" /> Tu selección
+              </span>
+              <span class="flex items-center gap-1.5">
+                <span class="h-2.5 w-2.5 bg-cream-200" aria-hidden="true" /> Ocupado o pasado
+              </span>
+            </p>
+          </template>
+        </TarjetaPortal>
+      </section>
+
+      <!-- ── Resumen y confirmación ───────────────────────────────────── -->
+      <section v-if="rango && dia">
+        <h2 class="etiqueta-tecnica mb-4 flex items-center gap-3 text-dark/70">
+          <span class="font-mono">04</span> Confirma
+          <span class="h-px flex-1 bg-dark/15" aria-hidden="true" />
+        </h2>
+
+        <TarjetaPortal fondo="oscuro">
+          <dl class="grid gap-4 sm:grid-cols-2">
+            <div>
+              <dt class="etiqueta-tecnica text-nodo-400">Espacio</dt>
+              <dd class="mt-1 font-display text-lg font-bold text-white">{{ espacio.nombre }}</dd>
+            </div>
+            <div>
+              <dt class="etiqueta-tecnica text-nodo-400">Día</dt>
+              <dd class="mt-1 font-body first-letter:uppercase text-cream">{{ fechaLarga(fecha!) }}</dd>
+            </div>
+            <div>
+              <dt class="etiqueta-tecnica text-nodo-400">Horario</dt>
+              <dd class="mt-1 font-mono text-lg text-white">{{ horaInicio }} – {{ horaFin }}</dd>
+            </div>
+            <div>
+              <dt class="etiqueta-tecnica text-nodo-400">Consume</dt>
+              <dd class="mt-1 font-body text-cream">
+                {{ numero(horas) }} h de {{ espacio.bolsa_etiqueta.toLowerCase() }}
+                <span v-if="quedaraDespues !== null" class="mt-1 block text-sm text-cream/70">
+                  Te quedarán <strong class="text-nodo-400">{{ numero(quedaraDespues) }} h</strong> este ciclo
+                </span>
+              </dd>
+            </div>
+          </dl>
+
+          <!-- Los problemas, con el número exacto que falta. -->
+          <ul v-if="problemas.length" class="mt-5 space-y-2">
+            <li
+              v-for="(problema, i) in problemas" :key="i"
+              class="flex items-start gap-2.5 border-2 border-coral bg-coral/15 p-3"
+            >
+              <AlertCircle :size="17" class="mt-0.5 shrink-0 text-coral" aria-hidden="true" />
+              <span class="font-body text-sm text-cream">{{ problema }}</span>
+            </li>
+          </ul>
+
+          <!-- Los errores del servidor, por si algo cambió entre medias. -->
+          <ul v-if="Object.keys(form.errors).length" class="mt-5 space-y-2">
+            <li
+              v-for="(mensaje, campo) in form.errors" :key="campo"
+              class="flex items-start gap-2.5 border-2 border-coral bg-coral/15 p-3"
+            >
+              <AlertCircle :size="17" class="mt-0.5 shrink-0 text-coral" aria-hidden="true" />
+              <span class="font-body text-sm text-cream">{{ mensaje }}</span>
+            </li>
+          </ul>
+
+          <p class="mt-5 font-body text-xs text-cream/70">
+            Puedes cancelar sin perder las horas hasta
+            {{ operacion.horas_para_cancelar_sin_penalizacion }} horas antes.
+            Después, y si no te presentas, las horas se consumen igual.
+          </p>
+
+          <button
+            type="button"
+            :disabled="!puedeConfirmar"
+            class="mt-5 inline-flex min-h-[56px] w-full items-center justify-center gap-2 border-2
+                   border-nodo-400 bg-nodo-400 px-6 font-display text-base font-bold text-dark
+                   transition-all duration-200 ease-salida hover:-translate-y-0.5
+                   disabled:cursor-not-allowed disabled:border-white/25 disabled:bg-transparent
+                   disabled:text-white/40 disabled:hover:translate-y-0 sm:w-auto
+                   focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2
+                   focus-visible:outline-nodo-400"
+            @click="confirmar"
+          >
+            <Loader2 v-if="form.processing" :size="18" class="animate-spin motion-reduce:animate-none" aria-hidden="true" />
+            <CalendarPlus v-else :size="18" aria-hidden="true" />
+            Confirmar reserva
           </button>
-        </div>
-        <button @click="step = 1; filtroTipo = null" class="mt-4 text-sm text-gray-500 hover:text-dark">← Volver</button>
-      </div>
-
-      <!-- Step 3: Fecha y hora -->
-      <div v-if="step === 3" class="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 space-y-4">
-        <h2 class="font-semibold text-dark">Selecciona fecha y horario</h2>
-
-        <!-- Aviso límite diario -->
-        <div v-if="maxHorasDia && ['privado','sala_juntas'].includes(selectedEspacio?.tipo || '')"
-          class="bg-amber-50 border border-amber-200 rounded-xl p-3 flex items-start gap-2">
-          <Clock :size="15" class="text-amber-500 flex-shrink-0 mt-0.5" />
-          <p class="text-xs text-amber-700">Máximo <strong>{{ maxHorasDia }} horas</strong> por día en salas privadas y sala de juntas.</p>
-        </div>
-
-        <div>
-          <label class="block text-sm font-medium text-dark mb-1.5">Fecha *</label>
-          <input v-model="form.fecha" type="date" :min="new Date().toISOString().split('T')[0]" required
-            class="w-full border border-gray-200 rounded-xl px-3 py-3 text-sm focus:ring-2 focus:ring-nodo-400 outline-none transition" />
-        </div>
-        <div class="grid grid-cols-2 gap-4">
-          <div>
-            <label class="block text-sm font-medium text-dark mb-1.5">Hora inicio *</label>
-            <select v-model="form.hora_inicio" class="w-full border border-gray-200 rounded-xl px-3 py-3 text-sm focus:ring-2 focus:ring-nodo-400 outline-none transition">
-              <option v-for="h in horas" :key="h" :value="h">{{ h }}</option>
-            </select>
-          </div>
-          <div>
-            <label class="block text-sm font-medium text-dark mb-1.5">Hora fin *</label>
-            <select v-model="form.hora_fin" class="w-full border border-gray-200 rounded-xl px-3 py-3 text-sm focus:ring-2 focus:ring-nodo-400 outline-none transition">
-              <option v-for="h in horas" :key="h" :value="h">{{ h }}</option>
-            </select>
-          </div>
-        </div>
-
-        <!-- Duración y validación -->
-        <div v-if="duracionHoras > 0" class="bg-gray-50 rounded-xl p-3">
-          <div class="flex items-center justify-between text-sm">
-            <span class="text-gray-600">Duración</span>
-            <span class="font-bold text-dark">{{ duracionHoras }}h</span>
-          </div>
-          <div v-if="!tieneHorasSuficientes" class="mt-2 flex items-center gap-2 text-red-600 text-xs">
-            <AlertCircle :size="14" />
-            <span>No tienes suficientes horas disponibles ({{ horasRestantes?.toFixed(1) }}h restantes)</span>
-          </div>
-        </div>
-
-        <p v-if="form.errors.hora_fin" class="text-red-500 text-xs">{{ form.errors.hora_fin }}</p>
-
-        <div class="flex justify-between pt-2">
-          <button @click="step = 2" type="button" class="text-sm text-gray-500 hover:text-dark">← Volver</button>
-          <button @click="step = 4" type="button" :disabled="!form.fecha || duracionHoras <= 0 || !tieneHorasSuficientes"
-            class="bg-nodo-400 hover:bg-nodo-500 disabled:opacity-40 text-dark px-5 py-2.5 rounded-xl text-sm font-semibold transition">
-            Continuar →
-          </button>
-        </div>
-      </div>
-
-      <!-- Step 4: Confirmación -->
-      <div v-if="step === 4" class="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 space-y-4">
-        <h2 class="font-semibold text-dark">Confirma tu reserva</h2>
-        <div class="bg-nodo-50 border border-nodo-100 rounded-xl p-4 space-y-3">
-          <div class="flex justify-between text-sm">
-            <span class="text-gray-500">Espacio</span>
-            <span class="font-semibold text-dark">{{ selectedEspacio?.nombre }}</span>
-          </div>
-          <div class="flex justify-between text-sm">
-            <span class="text-gray-500">Fecha</span>
-            <span class="font-semibold text-dark">{{ form.fecha ? new Date(form.fecha + 'T00:00:00').toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'long' }) : '' }}</span>
-          </div>
-          <div class="flex justify-between text-sm">
-            <span class="text-gray-500">Horario</span>
-            <span class="font-semibold text-dark">{{ form.hora_inicio }} – {{ form.hora_fin }}</span>
-          </div>
-          <div class="flex justify-between text-sm">
-            <span class="text-gray-500">Duración</span>
-            <span class="font-semibold text-dark">{{ duracionHoras }}h</span>
-          </div>
-          <div class="border-t border-nodo-200 pt-3 flex justify-between text-sm">
-            <span class="text-gray-700 font-medium">Costo</span>
-            <span class="font-bold text-emerald-600">Incluido en tu membresía</span>
-          </div>
-        </div>
-
-        <p v-for="(err, k) in form.errors" :key="k" class="text-red-500 text-xs">{{ err }}</p>
-
-        <div class="flex justify-between">
-          <button @click="step = 3" type="button" class="text-sm text-gray-500 hover:text-dark">← Volver</button>
-          <button @click="submit" :disabled="form.processing"
-            class="flex items-center gap-2 bg-nodo-400 hover:bg-nodo-500 disabled:opacity-50 text-dark px-5 py-2.5 rounded-xl text-sm font-bold transition">
-            <Check :size="15" /> {{ form.processing ? 'Reservando...' : 'Confirmar reserva' }}
-          </button>
-        </div>
-      </div>
+        </TarjetaPortal>
+      </section>
     </div>
   </PortalLayout>
 </template>

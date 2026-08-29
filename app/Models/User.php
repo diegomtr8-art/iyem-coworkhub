@@ -28,6 +28,8 @@ class User extends Authenticatable implements MustVerifyEmail
     protected $fillable = [
         'name', 'email', 'password', 'telefono', 'empresa',
         'avatar', 'face_id_ok', 'ocupacion', 'notas_admin',
+        'contacto_emergencia_nombre', 'contacto_emergencia_telefono', 'contacto_emergencia_parentesco',
+        'notif_reservas', 'notif_membresia', 'notif_comunidad',
     ];
 
     protected $hidden = ['password', 'remember_token', 'verificacion_nonce', 'dos_factores_secreto'];
@@ -42,6 +44,9 @@ class User extends Authenticatable implements MustVerifyEmail
             // codigo de cada minuto. Depende de APP_KEY.
             'dos_factores_secreto'       => 'encrypted',
             'dos_factores_confirmado_en' => 'datetime',
+            'notif_reservas'             => 'boolean',
+            'notif_membresia'            => 'boolean',
+            'notif_comunidad'            => 'boolean',
         ];
     }
 

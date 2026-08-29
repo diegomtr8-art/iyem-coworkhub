@@ -9,6 +9,8 @@ use App\Models\Reserva;
 use App\Models\Suscripcion;
 use App\Enums\MotivoMovimiento;
 use App\Servicios\Horas\LibroDeHoras;
+use App\Servicios\Horas\ResumenDeBolsas;
+use App\Servicios\Reservas\Disponibilidad;
 use App\Servicios\Reservas\RegistroDeBloques;
 use App\Servicios\Reservas\ValidadorDeReserva;
 use Carbon\CarbonImmutable;
@@ -40,6 +42,7 @@ class ReservasController extends Controller
         private readonly RegistroDeBloques $bloques,
         private readonly LibroDeHoras $libro,
         private readonly ValidadorDeReserva $calendario,
+        private readonly ResumenDeBolsas $resumen,
     ) {
     }
 
@@ -83,17 +86,123 @@ class ReservasController extends Controller
             // El filtro sale de la bolsa, igual que la validación de `store`.
             // Antes eran dos criterios distintos y podían contradecirse (BUG-02).
             $espacios = Espacio::reservables()
+                ->orderBy('tipo')
+                ->orderBy('nombre')
                 ->get()
                 ->filter(fn (Espacio $espacio) => $espacio->bolsa()?->incluidaEn($suscripcion->plan))
+                ->map(fn (Espacio $espacio) => [
+                    'id'          => $espacio->id,
+                    'nombre'      => $espacio->nombre,
+                    'tipo'        => $espacio->tipo,
+                    'tipo_label'  => $espacio->tipo_label,
+                    'capacidad'   => $espacio->capacidad,
+                    'descripcion' => $espacio->descripcion,
+                    'imagen'      => $espacio->imagen,
+                    'amenidades'  => $espacio->amenidades ?? [],
+
+                    // Qué bolsa consume y cuánto queda de ella: la tarjeta de
+                    // cada espacio tiene que poder decirlo sin que el miembro
+                    // cruce datos de dos sitios.
+                    'bolsa'          => $espacio->bolsa()->value,
+                    'bolsa_etiqueta' => $espacio->bolsa()->etiqueta(),
+                ])
                 ->values();
         }
 
         return Inertia::render('Portal/Reservar', [
             'espacios'    => $espacios,
-            'suscripcion' => $suscripcion,
-            'resumen'     => $suscripcion ? $this->resumenDeBolsas($suscripcion) : null,
+            'suscripcion' => $suscripcion ? [
+                'id'        => $suscripcion->id,
+                'plan'      => $suscripcion->plan?->only(['id', 'nombre']),
+                'fecha_fin' => $suscripcion->fecha_fin->toDateString(),
+            ] : null,
+            'medidores'   => $suscripcion ? $this->resumen->soloIncluidas($suscripcion) : [],
             'operacion'   => config('nodico.operacion'),
+
+            // El horizonte de reserva, ya resuelto: el front no tiene que saber
+            // sumar los 90 días ni recortar por la vigencia de la membresía.
+            'horizonte'   => $suscripcion ? [
+                'desde' => CarbonImmutable::today()->toDateString(),
+                'hasta' => CarbonImmutable::today()
+                    ->addDays((int) config('nodico.operacion.antelacion_maxima_dias', 90))
+                    ->min(CarbonImmutable::parse($suscripcion->fecha_fin))
+                    ->toDateString(),
+            ] : null,
         ]);
+    }
+
+    /**
+     * Disponibilidad de un espacio, para que la pantalla la **enseñe** en vez de
+     * que el miembro la descubra al enviar.
+     *
+     * Devuelve JSON y no una respuesta de Inertia: se pide al cambiar de espacio
+     * o de día, y recargar la página entera para repintar una franja horaria
+     * sería tirar el resto del formulario.
+     */
+    public function disponibilidad(Request $request, Disponibilidad $disponibilidad)
+    {
+        $datos = $request->validate([
+            'espacio_id' => ['required', 'exists:espacios,id'],
+            'fecha'      => ['required', 'date'],
+            'mes'        => ['nullable', 'boolean'],
+        ]);
+
+        $espacio = Espacio::findOrFail($datos['espacio_id']);
+
+        if (! $espacio->esReservablePorMiembro()) {
+            abort(404);
+        }
+
+        $suscripcion = $this->suscripcionActiva($request);
+
+        if (! $suscripcion || ! $espacio->bolsa()?->incluidaEn($suscripcion->plan)) {
+            abort(403);
+        }
+
+        $dia = CarbonImmutable::parse($datos['fecha']);
+
+        // El resumen del mes alimenta el calendario; el detalle del día, la
+        // franja horaria. Son dos consultas distintas porque mandar los 20
+        // bloques de cada uno de 90 días serían 1.800 objetos por carga.
+        if ($request->boolean('mes')) {
+            $tope = CarbonImmutable::today()
+                ->addDays((int) config('nodico.operacion.antelacion_maxima_dias', 90))
+                ->min(CarbonImmutable::parse($suscripcion->fecha_fin));
+
+            return response()->json([
+                'dias' => $disponibilidad->delPeriodo(
+                    $espacio,
+                    $dia->startOfMonth()->max(CarbonImmutable::today()),
+                    $dia->endOfMonth()->min($tope),
+                ),
+            ]);
+        }
+
+        $bolsa = $espacio->bolsa();
+
+        return response()->json([
+            ...$disponibilidad->delDia($espacio, $dia),
+
+            // Lo que hace posible la validación en vivo del formulario: sin
+            // esto, el front no puede decir «te pasas del tope diario» hasta
+            // que el servidor lo rechaza, y descubrir un límite al enviar es
+            // justo lo que esta pantalla viene a evitar.
+            'bolsa'         => $bolsa->value,
+            'saldo_ciclo'   => $this->libro->saldoDelCiclo($suscripcion, $bolsa),
+            'tope_diario'   => $bolsa->topeDiario($suscripcion->plan),
+            'usado_ese_dia' => $this->horasDeEseDia($suscripcion, $bolsa, $dia->toDateString()),
+        ]);
+    }
+
+    /** Horas que el miembro ya tiene reservadas de una bolsa en un día concreto. */
+    private function horasDeEseDia(Suscripcion $suscripcion, BolsaDeHoras $bolsa, string $fecha): float
+    {
+        return round(Reserva::where('suscripcion_id', $suscripcion->id)
+            ->whereDate('fecha', $fecha)
+            ->confirmadas()
+            ->whereHas('espacio', fn ($q) => $q->deBolsa($bolsa))
+            ->get()
+            ->sum(fn (Reserva $reserva) => $reserva->duracionEnHoras()), 2);
     }
 
     public function store(Request $request)
@@ -365,31 +474,6 @@ class ReservasController extends Controller
     }
 
     /**
-     * Estado de cada bolsa que el plan incluye. Lo consumen los medidores del
-     * portal, que tienen que poder responder «¿cuánto me queda y hasta cuándo?»
-     * sin que nadie eche cuentas.
-     */
-    private function resumenDeBolsas(Suscripcion $suscripcion): array
-    {
-        $plan = $suscripcion->plan;
-
-        return collect(BolsaDeHoras::cases())
-            ->filter(fn (BolsaDeHoras $bolsa) => $bolsa->incluidaEn($plan))
-            ->map(fn (BolsaDeHoras $bolsa) => [
-                'bolsa'       => $bolsa->value,
-                'etiqueta'    => $bolsa->etiqueta(),
-                'unidad'      => $bolsa->unidad(),
-                'cupo'        => $bolsa->cupo($plan),
-                'usado'       => $bolsa->consumo($suscripcion),
-                'restante'    => $bolsa->restante($suscripcion),
-                'tope_diario' => $bolsa->topeDiario($plan),
-                'ilimitada'   => $bolsa->cupo($plan) === null,
-            ])
-            ->values()
-            ->all();
-    }
-
-    /**
      * La reserva con lo que la vista necesita saber y no puede calcular: sobre
      * todo si cancelarla devuelve las horas, que debe verse **antes** de pulsar
      * el botón.
@@ -400,6 +484,11 @@ class ReservasController extends Controller
 
         return [
             ...$reserva->toArray(),
+
+            // `toArray()` serializa `fecha` como ISO completo por el cast
+            // `date`, y la vista necesita `Y-m-d` para componer la fecha local
+            // sin que el navegador la corra un día por la zona horaria.
+            'fecha'                  => $reserva->fecha->toDateString(),
             'horas'                  => $reserva->duracionEnHoras(),
             'bolsa'                  => $bolsa?->value,
             'bolsa_etiqueta'         => $bolsa?->etiqueta(),

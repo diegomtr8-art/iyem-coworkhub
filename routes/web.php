@@ -17,8 +17,11 @@ use App\Http\Controllers\WelcomeController;
 use App\Http\Controllers\Portal\DashboardController as PortalDashboard;
 use App\Http\Controllers\Portal\ReservasController as PortalReservas;
 use App\Http\Controllers\Portal\SuscripcionController;
-use App\Http\Controllers\Portal\FacturasController as PortalFacturas;
 use App\Http\Controllers\Portal\CheckinController as PortalCheckin;
+use App\Http\Controllers\Portal\PerfilController as PortalPerfil;
+use App\Http\Controllers\Portal\DatosFiscalesController as PortalDatosFiscales;
+use App\Http\Controllers\Portal\AsesoriasController as PortalAsesorias;
+use App\Http\Controllers\Portal\AccesosController as PortalAccesos;
 use Illuminate\Support\Facades\Route;
 
 // --- SITIO PÚBLICO ---
@@ -162,15 +165,45 @@ Route::middleware(['auth', 'verified', 'portal:operativo', 'no.suspendida', 'ina
 // A.2 — `verified` faltaba en este grupo, que es justo donde cae todo el mundo
 // al registrarse: nadie verificaba su correo.
 Route::middleware(['auth', 'verified', 'portal:miembro', 'no.suspendida', 'inactividad:240'])->prefix('portal')->name('portal.')->group(function () {
+    // 2.1 — Inicio.
     Route::get('/', [PortalDashboard::class, 'index'])->name('dashboard');
 
+    // 2.5 y 2.6 — Reservar y mis reservas.
     Route::get('reservar', [PortalReservas::class, 'create'])->name('reservar');
     Route::post('reservar', [PortalReservas::class, 'store'])->name('reservar.store');
+
+    // Consulta de huecos. Va con `throttle` porque la pantalla la llama cada vez
+    // que se cambia de espacio o de dia, y es la unica ruta del portal que se
+    // pide sin intervencion directa de la persona.
+    Route::get('disponibilidad', [PortalReservas::class, 'disponibilidad'])
+        ->middleware('throttle:120,1')
+        ->name('disponibilidad');
+
     Route::get('mis-reservas', [PortalReservas::class, 'index'])->name('reservas');
     Route::delete('mis-reservas/{reserva}', [PortalReservas::class, 'destroy'])->name('reservas.cancel');
 
-    Route::get('mi-suscripcion', [SuscripcionController::class, 'index'])->name('suscripcion');
-    Route::get('mis-facturas', [PortalFacturas::class, 'index'])->name('facturas');
+    // 2.4 — Mi membresia.
+    Route::get('mi-membresia', [SuscripcionController::class, 'index'])->name('suscripcion');
+
+    // 2.2 — Mi perfil.
+    Route::get('mi-perfil', [PortalPerfil::class, 'edit'])->name('perfil');
+    Route::patch('mi-perfil', [PortalPerfil::class, 'update'])->name('perfil.update');
+    Route::post('mi-perfil/foto', [PortalPerfil::class, 'avatar'])->name('perfil.avatar');
+    Route::delete('mi-perfil/foto', [PortalPerfil::class, 'borrarAvatar'])->name('perfil.avatar.destroy');
+
+    // 2.3 — Datos fiscales. Dato personal sensible: cada lectura queda en bitacora.
+    Route::get('datos-fiscales', [PortalDatosFiscales::class, 'edit'])->name('datos-fiscales');
+    Route::put('datos-fiscales', [PortalDatosFiscales::class, 'update'])->name('datos-fiscales.update');
+
+    // 2.7 — Asesoria IYEM.
+    Route::get('asesoria', [PortalAsesorias::class, 'index'])->name('asesoria');
+    Route::post('asesoria', [PortalAsesorias::class, 'store'])->name('asesoria.store');
+    Route::delete('asesoria/{asesoria}', [PortalAsesorias::class, 'destroy'])->name('asesoria.cancel');
+
+    // 2.8 — Accesos y pagos.
+    // Los pagos viven aqui: `mis-facturas` era una segunda pantalla que ensenaba
+    // lo mismo, y dos sitios para el mismo dato es un sitio de mas que mantener.
+    Route::get('mis-accesos', [PortalAccesos::class, 'index'])->name('accesos');
 
     Route::post('checkin/entrada', [PortalCheckin::class, 'entrada'])->name('checkin.entrada');
     Route::post('checkin/salida', [PortalCheckin::class, 'salida'])->name('checkin.salida');
