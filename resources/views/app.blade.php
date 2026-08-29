@@ -12,7 +12,10 @@
 
         <link rel="icon" href="/favicon.ico" sizes="any">
 
-        {{-- Las fuentes de marca se sirven localmente desde public/fonts (ver resources/css/app.css). --}}
+        {{-- Los dos pesos del primer pintado: titular (800) y cuerpo (400).
+             El resto los pide el navegador solo si los necesita. --}}
+        <link rel="preload" href="/fonts/carmen-sans-extrabold.woff2" as="font" type="font/woff2" crossorigin>
+        <link rel="preload" href="/fonts/gteestiprodisplay-regular.woff2" as="font" type="font/woff2" crossorigin>
 
         @routes
         @vite('resources/js/app.js')

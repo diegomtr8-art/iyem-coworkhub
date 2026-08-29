@@ -29,3 +29,7 @@ Thumbs.db
 *.ai
 *.psd
 *.indd
+
+# Fuentes originales OTF/TTF (4.2 MB). Se conservan localmente y en
+# nodico/PAGINA WEB NODICO/Fonts/; en public/ van los WOFF2 subseteados.
+/recursos/fuentes-originales/
