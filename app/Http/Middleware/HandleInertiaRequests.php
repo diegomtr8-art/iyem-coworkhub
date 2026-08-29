@@ -50,6 +50,7 @@ class HandleInertiaRequests extends Middleware
                 'origen'   => $this->origenCanonico(),
                 'canonica' => $this->origenCanonico() . $request->getPathInfo(),
                 'negocio'  => $this->fichaNegocio(),
+                'pagina'   => $this->metadatosDePagina($request),
             ],
         ];
     }
@@ -70,6 +71,26 @@ class HandleInertiaRequests extends Middleware
         $origen = rtrim(config('nodico.host_canonico') ?: config('app.url'), '/');
 
         return preg_replace('#^(https?://)www\\.#i', '$1', $origen);
+    }
+
+    /**
+     * SEO-01 — título, descripción e imagen social de la página actual.
+     *
+     * Se resuelve por nombre de ruta para que `app.blade.php` pueda emitirlos
+     * en el HTML: los scrapers de enlaces no ejecutan JavaScript.
+     */
+    private function metadatosDePagina(Request $request): array
+    {
+        $paginas = config('nodico.seo_paginas', []);
+        $ruta = $request->route()?->getName();
+
+        $pagina = $paginas[$ruta] ?? $paginas['home'] ?? [];
+
+        return [
+            'titulo'      => $pagina['titulo'] ?? config('nodico.sufijo_titulo'),
+            'descripcion' => $pagina['descripcion'] ?? '',
+            'imagen'      => $this->origenCanonico() . '/img/og/' . ($pagina['imagen'] ?? 'home') . '.jpg',
+        ];
     }
 
     /** SEO-03 — LocalBusiness con los datos que ya están en config/nodico.php. */

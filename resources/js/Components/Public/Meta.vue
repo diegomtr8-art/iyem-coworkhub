@@ -9,21 +9,23 @@ import { computed } from 'vue'
  * El sufijo del título lo pone Inertia (`title` en app.js), así que aquí solo
  * va el nombre de la página.
  */
-const props = withDefaults(defineProps<{
-  titulo: string
-  descripcion: string
-  /** Nombre del archivo en /img/og/ sin extensión. */
-  imagen?: string
+const props = defineProps<{
   /** JSON-LD adicional propio de la página (SEO-03). */
   datosEstructurados?: Record<string, unknown> | Record<string, unknown>[]
-}>(), {
-  imagen: 'home',
-})
+}>()
 
 const page = usePage()
 const seo = computed(() => (page.props.seo ?? {}) as any)
 
-const urlImagen = computed(() => `${seo.value.origen ?? ''}/img/og/${props.imagen}.jpg`)
+/**
+ * Título, descripción e imagen vienen del servidor (`config/nodico.php`), que
+ * es quien los emite en el HTML para los scrapers que no ejecutan JavaScript.
+ * Aquí se leen de la misma fuente para que no puedan divergir; este componente
+ * se encarga de mantenerlos al día al navegar dentro de la SPA.
+ */
+const titulo = computed(() => seo.value.pagina?.titulo ?? '')
+const descripcion = computed(() => seo.value.pagina?.descripcion ?? '')
+const urlImagen = computed(() => seo.value.pagina?.imagen ?? '')
 
 /** SEO-03 — la ficha del negocio va en todas las páginas. */
 const negocio = computed(() => seo.value.negocio ?? null)

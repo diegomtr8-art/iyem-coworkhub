@@ -9,6 +9,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\RateLimiter;
 use Inertia\Testing\AssertableInertia;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
 /**
@@ -216,6 +217,52 @@ class AuditoriaTest extends TestCase
         $this->get('/membresias', ['X-Forwarded-Host' => 'sitio-de-otro.example'])
             ->assertInertia(fn (AssertableInertia $page) => $page
                 ->where('seo.canonica', 'https://nodico.com.mx/membresias'));
+    }
+
+    /**
+     * SEO-01 — los metadatos sociales tienen que venir en el HTML. WhatsApp,
+     * Slack, Telegram, LinkedIn y Twitter/X no ejecutan JavaScript, así que
+     * mientras `Meta.vue` era el único que los ponía, compartir un enlace no
+     * mostraba tarjeta y las imágenes 1200x630 no las veía nadie.
+     */
+    #[DataProvider('rutasPublicas')]
+    public function test_los_metadatos_sociales_vienen_en_el_html(string $ruta, string $imagen): void
+    {
+        config(['nodico.host_canonico' => 'https://nodico.com.mx']);
+
+        $html = $this->get($ruta)->assertOk()->getContent();
+
+        foreach (['og:title', 'og:description', 'og:url', 'og:image', 'twitter:card'] as $etiqueta) {
+            $this->assertStringContainsString($etiqueta, $html, "Falta {$etiqueta} en {$ruta}");
+        }
+
+        $this->assertStringContainsString('rel="canonical"', $html);
+        $this->assertStringContainsString('name="description"', $html);
+
+        // La imagen social debe ser absoluta: un scraper no resuelve relativas.
+        $this->assertStringContainsString(
+            'content="https://nodico.com.mx/img/og/' . $imagen . '.jpg"',
+            $html
+        );
+    }
+
+    public static function rutasPublicas(): array
+    {
+        return [
+            'portada'     => ['/', 'home'],
+            'nosotros'    => ['/nosotros', 'nosotros'],
+            'membresias'  => ['/membresias', 'membresias'],
+            'eventos'     => ['/eventos', 'eventos'],
+            'actividades' => ['/actividades', 'actividades'],
+        ];
+    }
+
+    /** SEO-04 — el título del HTML ya lleva el sufijo, sin esperar al JavaScript. */
+    public function test_el_titulo_viene_completo_en_el_html(): void
+    {
+        $this->get('/membresias')
+            ->assertOk()
+            ->assertSee('<title inertia>Membresías y precios — Nódico</title>', false);
     }
 
     /** BE-04 — los textos legales salen de archivos, no del controlador. */

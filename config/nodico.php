@@ -64,4 +64,58 @@ return [
     */
     'host_canonico' => env('NODICO_HOST_CANONICO'),
     'sufijo_titulo' => 'Nódico',
+
+    /*
+    |--------------------------------------------------------------------------
+    | Metadatos por página
+    |--------------------------------------------------------------------------
+    | Vivían dentro de cada componente Vue, y por tanto sólo existían después de
+    | que el navegador ejecutara el JavaScript. WhatsApp, Slack, Telegram,
+    | LinkedIn y Twitter/X no lo ejecutan: al compartir un enlace no veían ni
+    | `og:title` ni `og:image`, así que no salía tarjeta.
+    |
+    | Ahora la copia vive aquí, el middleware la comparte y `app.blade.php` la
+    | emite en el HTML. `Meta.vue` sigue encargándose de la navegación dentro
+    | de la SPA, leyendo de la misma fuente para que no puedan divergir.
+    |
+    | La clave es el nombre de la ruta. `imagen` es el archivo de /img/og/ sin
+    | extensión.
+    */
+    'seo_paginas' => [
+        'home' => [
+            'titulo'      => 'Coworking en Mérida para emprendedores',
+            'descripcion' => 'Nódico es el coworking del Instituto Yucateco de Emprendedores en Mérida: espacio colaborativo, sala de creación de contenido, salones para eventos y una comunidad que impulsa tu proyecto.',
+            'imagen'      => 'home',
+        ],
+        'nosotros' => [
+            'titulo'      => 'Nosotros',
+            'descripcion' => 'Más que un espacio físico, Nódico es una comunidad profesional en Mérida donde la colaboración, la vinculación estratégica y la formación continua convierten ideas en proyectos de impacto.',
+            'imagen'      => 'nosotros',
+        ],
+        'membresias' => [
+            'titulo'      => 'Membresías y precios',
+            'descripcion' => 'Day-Pass, Nódico Flex, Nodo Pro y Nodo Match: elige la membresía de coworking que se ajusta a tu proyecto. Desde $79 MXN, con sala de creación de contenido, café y comunidad incluidos.',
+            'imagen'      => 'membresias',
+        ],
+        'eventos' => [
+            'titulo'      => 'Salones para eventos',
+            'descripcion' => 'Renta los salones Yucatán Emprende de Nódico en Mérida: 15x14 m, hasta 120 personas, proyector, sonido, internet y mobiliario incluido desde $600 MXN por hora.',
+            'imagen'      => 'eventos',
+        ],
+        'actividades' => [
+            'titulo'      => 'Comunidad y actividades',
+            'descripcion' => 'Talleres, eventos y el directorio de emprendedores de Nódico. Conoce las actividades del mes y a la comunidad que forma parte de los programas de incubación del IYEM.',
+            'imagen'      => 'actividades',
+        ],
+        'privacidad' => [
+            'titulo'      => 'Aviso de privacidad',
+            'descripcion' => 'Cómo trata Nódico los datos personales de quienes usan el espacio y el sitio.',
+            'imagen'      => 'home',
+        ],
+        'terminos' => [
+            'titulo'      => 'Términos y condiciones',
+            'descripcion' => 'Condiciones de uso del espacio, de las membresías y de la renta de salones de Nódico.',
+            'imagen'      => 'home',
+        ],
+    ],
 ];

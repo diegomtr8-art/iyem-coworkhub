@@ -50,9 +50,6 @@ const fechaLarga = (valor: string) =>
 
 <template>
   <Meta
-    titulo="Comunidad y actividades"
-    descripcion="Talleres, eventos y el directorio de emprendedores de Nódico. Conoce las actividades del mes y a la comunidad que forma parte de los programas de incubación del IYEM."
-    imagen="actividades"
     :datos-estructurados="eventosEstructurados"
   />
 
@@ -153,7 +150,6 @@ const fechaLarga = (valor: string) =>
             <div class="lg:sticky lg:top-28">
               <SectionHeading
                 etiqueta="Talleres"
-                titulo="Conoce los talleres del mes"
                 tono="claro"
                 tamano="lg"
               />
@@ -220,10 +216,8 @@ const fechaLarga = (valor: string) =>
         <ScrollReveal>
           <SectionHeading
             etiqueta="Directorio"
-            titulo="Conoce a la comunidad"
             align="center"
             tamano="lg"
-            descripcion="Emprendedores y empresas que forman parte o han egresado de nuestros programas de incubación del IYEM."
           />
         </ScrollReveal>
 

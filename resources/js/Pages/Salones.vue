@@ -31,11 +31,7 @@ const ficha = (salon: Salon) => [
 </script>
 
 <template>
-  <Meta
-    titulo="Salones para eventos"
-    descripcion="Renta los salones Yucatán Emprende de Nódico en Mérida: 15x14 m, hasta 120 personas, proyector, sonido, internet y mobiliario incluido desde $600 MXN por hora."
-    imagen="eventos"
-  />
+  <Meta />
 
   <PublicLayout>
     <!-- Portada: foto del salón a sangre -->
@@ -142,9 +138,7 @@ const ficha = (salon: Salon) => [
 
         <ScrollReveal v-if="!salones?.length" class="mt-14">
           <SectionHeading
-            titulo="Salones en actualización"
             align="center"
-            descripcion="Estamos preparando la información de nuestros salones. Escríbenos y te compartimos disponibilidad y precios."
           />
         </ScrollReveal>
       </div>
@@ -171,7 +165,6 @@ const ficha = (salon: Salon) => [
           <ScrollReveal from="left">
             <SectionHeading
               etiqueta="Servicio adicional"
-              titulo="Coffee break para tu evento"
               tono="claro"
               tamano="lg"
             />

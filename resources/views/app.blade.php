@@ -8,7 +8,37 @@
             <meta name="robots" content="noindex, nofollow">
         @endif
 
-        <title inertia>Nódico</title>
+        {{-- SEO-01 — estos metadatos los ponía `Meta.vue` al montar, así que sólo
+             existían después de ejecutar el JavaScript. WhatsApp, Slack,
+             Telegram, LinkedIn y Twitter/X no lo ejecutan: al compartir un
+             enlace no salía tarjeta, y las imágenes 1200x630 no las veía nadie.
+
+             Van marcados con `inertia` para que el Head del cliente los adopte
+             y los reemplace al navegar dentro de la SPA, en vez de duplicarlos.
+             La copia sale de config/nodico.php, la misma que lee `Meta.vue`. --}}
+        @php($seo = $page['props']['seo'] ?? [])
+        @php($meta = $seo['pagina'] ?? [])
+        @php($tituloCompleto = trim(($meta['titulo'] ?? '') . ' — ' . config('nodico.sufijo_titulo'), ' —'))
+
+        <title inertia>{{ $tituloCompleto }}</title>
+        <meta name="description" content="{{ $meta['descripcion'] ?? '' }}" inertia>
+        <link rel="canonical" href="{{ $seo['canonica'] ?? '' }}" inertia>
+
+        <meta property="og:type" content="website" inertia>
+        <meta property="og:site_name" content="Nódico" inertia>
+        <meta property="og:locale" content="es_MX" inertia>
+        <meta property="og:title" content="{{ $tituloCompleto }}" inertia>
+        <meta property="og:description" content="{{ $meta['descripcion'] ?? '' }}" inertia>
+        <meta property="og:url" content="{{ $seo['canonica'] ?? '' }}" inertia>
+        <meta property="og:image" content="{{ $meta['imagen'] ?? '' }}" inertia>
+        <meta property="og:image:width" content="1200" inertia>
+        <meta property="og:image:height" content="630" inertia>
+        <meta property="og:image:alt" content="{{ $tituloCompleto }}" inertia>
+
+        <meta name="twitter:card" content="summary_large_image" inertia>
+        <meta name="twitter:title" content="{{ $tituloCompleto }}" inertia>
+        <meta name="twitter:description" content="{{ $meta['descripcion'] ?? '' }}" inertia>
+        <meta name="twitter:image" content="{{ $meta['imagen'] ?? '' }}" inertia>
 
         <link rel="icon" href="/favicon-32.png" sizes="32x32" type="image/png">
         <link rel="icon" href="/favicon-96.png" sizes="96x96" type="image/png">

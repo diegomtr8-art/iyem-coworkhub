@@ -47,11 +47,7 @@ const valores = [
 </script>
 
 <template>
-  <Meta
-    titulo="Nosotros"
-    descripcion="Más que un espacio físico, Nódico es una comunidad profesional en Mérida donde la colaboración, la vinculación estratégica y la formación continua convierten ideas en proyectos de impacto."
-    imagen="nosotros"
-  />
+  <Meta />
 
   <PublicLayout>
     <!-- Portada de sección: foto a sangre con velo -->
@@ -145,7 +141,6 @@ const valores = [
         <ScrollReveal>
           <SectionHeading
             etiqueta="Visión"
-            titulo="El referente del sureste de México"
             tono="claro"
             align="center"
             tamano="lg"

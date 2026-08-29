@@ -146,11 +146,7 @@ const fichaSalon = computed(() => {
 </script>
 
 <template>
-  <Meta
-    titulo="Coworking en Mérida para emprendedores"
-    descripcion="Nódico es el coworking del Instituto Yucateco de Emprendedores en Mérida: espacio colaborativo, sala de creación de contenido, salones para eventos y una comunidad que impulsa tu proyecto."
-    imagen="home"
-  />
+  <Meta />
 
   <PublicLayout>
     <!-- ═══ HERO — aprobado, no se modifica ═══ -->
@@ -167,7 +163,6 @@ const fichaSalon = computed(() => {
         <ScrollReveal>
           <SectionHeading
             etiqueta="Servicios"
-            titulo="Todo incluido en tu membresía"
             align="center"
             tamano="lg"
           />
@@ -251,7 +246,6 @@ const fichaSalon = computed(() => {
         <ScrollReveal>
           <SectionHeading
             etiqueta="Beneficios"
-            titulo="Y otras cosas que solo pasan aquí"
             tono="claro"
             tamano="lg"
           />
@@ -269,10 +263,8 @@ const fichaSalon = computed(() => {
         <ScrollReveal>
           <SectionHeading
             etiqueta="Membresías"
-            titulo="Elige tu plan ideal"
             align="center"
             tamano="lg"
-            descripcion="El éxito comienza con el entorno correcto. Cada membresía te da la flexibilidad, los recursos y la comunidad que necesitas para hacer crecer tu proyecto."
           />
         </ScrollReveal>
 
@@ -359,10 +351,8 @@ const fichaSalon = computed(() => {
         <ScrollReveal class="max-w-2xl">
           <SectionHeading
             etiqueta="Salones"
-            titulo="Espacios listos para tu evento"
             tono="claro"
             tamano="lg"
-            descripcion="Talleres, conferencias o reuniones. Modernos, cómodos y equipados para que cada idea cobre vida."
           />
 
           <dl class="mt-10 grid grid-cols-2 gap-x-8 gap-y-5 sm:grid-cols-3">

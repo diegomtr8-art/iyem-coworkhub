@@ -43,9 +43,6 @@ const comoFunciona = [
 
 <template>
   <Meta
-    titulo="Membresías y precios"
-    descripcion="Day-Pass, Nódico Flex, Nodo Pro y Nodo Match: elige la membresía de coworking que se ajusta a tu proyecto. Desde $79 MXN, con sala de creación de contenido, café y comunidad incluidos."
-    imagen="membresias"
     :datos-estructurados="ofertas"
   />
 
@@ -76,9 +73,7 @@ const comoFunciona = [
 
         <div v-else class="mx-auto max-w-xl">
           <SectionHeading
-            titulo="Membresías en actualización"
             align="center"
-            descripcion="Estamos afinando los planes. Escríbenos y con gusto te compartimos los precios vigentes."
           />
         </div>
       </div>
@@ -90,9 +85,7 @@ const comoFunciona = [
         <ScrollReveal from="left">
           <SectionHeading
             etiqueta="Siempre incluido"
-            titulo="Da igual el plan que elijas"
             tamano="lg"
-            descripcion="Hay cosas que no dependen de la membresía: vienen con el simple hecho de ser parte de Nódico."
           />
         </ScrollReveal>
 
@@ -117,7 +110,6 @@ const comoFunciona = [
         <ScrollReveal>
           <SectionHeading
             etiqueta="Cómo funciona"
-            titulo="De la compra al escritorio"
             tono="claro"
             align="center"
             tamano="lg"
