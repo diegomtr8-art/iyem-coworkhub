@@ -5,17 +5,18 @@ import PlanesCarousel from '@/Components/Public/PlanesCarousel.vue'
 import ScrollReveal from '@/Components/Public/ScrollReveal.vue'
 import SectionHeading from '@/Components/Public/SectionHeading.vue'
 import PublicLayout from '@/Layouts/PublicLayout.vue'
+import type { Plan } from '@/tipos'
 import { Check, CreditCard, ShieldCheck, Users } from 'lucide-vue-next'
 import { computed } from 'vue'
 
-const props = defineProps<{ planes?: any[] }>()
+const props = defineProps<{ planes?: Plan[] }>()
 
 /** SEO-03 — cada membresía como Offer dentro de un catálogo. */
 const ofertas = computed(() => ({
   '@context': 'https://schema.org',
   '@type': 'OfferCatalog',
   name: 'Membresías de Nódico',
-  itemListElement: (props.planes ?? []).map((plan: any) => ({
+  itemListElement: (props.planes ?? []).map((plan) => ({
     '@type': 'Offer',
     name: plan.nombre,
     description: plan.descripcion_larga ?? plan.descripcion_corta ?? undefined,

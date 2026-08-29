@@ -6,29 +6,30 @@ import InstagramSection from '@/Components/Public/InstagramSection.vue'
 import ScrollReveal from '@/Components/Public/ScrollReveal.vue'
 import SectionHeading from '@/Components/Public/SectionHeading.vue'
 import PublicLayout from '@/Layouts/PublicLayout.vue'
+import type { DatosNodico, Emprendedor, Evento, Salon } from '@/tipos'
 import { usePage } from '@inertiajs/vue3'
 import { Instagram } from 'lucide-vue-next'
 import { computed } from 'vue'
 
 const props = defineProps<{
-  proximos?: any[]
-  pasados?: any[]
-  salon?: any | null
+  proximos?: Evento[]
+  pasados?: Evento[]
+  salon?: Salon | null
   lumaEmbed?: string
   instagramPosts?: string[]
   /** CNT-02: ambos vienen de la tabla directorio_emprendedores. */
-  directorio?: any[]
-  destacado?: any | null
+  directorio?: Emprendedor[]
+  destacado?: Emprendedor | null
 }>()
 
 const page = usePage()
-const nodico = computed(() => (page.props.nodico ?? {}) as any)
+const nodico = computed(() => (page.props.nodico ?? {}) as DatosNodico)
 
 const eventos = computed(() => [...(props.proximos ?? []), ...(props.pasados ?? [])].slice(0, 6))
 
 /** SEO-03 — los próximos eventos como Event. */
 const eventosEstructurados = computed(() =>
-  (props.proximos ?? []).map((e: any) => ({
+  (props.proximos ?? []).map((e) => ({
     '@context': 'https://schema.org',
     '@type': 'Event',
     name: e.titulo,

@@ -216,3 +216,112 @@ están pendientes de validación**:
   tercera tarjeta de 150 pax del original era una sala real.
 - **Fotos** · Los beneficios usan fotos del espacio, no de cada beneficio; no hay
   foto real de la sala de creación de contenido; la de Salabtún es de 512 px.
+
+
+---
+
+# Cierre de los 50 hallazgos de la auditoria
+
+`OK` cerrado · `~` parcial o pendiente de un dato externo · `NO` no procedía tal
+como estaba redactado, con la razón.
+
+## Fase 1 - Lo que estaba roto
+
+| # | Estado | Qué se hizo |
+|---|---|---|
+| FE-16 | OK | `bg-tinta/88` no está en la escala de Tailwind y **no generaba ninguna regla CSS**, en silencio. Se comprobó que `/90` y `/95` sí producen reglas y `/88` ninguna. Corregido a `bg-tinta/[.88]`, y `tools/verificar-clases.php` (enganchado como `prebuild`) rompe la compilación si vuelve a aparecer. Prueba: `test_no_hay_clases_de_opacidad_invalidas`. |
+| FE-01 | OK | `instagram.com/{cuenta}/embed` no está documentado por Meta y devuelve muro de inicio de sesión. Se pasa al endpoint soportado, uno por publicación (`/p/{code}/embed/`), con los permalinks en la tabla `ajustes` para poder cambiarlos sin desplegar. Prueba: `test_los_permalinks_de_instagram_son_de_publicacion`. |
+| IMG-01 | OK | `public/hero-nodico.jpg`, 8.18 MB que no referenciaba nadie, eliminado. |
+| FE-02 | OK | `ScrollReveal` vuelve a `IntersectionObserver` con tres redes de seguridad (`load`, `navigate` de Inertia, `orientationchange`) y un temporizador de 3 s como último recurso. |
+| FE-03 | OK | El carrusel centra Nodo Pro al cargar. |
+| PERF-01 | OK | Fachada del vídeo reescrita. El iframe se mantiene a `opacity-0` hasta 900 ms después del `load`, porque YouTube pinta negro mientras almacena y tapaba el póster. |
+
+## Fase 2 - Peso y rendimiento
+
+**5,294 KB -> 1,124 KB en escritorio y 772 KB en móvil.**
+
+| # | Estado | Qué se hizo |
+|---|---|---|
+| IMG-02 | NO | El hallazgo daba por prescindible Carmen Sans Heavy. **`font-black` (900) se usa 53 veces** en dashboard, portal y autenticación, así que se conserva. El resto sí: subconjunto a latin español y WOFF2, **4,118.7 KB -> 81 KB** (`tools/fuentes.py`). |
+| IMG-07 | NO | La premisa es falsa. Los 22 «SVG de Illustrator» no tienen un solo trazo: son un `<svg>` envolviendo un WebP en base64. SVGO y `currentColor` no aplican. Se extrajo el ráster y se reescaló a 160 px: **398 KB -> 43 KB** (`tools/iconos.php`). |
+| FE-15 | NO | Parcialmente inválido: `.reveal-scale`, `.magnetic`, `.noise` y el bloque del cursor **los usan `Login.vue` y `Register.vue`**. Borrarlos habría roto la autenticación. Se eliminó solo el CSS realmente muerto. |
+| IMG-03 | OK | `srcset` con variantes de 640 y 1280 px. |
+| IMG-04 | OK | 1,150 KB de assets huérfanos eliminados. |
+| IMG-05 | OK | Las fotos de plan salen del seeder. |
+| IMG-06 | OK | Favicons y manifiesto regenerados (`tools/imagenes.php`). |
+| FE-07 | OK | Póster del hero reencuadrado a horizontal. |
+| FE-08 | OK | `width`/`height` corregidos; `verificar-clases.php` avisa si vuelven a divergir del archivo. |
+| FE-09 | OK | `teaser-salones.png` (426x256) sustituido por `salon-yucatan-emprende-2.webp` (1920x1440). |
+| PERF-02 | OK | El bucle de `lenis` se detiene con la pestaña oculta. |
+| PERF-03 | OK | El mapa ya no está en las cinco páginas: vive solo en la sección de contacto y su iframe no se crea hasta que se pulsa. |
+| PERF-04 | OK | `vue-sonner` sale del layout público; queda en los layouts autenticados. |
+| IMG-09 | ~ | No se puede vectorizar sin el `.ai` original, que pesa 233 MB y no está en el repo. Se reexportó el PNG a 480x159. **Pendiente: el logo en vectorial.** |
+| IMG-08 | ~ | `salabtun` mide 512x511 y se ve blanda. `dir-zentto` y las demás se reprocesaron. **Pendiente: foto original de Salabtún.** |
+
+## Fase 3 - Metadatos, accesibilidad y datos
+
+| # | Estado | Qué se hizo |
+|---|---|---|
+| SEO-01 | OK | `Meta.vue` emite Open Graph y Twitter Card; imágenes sociales 1200x630 generadas (`tools/og.php`). |
+| SEO-02 | ~ | Canónica implementada y compartida desde el middleware, pero **`nodico.host_canonico` queda en `null`: falta saber si producción va con `www` o sin él.** |
+| SEO-03 | OK | JSON-LD: `LocalBusiness` en el middleware, `OfferCatalog` en membresías y `Event` en comunidad. |
+| SEO-04 | OK | El sufijo «— Nódico» se centraliza en `Meta.vue`. |
+| SEO-05 | OK | `sitemap.xml` dinámico. Prueba: `test_el_sitemap_lista_todas_las_paginas`. |
+| A11Y-01 / FE-10 | OK | El menú móvil es un `role="dialog"` real con `aria-modal`, `inert` sobre el fondo y foco atrapado, compartiendo `useBloqueoScroll` con el modal del hero. |
+| A11Y-02 | OK | Flechas del carrusel corregidas. |
+| A11Y-03 | OK | Los puntos usan el valor correcto y hay región `aria-live`. |
+| A11Y-04 | OK | Contrastes recalculados componiendo los velos sobre los píxeles reales de cada foto (`tools/contraste.php`), que encontró **tres fallos de AA que la auditoría no vio**: portada de /nosotros 4.30, portada de /eventos 4.49 y teaser de salones 3.43 -> 7.01, 7.32 y 5.73. Los siete bloques de texto sobre imagen quedan entre 5.15 y 13.17. |
+| A11Y-05 | OK | Los números «01...06» van `aria-hidden`. |
+| A11Y-06 | OK | El honeypot ya no se posiciona contra el viewport. |
+| FE-04 | OK | `@focusout` añadido al autoplay del carrusel. |
+| FE-05 | OK | La detección de iPhone deja de depender de `navigator.platform`. |
+| FE-06 | OK | Iframe y sección usan la misma unidad. |
+| FE-11 | OK | `SiteHeader` y `HeroVideo` comparten `useBloqueoScroll`, con contador: ya no se pisan el `overflow` del documento. |
+| FE-12 | OK | `resources/js/tipos.ts` con `Plan`, `Salon`, `Evento`, `Emprendedor` y `DatosNodico`. **No queda un solo `: any` en las cinco páginas públicas.** |
+| FE-13 | OK | Corregido. |
+| FE-14 | OK | El umbral antiarrastre sube de 6 a 12 px, por encima del temblor normal de un dedo. |
+| CNT-01 | OK | Corregido. |
+| CNT-02 | ~ | El directorio sale ya de la tabla `directorio_emprendedores` en lugar de estar codificado en el componente. **Se dejó sin CRUD de administración a propósito, por la restricción de no tocar `/dashboard`: hace falta tu visto bueno.** Pruebas: `test_el_directorio_llega_a_la_vista_desde_la_bd`, `test_un_emprendedor_inactivo_no_aparece`. |
+| CNT-03 | ~ | El accesor `enlace` cae al Instagram del negocio, pero **Salabtún no tiene ni Instagram ni `url_destino`, así que su ficha sigue sin destino.** |
+| BE-01 | OK | La prop `eventos` que nadie usaba ya no se envía. |
+| BE-02 | OK | Límite doble: 30 envíos por IP y 3 por correo cada 10 minutos, para que un solo coworking detrás de una IP no se bloquee entero. Prueba: `test_el_contacto_limita_por_correo`. |
+| BE-03 | OK | Se guarda `telefono` tal cual se escribió y `telefono_e164` normalizado. Prueba: `test_el_telefono_se_normaliza_a_e164`. |
+| BE-04 | ~ | Los textos pasan a `resources/legal/*.md` y siguen marcados como provisionales. **Sigue en pie lo importante, que no es técnico: el aviso de privacidad y los términos están publicados sin que los haya validado el área jurídica del IYEM.** Prueba: `test_las_paginas_legales_vienen_de_markdown`. |
+| BE-05 | OK | `Ajuste::obtener` ya no se traga cualquier `Throwable` en silencio. |
+
+## Fase 6 - Lo que apareció al verificar
+
+Hallazgos que no estaban en la lista de 50 y salieron al medir con Lighthouse móvil:
+
+| Estado | Qué se encontró |
+|---|---|
+| OK | **21 usos de texto atenuado por debajo de 4.5:1.** Piso medido y documentado en el skill: `text-dark` nunca bajo `/70`, `text-white` nunca bajo `/60`. Accesibilidad 97 -> **100**. |
+| OK | **`<article role="group">` no es válido**: `article` ya tiene rol implícito. La diapositiva del carrusel pasa a `<div>`, como pide la APG. |
+| OK | **1,235 KB de terceros en cada visita.** El primer embed de Instagram iba con `loading="eager"` y los otros tres existían desde el primer render pese al `lazy`, en una sección muy por debajo del pliegue. Ahora el iframe no se crea hasta que la celda se acerca a pantalla. Peticiones 152 -> 97, terceros al cargar 1,235 KB -> **0 KB**, cookies de Meta fuera. Buenas prácticas 78 -> **100**. |
+| OK | **El chunk de la página se descubría tarde.** Se importa dinámicamente desde `app.js`, así que el navegador no sabía que existía hasta ejecutar la entrada: `app.js` de 1326 a 1838 ms y solo entonces los chunks de página, de 1956 a 2305 ms. `App\Support\PrecargaVite` los declara por adelantado desde la vista raíz. |
+| OK | **El póster del hero no se pedía hasta que Vue montaba la sección**, de modo que su `fetchpriority="high"` no servía de nada. Declarado en el `<head>`: pasa a bajar en el ms 1338, en paralelo con el JS. |
+
+Speed Index 22.5 s -> 9.4 s · TBT 740 -> 410 ms · CLS 0.
+
+**El Performance de Lighthouse no es medible en local.** Devuelve `NO_LCP`, aunque
+Chrome real sí mide el LCP (el `<h1>`; el póster cubre el viewport entero y Chrome
+lo descarta por considerarlo fondo). Y el TTFB de esta máquina oscila entre 1.1 s y
+35 s con XAMPP y opcache frío, así que la cifra no significaría nada. Se toma contra
+el servidor en la fase 7.
+
+## Fase 7 - Despliegue
+
+| # | Estado |
+|---|---|
+| OPS-01 | Pendiente: negarse a desplegar con el árbol de git sucio y sellar el hash del commit en el build. |
+| OPS-02 | Pendiente: comparar los dos `manifest.json` y hacer una petición real con `curl` a un asset publicado. |
+
+## Lo que necesita tu respuesta
+
+1. **SEO-02** - ¿producción va con `www` o sin él?
+2. **CNT-02** - ¿confirmas el directorio solo en base de datos, sin CRUD, para no tocar `/dashboard`?
+3. **CNT-03** - ¿a dónde debe llevar la ficha de Salabtún?
+4. **Discrepancia #1** - la tercera tarjeta «Yucatán Emprende 1» con 150 pax, ¿es una sala real o un duplicado? Hoy las dos salas tienen datos idénticos en todos los campos.
+5. **BE-04** - el aviso de privacidad y los términos siguen sin validación jurídica del IYEM.
+6. **IMG-08 / IMG-09** - falta la foto original de Salabtún y el logo en vectorial.
+7. Las **17 líneas de texto** que redacté (6 servicios, 5 beneficios, 6 valores) y las descripciones de plan reescritas necesitan el visto bueno de Nódico. Las fotos de beneficios son del espacio, no de cada beneficio, y no hay foto real del estudio de creación de contenido.
