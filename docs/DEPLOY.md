@@ -254,3 +254,88 @@ se subieron a la raíz de `public_html/`. Comprobar con
 Hoy el dominio principal sigue en Odoo. Cuando se migre, además de repuntar el
 DNS hay que poner `APP_ENV=production` para que se retire el `noindex`, el
 `Disallow: /` y el distintivo de ambiente de prueba.
+
+---
+
+# Tareas programadas (Fase 1)
+
+Tres tareas del motor de bolsas **tienen que correr en el servidor**. Sin ellas
+el sistema no falla de forma visible: simplemente las horas no se reinician
+nunca y los no-shows no se marcan. Es la peor clase de avería, la que nadie ve.
+
+## La línea de cron en Hostinger
+
+En hPanel → *Avanzado* → *Cron Jobs*, una sola entrada **cada minuto**. Laravel
+decide por su cuenta qué toca ejecutar en cada pasada; no hay que dar de alta
+una entrada por comando.
+
+```
+* * * * * cd /home/USUARIO/domains/DOMINIO/public_html && /usr/bin/php artisan schedule:run >> storage/logs/cron.log 2>&1
+```
+
+Sustituye `USUARIO` y `DOMINIO`. Comprueba la ruta de PHP antes, porque Hostinger
+tiene varias versiones instaladas y la de por defecto no siempre es la 8.2:
+
+```bash
+ssh USUARIO@HOST 'which php83 php82 php; php -v'
+```
+
+Si la 8.2 vive en otra ruta (`/opt/alt/php82/usr/bin/php`, por ejemplo), esa es
+la que va en el cron: con una versión distinta a la del sitio, el comando corre
+pero con otro `vendor/` y otra configuración.
+
+## Qué corre y cuándo
+
+| Comando | Cuándo | Qué pasa si no corre |
+|---|---|---|
+| `nodico:reiniciar-ciclos` | 00:05 diario | Las bolsas no se reinician: al segundo mes nadie puede reservar nada |
+| `nodico:marcar-no-show` | cada 30 min | Los plantones quedan como «Confirmada» y la tasa de no-show sale siempre en cero |
+| `nodico:reconstruir-saldos` | 03:00 diario | Nadie se entera si los contadores se separan del libro |
+
+Las tres son idempotentes: repetirlas no duplica nada. `reiniciar-ciclos` acepta
+`--desde=AAAA-MM-DD` para recuperar días en que el servidor estuvo caído.
+
+## Verificar que corre de verdad
+
+**Una tarea programada que nadie comprueba es una tarea que no existe.** Al
+terminar el despliegue, y no antes de darlo por bueno:
+
+```bash
+# 1. El planificador ve las tres tareas
+ssh USUARIO@HOST 'cd ~/domains/DOMINIO/public_html && php artisan schedule:list'
+
+# 2. Cada comando corre a mano sin reventar (--simular no escribe nada)
+ssh USUARIO@HOST 'cd ~/domains/DOMINIO/public_html && php artisan nodico:reiniciar-ciclos --simular'
+ssh USUARIO@HOST 'cd ~/domains/DOMINIO/public_html && php artisan nodico:marcar-no-show --simular'
+
+# 3. Veinte minutos después: el cron está escribiendo de verdad
+ssh USUARIO@HOST 'tail -20 ~/domains/DOMINIO/public_html/storage/logs/cron.log'
+```
+
+El paso 3 es el que importa. Los dos primeros solo dicen que el código funciona;
+el tercero, que Hostinger lo está llamando. Si `cron.log` no existe o está vacío
+media hora después, el cron no está corriendo, por muy bien que se vea la
+entrada en hPanel.
+
+## Migración del libro de horas
+
+Antes de que los portales entren en producción, los contadores que ya existen
+tienen que pasar al libro. Si no, la primera consulta devuelve cero para todo el
+mundo y **cada miembro se encuentra la bolsa llena**: un regalo de horas el día
+del despliegue.
+
+```bash
+# Primero en seco: dice qué escribiría, sin tocar nada
+php artisan nodico:sembrar-libro-horas --simular
+
+# Y luego de verdad. Compara los saldos antes y después y se revierte solo
+# si no cuadran.
+php artisan nodico:sembrar-libro-horas
+
+# Comprobación independiente
+php artisan nodico:reconstruir-saldos
+```
+
+Es reversible con `--revertir`. Hazlo **con el sitio en mantenimiento**: si
+alguien reserva a mitad de la siembra, la foto de antes y la de después no
+cuadran y el comando se revierte solo, que es lo correcto pero obliga a repetir.

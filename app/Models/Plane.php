@@ -109,6 +109,22 @@ class Plane extends Model
         return $this->incluyeSalaJuntas();
     }
 
+    /**
+     * Si las bolsas se reinician cada mes en el aniversario de la suscripción.
+     *
+     * Nodo Pro y Nodo Match son mensuales: quien contrata el 15 de marzo tiene
+     * sus horas del 15 de marzo al 14 de abril, y lo no usado se pierde.
+     *
+     * Day-Pass y Nódico Flex **no** tienen ciclos: se compran con una ventana
+     * de 30 días para consumir su día o sus cuatro días, y al agotarse la
+     * ventana se acabó la membresía. Reiniciarles la bolsa cada mes les
+     * regalaría días.
+     */
+    public function tieneCiclosMensuales(): bool
+    {
+        return $this->tipo === 'mes';
+    }
+
     /** Bolsas que este plan incluye, para pintar los medidores del portal. */
     public function bolsasIncluidas(): array
     {

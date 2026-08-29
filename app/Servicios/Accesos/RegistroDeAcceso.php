@@ -3,11 +3,13 @@
 namespace App\Servicios\Accesos;
 
 use App\Enums\BolsaDeHoras;
+use App\Enums\MotivoMovimiento;
 use App\Models\Checkin;
 use App\Models\Espacio;
 use App\Models\Reserva;
 use App\Models\Suscripcion;
 use App\Models\User;
+use App\Servicios\Horas\LibroDeHoras;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -29,6 +31,10 @@ use Illuminate\Validation\ValidationException;
  */
 class RegistroDeAcceso
 {
+    public function __construct(private readonly LibroDeHoras $libro)
+    {
+    }
+
     /**
      * Registra la entrada de un miembro y consume día si su plan va por días.
      *
@@ -62,7 +68,7 @@ class RegistroDeAcceso
             $consumeDia = $this->debeConsumirDia($suscripcion, $hoy);
 
             if ($consumeDia) {
-                $restantes = BolsaDeHoras::Dias->restante($suscripcion);
+                $restantes = $this->libro->saldoDelCiclo($suscripcion, BolsaDeHoras::Dias);
 
                 if ($restantes !== null && $restantes < 1) {
                     throw ValidationException::withMessages([
@@ -86,7 +92,18 @@ class RegistroDeAcceso
             ]);
 
             if ($consumeDia) {
-                $suscripcion->increment(BolsaDeHoras::Dias->campoConsumo());
+                // Por el libro, no por `increment`: el día consumido tiene que
+                // poder explicarse igual que una hora de sala. La clave hace la
+                // operación idempotente incluso si dos peticiones entran a la vez.
+                $this->libro->registrar(
+                    suscripcion: $suscripcion,
+                    bolsa: BolsaDeHoras::Dias,
+                    cantidad: 1,
+                    motivo: MotivoMovimiento::Acceso,
+                    autor: $usuario,
+                    nota: 'Entrada del ' . $hoy->translatedFormat('j \d\e F \d\e Y') . '.',
+                    claveIdempotencia: "acceso:{$suscripcion->id}:{$hoy->toDateString()}",
+                );
             }
 
             return $acceso;

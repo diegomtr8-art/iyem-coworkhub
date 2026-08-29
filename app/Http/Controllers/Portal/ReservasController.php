@@ -7,7 +7,10 @@ use App\Http\Controllers\Controller;
 use App\Models\Espacio;
 use App\Models\Reserva;
 use App\Models\Suscripcion;
+use App\Enums\MotivoMovimiento;
+use App\Servicios\Horas\LibroDeHoras;
 use App\Servicios\Reservas\RegistroDeBloques;
+use App\Servicios\Reservas\ValidadorDeReserva;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
@@ -33,8 +36,11 @@ use Inertia\Inertia;
  */
 class ReservasController extends Controller
 {
-    public function __construct(private readonly RegistroDeBloques $bloques)
-    {
+    public function __construct(
+        private readonly RegistroDeBloques $bloques,
+        private readonly LibroDeHoras $libro,
+        private readonly ValidadorDeReserva $calendario,
+    ) {
     }
 
     public function index(Request $request)
@@ -125,6 +131,16 @@ class ReservasController extends Controller
             ]);
         }
 
+        // Calendario: horario, festivos, granularidad y antelación. Vive en su
+        // propio servicio porque el panel operativo aplica exactamente las
+        // mismas reglas y no puede tener otra copia (Fase 1.4).
+        $this->calendario->validar(
+            espacio: $espacio,
+            fecha: $datos['fecha'],
+            horaInicio: $datos['hora_inicio'],
+            horaFin: $datos['hora_fin'],
+        );
+
         $horas = Reserva::calcularHoras($datos['hora_inicio'], $datos['hora_fin']);
 
         $this->verificarVigencia($suscripcion, $datos['fecha']);
@@ -170,7 +186,16 @@ class ReservasController extends Controller
                 ]);
             }
 
-            $suscripcion->increment($bolsa->campoConsumo(), $horas);
+            // El consumo se anota en el libro, que además deja la caché al
+            // día. Ningún sitio del sistema vuelve a tocar los contadores.
+            $this->libro->registrar(
+                suscripcion: $suscripcion,
+                bolsa: $bolsa,
+                cantidad: $horas,
+                motivo: MotivoMovimiento::Reserva,
+                reserva: $reserva,
+                autor: $user,
+            );
         });
 
         return redirect()
@@ -197,15 +222,18 @@ class ReservasController extends Controller
             $bolsa    = $fresca->bolsa();
 
             if ($devuelve && $bolsa && $fresca->suscripcion) {
-                $horas  = $fresca->duracionEnHoras();
-                $actual = $bolsa->consumo($fresca->suscripcion);
-
-                // `max(0, …)` sobre el resultado, no sobre las horas: lo segundo
-                // era lo que hacía el código anterior y con la duración en
-                // negativo se quedaba siempre en cero.
-                $fresca->suscripcion->update([
-                    $bolsa->campoConsumo() => max(0, round($actual - $horas, 2)),
-                ]);
+                // Cantidad negativa: el libro devuelve restando del consumo.
+                // Antes esto era un `decrement(..., max(0, $horas))` que con la
+                // duración en negativo evaluaba `max(0, -2)` = 0 y no devolvía
+                // nada nunca (BUG-01 + BUG-04).
+                $this->libro->registrar(
+                    suscripcion: $fresca->suscripcion,
+                    bolsa: $bolsa,
+                    cantidad: -$fresca->duracionEnHoras(),
+                    motivo: MotivoMovimiento::Cancelacion,
+                    reserva: $fresca,
+                    autor: $fresca->user,
+                );
             }
 
             $fresca->update(['estatus' => 'Cancelada']);
@@ -307,7 +335,9 @@ class ReservasController extends Controller
 
     private function verificarSaldo(Suscripcion $suscripcion, BolsaDeHoras $bolsa, float $horas): void
     {
-        $restante = $bolsa->restante($suscripcion);
+        // Se pregunta al libro, no al contador: el contador es una copia y
+        // esto es una decisión de negocio.
+        $restante = $this->libro->saldoDelCiclo($suscripcion, $bolsa);
 
         // `null` aquí es «ilimitada», y solo lo es la bolsa de días.
         if ($restante === null) {

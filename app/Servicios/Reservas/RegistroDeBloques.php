@@ -2,6 +2,7 @@
 
 namespace App\Servicios\Reservas;
 
+use App\Models\BloqueoEspacio;
 use App\Models\Reserva;
 use Illuminate\Support\Facades\DB;
 
@@ -39,6 +40,34 @@ class RegistroDeBloques
     public function liberar(Reserva $reserva): void
     {
         DB::table('bloques_reserva')->where('reserva_id', $reserva->id)->delete();
+    }
+
+    /**
+     * Escribe los bloques de un bloqueo por mantenimiento o evento privado.
+     *
+     * Misma tabla y mismo índice único que las reservas: por eso un bloqueo y
+     * una reserva no pueden pisarse, sin una sola línea de código que compare
+     * unos con otros.
+     */
+    public function ocuparBloqueo(BloqueoEspacio $bloqueo): void
+    {
+        $ahora = now();
+
+        $filas = array_map(fn (int $bloque) => [
+            'bloqueo_id' => $bloqueo->id,
+            'espacio_id' => $bloqueo->espacio_id,
+            'fecha'      => $bloqueo->fecha->toDateString(),
+            'bloque'     => $bloque,
+            'created_at' => $ahora,
+            'updated_at' => $ahora,
+        ], $this->bloquesDe($bloqueo->hora_inicio, $bloqueo->hora_fin));
+
+        DB::table('bloques_reserva')->insert($filas);
+    }
+
+    public function liberarBloqueo(BloqueoEspacio $bloqueo): void
+    {
+        DB::table('bloques_reserva')->where('bloqueo_id', $bloqueo->id)->delete();
     }
 
     /**

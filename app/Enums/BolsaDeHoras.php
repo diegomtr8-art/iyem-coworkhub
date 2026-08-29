@@ -21,6 +21,12 @@ enum BolsaDeHoras: string
     case Asesoria  = 'asesoria';
     case Dias      = 'dias';
 
+    /** @return array<int, string> */
+    public static function valores(): array
+    {
+        return array_column(self::cases(), 'value');
+    }
+
     public function etiqueta(): string
     {
         return match ($this) {

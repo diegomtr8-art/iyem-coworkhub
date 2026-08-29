@@ -24,11 +24,13 @@ class Espacio extends Model
         'nombre', 'tipo', 'capacidad', 'precio_hora', 'amenidades', 'disponible', 'piso',
         'descripcion', 'medidas', 'incluye', 'cap_herradura', 'cap_mesas',
         'cap_escuela', 'cap_auditorio', 'imagen', 'publicado', 'orden',
+        'hora_apertura', 'hora_cierre', 'dias_operacion',
     ];
 
     protected $casts = [
-        'amenidades' => 'array',
-        'incluye'    => 'array',
+        'amenidades'     => 'array',
+        'incluye'        => 'array',
+        'dias_operacion' => 'array',
         'disponible' => 'boolean',
         'publicado'  => 'boolean',
         'precio_hora' => 'decimal:2',
@@ -61,6 +63,7 @@ class Espacio extends Model
     }
 
     public function reservas() { return $this->hasMany(Reserva::class); }
+    public function bloqueos() { return $this->hasMany(BloqueoEspacio::class); }
     public function checkins() { return $this->hasMany(Checkin::class); }
 
     /** Tipo resuelto, o `null` si la fila guarda un valor que ya no existe. */

@@ -229,4 +229,12 @@ class User extends Authenticatable implements MustVerifyEmail
     public function checkins()        { return $this->hasMany(Checkin::class); }
     public function facturas()        { return $this->hasMany(Factura::class); }
     public function comunicados()     { return $this->hasMany(Comunicado::class); }
+    public function asesorias()       { return $this->hasMany(SolicitudAsesoria::class); }
+
+    /**
+     * Datos fiscales. Es `hasOne` y no un puñado de columnas en esta tabla a
+     * propósito: son datos personales sensibles, con su propia policy, y aquí
+     * viajarían en cada `$request->user()` de cada petición del sitio.
+     */
+    public function datosFiscales()   { return $this->hasOne(DatosFiscales::class); }
 }

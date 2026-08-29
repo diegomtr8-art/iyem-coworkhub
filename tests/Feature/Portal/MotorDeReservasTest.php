@@ -2,6 +2,8 @@
 
 namespace Tests\Feature\Portal;
 
+use App\Enums\BolsaDeHoras;
+use App\Enums\MotivoMovimiento;
 use App\Enums\TipoEspacio;
 use App\Models\Checkin;
 use App\Models\Espacio;
@@ -9,6 +11,7 @@ use App\Models\Plane;
 use App\Models\Reserva;
 use App\Models\Suscripcion;
 use App\Models\User;
+use App\Servicios\Horas\LibroDeHoras;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -29,6 +32,20 @@ class MotorDeReservasTest extends TestCase
     private function diaHabil(int $sumarDias = 0): string
     {
         return today()->next(Carbon::MONDAY)->addDays($sumarDias)->toDateString();
+    }
+
+    /** Gasta parte de una bolsa a través del libro, que es lo que manda. */
+    private function consumir(Suscripcion $suscripcion, BolsaDeHoras $bolsa, float $cantidad): void
+    {
+        app(LibroDeHoras::class)->registrar(
+            suscripcion: $suscripcion,
+            bolsa: $bolsa,
+            cantidad: $cantidad,
+            motivo: MotivoMovimiento::AjusteManual,
+            nota: 'Consumo previo, montado por la prueba.',
+        );
+
+        $suscripcion->refresh();
     }
 
     /** @return array{0: User, 1: Suscripcion, 2: Espacio} */
@@ -86,8 +103,10 @@ class MotorDeReservasTest extends TestCase
     {
         [$user, $suscripcion, $sala] = $this->miembroConNodoPro();
 
-        // 10 de 10 horas gastadas: no queda nada.
-        $suscripcion->update(['horas_sala_usadas' => 10]);
+        // 10 de 10 horas gastadas. Se consume **por el libro**, que desde la
+        // Fase 1.1 es la fuente de verdad: escribir el contador a mano ya no
+        // significa nada, y eso es justo lo que se quiere.
+        $this->consumir($suscripcion, BolsaDeHoras::Sala, 10);
 
         $this->actingAs($user)->post(route('portal.reservar.store'), [
             'espacio_id'  => $sala->id,
@@ -309,17 +328,19 @@ class MotorDeReservasTest extends TestCase
         $user = User::factory()->miembro()->create();
 
         $suscripcion = Suscripcion::factory()->delPlan($plan)->create([
-            'user_id'     => $user->id,
-            'fecha_fin'   => today()->addDays(30),
-            'dias_usados' => 4,
+            'user_id'   => $user->id,
+            'fecha_fin' => today()->addDays(30),
         ]);
+
+        // Los 4 días de Flex, gastados en días anteriores.
+        $this->consumir($suscripcion, BolsaDeHoras::Dias, 4);
 
         Espacio::factory()->coworking()->create();
 
         $this->actingAs($user)->post(route('portal.checkin.entrada'))->assertSessionHasErrors();
 
         $this->assertSame(0, Checkin::count());
-        $this->assertSame(4, $suscripcion->refresh()->dias_usados);
+        $this->assertSame(4, (int) $suscripcion->refresh()->dias_usados);
     }
 
     /** Nodo Pro es ilimitado: el check-in no consume días ni tiene tope. */
