@@ -23,7 +23,11 @@ class VerifyEmailController extends Controller
 
             // Verificar el correo cambia lo que la sesion puede hacer, asi que
             // se renueva su identificador. Es la misma regla que en el login.
-            $request->session()->regenerate();
+            // `regenerate()` a secas deja **viva** la fila de la sesion anterior:
+                // con el driver `database` el identificador viejo sigue sirviendo, que
+                // es justo lo que regenerar pretende impedir. Ademas aparecia como un
+                // dispositivo fantasma en «Mi seguridad». `true` la destruye.
+            $request->session()->regenerate(true);
         }
 
         return $this->alPortal($usuario)->with('status', 'correo-verificado');

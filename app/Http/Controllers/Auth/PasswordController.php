@@ -41,7 +41,11 @@ class PasswordController extends Controller
         $cerradas = $this->sesiones->cerrarOtras($usuario, $request->session()->getId());
 
         // Cambio de privilegio: identificador de sesión nuevo.
-        $request->session()->regenerate();
+        // `regenerate()` a secas deja **viva** la fila de la sesion anterior:
+        // con el driver `database` el identificador viejo sigue sirviendo, que
+        // es justo lo que regenerar pretende impedir. Ademas aparecia como un
+        // dispositivo fantasma en «Mi seguridad». `true` la destruye.
+        $request->session()->regenerate(true);
 
         EventoAutenticacion::registrar(
             EventoAuth::CambioContrasena,
