@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue'
 import PortalLayout from '@/Layouts/PortalLayout.vue'
-import { Head, router, usePage } from '@inertiajs/vue3'
-import { Monitor, ShieldCheck, ShieldAlert, LogOut, Link2 } from 'lucide-vue-next'
+import { Head, Link, router, usePage } from '@inertiajs/vue3'
+import { Monitor, ShieldCheck, ShieldAlert, LogOut, Link2, KeyRound, Smartphone } from 'lucide-vue-next'
 import { computed } from 'vue'
 
 interface Sesion {
@@ -19,6 +19,20 @@ interface Identidad {
   etiqueta: string
   correo: string | null
   vinculadaEn: string | null
+}
+
+interface DosFactores {
+  activo: boolean
+  obligatorio: boolean
+  desde: string | null
+  codigosSinUsar: number
+}
+
+interface Dispositivo {
+  id: number
+  ip: string | null
+  caduca: string
+  desde: string | null
 }
 
 interface Evento {
@@ -38,6 +52,8 @@ const props = defineProps<{
   identidades: Identidad[]
   tieneContrasena: boolean
   metodosDeAcceso: number
+  dosFactores: DosFactores
+  dispositivosConfiables: Dispositivo[]
 }>()
 
 const page = usePage()
@@ -63,6 +79,14 @@ const puedeDesvincular = computed(() => props.metodosDeAcceso > 1)
 
 function desvincular(id: number) {
   router.delete(route('seguridad.desvincular', { identidad: id }), { preserveScroll: true })
+}
+
+function apagarDosFactores() {
+  router.delete(route('dos-factores.destruir'), { preserveScroll: true })
+}
+
+function olvidarDispositivo(id: number) {
+  router.delete(route('seguridad.olvidar-dispositivo', { dispositivo: id }), { preserveScroll: true })
 }
 </script>
 
@@ -135,6 +159,103 @@ function desvincular(id: number) {
             No hay sesiones registradas.
           </li>
         </ul>
+      </section>
+
+      <!-- Segundo factor -->
+      <section class="rounded-2xl border border-gray-200 bg-white">
+        <header class="flex flex-wrap items-center justify-between gap-3 border-b border-gray-100 px-5 py-4">
+          <div class="flex items-center gap-2">
+            <KeyRound class="h-5 w-5 text-gray-400" aria-hidden="true" />
+            <h2 class="font-semibold text-gray-900">Segundo factor</h2>
+          </div>
+
+          <span
+            v-if="dosFactores.activo"
+            class="rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700"
+          >Activo desde {{ dosFactores.desde }}</span>
+        </header>
+
+        <div class="px-5 py-4">
+          <template v-if="dosFactores.activo">
+            <p class="text-sm text-gray-500">
+              Al entrar te pedimos un código de tu app además de la contraseña. Te quedan
+              <strong class="text-gray-900">{{ dosFactores.codigosSinUsar }}</strong>
+              códigos de recuperación sin usar.
+            </p>
+
+            <div class="mt-4 flex flex-wrap gap-3">
+              <Link
+                :href="route('dos-factores.codigos')"
+                method="post"
+                as="button"
+                class="inline-flex min-h-[44px] items-center rounded-xl border border-gray-200 px-4 text-sm font-semibold text-gray-700 transition hover:border-gray-400"
+              >
+                Generar códigos nuevos
+              </Link>
+
+              <button
+                v-if="!dosFactores.obligatorio"
+                type="button"
+                class="inline-flex min-h-[44px] items-center px-3 text-sm font-semibold text-red-600 transition hover:text-red-800"
+                @click="apagarDosFactores"
+              >
+                Desactivar
+              </button>
+
+              <span
+                v-else
+                class="inline-flex min-h-[44px] items-center text-sm text-gray-500"
+              >Tu perfil lo exige, así que no se puede desactivar.</span>
+            </div>
+          </template>
+
+          <template v-else>
+            <!--
+              Se recomienda, no se impone: Nódico lo decidió opcional. El aviso
+              queda visible mientras no esté activo, que es lo que pedía la
+              fase G para el panel operativo.
+            -->
+            <p class="text-sm text-gray-500">
+              Con el segundo factor activo, saber tu contraseña deja de ser suficiente para
+              entrar a tu cuenta. Funciona con Google Authenticator, Authy o 1Password.
+            </p>
+
+            <Link
+              :href="route('dos-factores.crear')"
+              class="mt-4 inline-flex min-h-[44px] items-center rounded-xl bg-gray-900 px-4 text-sm font-semibold text-white transition hover:bg-gray-700"
+            >
+              Activar el segundo factor
+            </Link>
+          </template>
+        </div>
+
+        <!-- Equipos de confianza -->
+        <div v-if="dispositivosConfiables.length" class="border-t border-gray-100">
+          <p class="flex items-center gap-2 px-5 pt-4 text-sm font-semibold text-gray-900">
+            <Smartphone class="h-4 w-4 text-gray-400" aria-hidden="true" />
+            Equipos que no vuelven a pedir el código
+          </p>
+
+          <ul class="mt-2 divide-y divide-gray-100">
+            <li
+              v-for="equipo in dispositivosConfiables"
+              :key="equipo.id"
+              class="flex flex-wrap items-center justify-between gap-3 px-5 py-3"
+            >
+              <p class="text-sm text-gray-500">
+                {{ equipo.ip || 'Sin IP' }} · desde {{ equipo.desde }} · caduca el {{ equipo.caduca }}
+              </p>
+
+              <button
+                type="button"
+                class="min-h-[44px] px-3 text-sm font-semibold text-red-600 transition hover:text-red-800"
+                @click="olvidarDispositivo(equipo.id)"
+              >
+                Quitar confianza
+              </button>
+            </li>
+          </ul>
+        </div>
       </section>
 
       <!-- Cuentas externas vinculadas -->

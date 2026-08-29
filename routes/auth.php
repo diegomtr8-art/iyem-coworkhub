@@ -184,5 +184,8 @@ Route::middleware('auth')->group(function () {
 
         Route::delete('seguridad/identidades/{identidad}', [SeguridadController::class, 'desvincular'])
             ->name('seguridad.desvincular');
+
+        Route::delete('seguridad/dispositivos/{dispositivo}', [SeguridadController::class, 'olvidarDispositivo'])
+            ->name('seguridad.olvidar-dispositivo');
     });
 });

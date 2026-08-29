@@ -4,7 +4,9 @@ namespace App\Http\Controllers;
 
 use App\Enums\EventoAuth;
 use App\Models\EventoAutenticacion;
+use App\Models\DispositivoConfiable;
 use App\Models\IdentidadSocial;
+use App\Support\DosFactores;
 use App\Support\SesionesActivas;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -20,8 +22,10 @@ use Inertia\Response;
  */
 class SeguridadController extends Controller
 {
-    public function __construct(private readonly SesionesActivas $sesiones)
-    {
+    public function __construct(
+        private readonly SesionesActivas $sesiones,
+        private readonly DosFactores $dosFactores,
+    ) {
     }
 
     public function index(Request $request): Response
@@ -41,6 +45,26 @@ class SeguridadController extends Controller
             ]),
             'tieneContrasena'   => $usuario->tieneContrasena(),
             'metodosDeAcceso'   => $usuario->metodosDeAcceso(),
+
+            // D — Estado del segundo factor y equipos en los que no se vuelve
+            // a pedir.
+            'dosFactores' => [
+                'activo'      => $usuario->tieneDosFactores(),
+                'obligatorio' => $this->dosFactores->esObligatorioPara($usuario),
+                'desde'       => $usuario->dos_factores_confirmado_en?->format('d/m/Y'),
+                'codigosSinUsar' => $usuario->codigosRecuperacion()->whereNull('usado_en')->count(),
+            ],
+
+            'dispositivosConfiables' => $usuario->dispositivosConfiables()
+                ->where('expira_en', '>', now())
+                ->orderByDesc('created_at')
+                ->get()
+                ->map(fn (DispositivoConfiable $d) => [
+                    'id'       => $d->id,
+                    'ip'       => $d->ip,
+                    'caduca'   => $d->expira_en->format('d/m/Y'),
+                    'desde'    => $d->created_at?->format('d/m/Y'),
+                ]),
             'eventos'           => EventoAutenticacion::de($usuario)
                 ->recientes()
                 ->limit(50)
@@ -75,6 +99,22 @@ class SeguridadController extends Controller
         return back()->with('success', $cerradas === 0
             ? 'No había otras sesiones abiertas.'
             : "Se cerraron {$cerradas} sesión" . ($cerradas === 1 ? '' : 'es') . ' en otros dispositivos.');
+    }
+
+    /**
+     * D — Quitar la confianza de un equipo.
+     *
+     * Existe justo para el caso de haber marcado «confiar» en un equipo
+     * prestado: hay que poder revocarlo **sin** acceso a ese equipo, y por eso
+     * la confianza vive como fila en la base y no solo como cookie.
+     */
+    public function olvidarDispositivo(Request $request, DispositivoConfiable $dispositivo): RedirectResponse
+    {
+        abort_unless($dispositivo->user_id === $request->user()->id, 403);
+
+        $dispositivo->delete();
+
+        return back()->with('success', 'Ese equipo volvera a pedir el codigo.');
     }
 
     /**
