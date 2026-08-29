@@ -272,7 +272,7 @@ def sellar_version(repo: dict) -> dict:
     sello["desplegado"] = datetime.datetime.now().astimezone().isoformat(timespec="seconds")
 
     destino = os.path.join(LOCAL_ROOT, "public", "build", "version.json")
-    with io.open(destino, "w", encoding="utf-8") as fh:
+    with open(destino, "w", encoding="utf-8") as fh:
         json.dump(sello, fh, ensure_ascii=False, indent=2)
 
     marca = sello["commit_corto"] + (" (SUCIO)" if sello["sucio"] else "")
@@ -332,7 +332,7 @@ def comprobar_manifiestos(cliente, sello: dict) -> bool:
         todo_bien = False
 
     # El manifiesto puede estar bien y el asset no haberse subido.
-    with io.open(local, encoding="utf-8") as fh:
+    with open(local, encoding="utf-8") as fh:
         manifiesto = json.load(fh)
     archivo = manifiesto["resources/js/app.js"]["file"]
 
