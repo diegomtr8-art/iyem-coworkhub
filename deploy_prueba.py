@@ -14,10 +14,17 @@ Los assets de build viven en dos rutas y ambas deben quedar sincronizadas:
   - public_html/public/build/  -> lo que lee public_path('build/manifest.json')
 """
 
+import argparse
+import datetime
+import hashlib
+import json
 import os
 import posixpath
 import stat
+import subprocess
 import sys
+import urllib.error
+import urllib.request
 
 import paramiko
 
@@ -212,11 +219,166 @@ def subir_dir(sftp, local_dir, remote_dir, etiqueta):
     return subidos
 
 
+def git(*args) -> str:
+    """Salida de un comando git, sin ruido."""
+    return subprocess.run(
+        ["git", *args], cwd=LOCAL_ROOT, capture_output=True, text=True, check=True
+    ).stdout.strip()
+
+
+def estado_del_repo(permitir_sucio: bool) -> dict:
+    """
+    OPS-01 — desplegar con el arbol sucio deja el servidor en un estado que no
+    corresponde a ningun commit, y despues no hay forma de saber que se publico
+    ni de reproducirlo.
+
+    `--sucio` existe para una urgencia, pero no lo esconde: el sello lleva la
+    marca y la lista de archivos sin commitear, y se ve en /build/version.json.
+    """
+    try:
+        sucio = git("status", "--porcelain")
+        commit = git("rev-parse", "HEAD")
+        rama = git("rev-parse", "--abbrev-ref", "HEAD")
+    except (subprocess.CalledProcessError, FileNotFoundError) as exc:
+        sys.exit(f"ERROR: no se pudo leer el estado de git ({exc}).")
+
+    if sucio and not permitir_sucio:
+        archivos = "\n    ".join(sucio.splitlines()[:20])
+        sys.exit(
+            "ERROR: el arbol de git esta sucio. Commitea o descarta antes de "
+            "desplegar,\nporque si no lo que quede en el servidor no "
+            "correspondera a ningun commit:\n\n    "
+            + archivos
+            + "\n\nSi es una urgencia: python deploy_prueba.py --sucio"
+        )
+
+    return {
+        "commit": commit,
+        "commit_corto": commit[:12],
+        "rama": rama,
+        "sucio": bool(sucio),
+        "sin_commitear": sucio.splitlines() if sucio else [],
+    }
+
+
+def sellar_version(repo: dict) -> dict:
+    """
+    OPS-01 — escribe el sello dentro del build, para poder preguntarle al
+    servidor que esta publicado en vez de suponerlo:
+
+        curl -s https://prueba.nodico.com.mx/build/version.json
+    """
+    sello = dict(repo)
+    sello["desplegado"] = datetime.datetime.now().astimezone().isoformat(timespec="seconds")
+
+    destino = os.path.join(LOCAL_ROOT, "public", "build", "version.json")
+    with io.open(destino, "w", encoding="utf-8") as fh:
+        json.dump(sello, fh, ensure_ascii=False, indent=2)
+
+    marca = sello["commit_corto"] + (" (SUCIO)" if sello["sucio"] else "")
+    print(f"    {repo['rama']} @ {marca}")
+    return sello
+
+
+def md5_local(ruta: str) -> str:
+    with open(ruta, "rb") as fh:
+        return hashlib.md5(fh.read()).hexdigest()
+
+
+def pedir(url: str, binario=False):
+    """Devuelve (estado, cuerpo). No lanza en 4xx/5xx."""
+    try:
+        with urllib.request.urlopen(url, timeout=25) as resp:
+            datos = resp.read()
+            return resp.status, datos if binario else datos.decode("utf-8", "replace")
+    except urllib.error.HTTPError as exc:
+        return exc.code, None
+    except Exception:
+        return None, None
+
+
+def comprobar_manifiestos(cliente, sello: dict) -> bool:
+    """
+    OPS-02 — este host guarda los assets en dos sitios: `public_html/build/`
+    es lo que se sirve por HTTP y `public_html/public/build/` es lo que lee
+    `public_path('build/manifest.json')`. Si se desincronizan, Laravel apunta a
+    archivos que no existen y el sitio se queda sin estilos sin dar ningun
+    error. Ademas de compararlos, se pide un asset de verdad.
+    """
+    print("\n--> Comprobando los dos manifiestos y un asset publicado")
+    todo_bien = True
+
+    local = os.path.join(LOCAL_ROOT, "public", "build", "manifest.json")
+    esperado = md5_local(local)
+    print(f"    local                       {esperado}")
+
+    _, salida, _ = correr(
+        cliente,
+        f"md5sum {REMOTE_ROOT}/build/manifest.json {REMOTE_ROOT}/public/build/manifest.json",
+        mostrar=False,
+    )
+
+    for linea in salida.splitlines():
+        suma, _, ruta = linea.partition(" ")
+        etiqueta = ruta.strip().replace(REMOTE_ROOT + "/", "")
+        if suma == esperado:
+            print(f"    ok  {etiqueta:<26} {suma}")
+        else:
+            print(f"    MAL {etiqueta:<26} {suma}")
+            todo_bien = False
+
+    if len(salida.splitlines()) != 2:
+        print("    MAL falta alguno de los dos manifiestos en el servidor")
+        todo_bien = False
+
+    # El manifiesto puede estar bien y el asset no haberse subido.
+    with io.open(local, encoding="utf-8") as fh:
+        manifiesto = json.load(fh)
+    archivo = manifiesto["resources/js/app.js"]["file"]
+
+    estado, cuerpo = pedir(f"https://prueba.nodico.com.mx/build/{archivo}", binario=True)
+    if estado == 200 and cuerpo:
+        print(f"    ok  /build/{archivo} -> 200, {len(cuerpo) // 1024} KB")
+    else:
+        print(f"    MAL /build/{archivo} -> {estado}")
+        todo_bien = False
+
+    # Y el sello debe ser el de este despliegue, no el de uno anterior.
+    estado, cuerpo = pedir("https://prueba.nodico.com.mx/build/version.json")
+    if estado == 200 and cuerpo:
+        publicado = json.loads(cuerpo)
+        if publicado.get("commit") == sello["commit"]:
+            print(f"    ok  /build/version.json -> {publicado['commit_corto']}")
+        else:
+            print(
+                f"    MAL /build/version.json -> {publicado.get('commit_corto')}, "
+                f"se esperaba {sello['commit_corto']}"
+            )
+            todo_bien = False
+    else:
+        print(f"    MAL /build/version.json -> {estado}")
+        todo_bien = False
+
+    return todo_bien
+
+
 def main():
+    parser = argparse.ArgumentParser(description="Despliegue a prueba.nodico.com.mx")
+    parser.add_argument(
+        "--sucio",
+        action="store_true",
+        help="desplegar con cambios sin commitear (queda marcado en version.json)",
+    )
+    args = parser.parse_args()
+
     if not os.path.isdir(os.path.join(LOCAL_ROOT, "public", "build")):
         sys.exit("ERROR: falta public/build. Corre `npm run build` primero.")
 
     print("\n=== Deploy CoworkHub -> prueba.nodico.com.mx ===\n")
+
+    print("--> Estado del repositorio")
+    sello = sellar_version(estado_del_repo(args.sucio))
+
     cliente = conectar()
     sftp = cliente.open_sftp()
     total = 0
@@ -270,15 +432,24 @@ def main():
         script = fh.read()
 
     codigo, _, _ = correr(cliente, f"bash -s <<'FIN_DEPLOY'\n{script}\nFIN_DEPLOY")
-    cliente.close()
 
     if codigo != 0:
         sys.exit(f"\nERROR: los pasos de servidor terminaron con código {codigo}")
 
-    if not comprobar_cierre():
-        sys.exit("\nERROR: hay archivos internos accesibles por HTTP.")
+    problemas = []
 
-    print("\n=== Deploy completado ===")
+    if not comprobar_cierre():
+        problemas.append("hay archivos internos accesibles por HTTP")
+
+    if not comprobar_manifiestos(cliente, sello):
+        problemas.append("los assets publicados no cuadran")
+
+    cliente.close()
+
+    if problemas:
+        sys.exit("\nERROR: " + "; ".join(problemas) + ".")
+
+    print(f"\n=== Deploy completado: {sello['rama']} @ {sello['commit_corto']} ===")
 
 
 def comprobar_cierre() -> bool:
@@ -286,9 +457,6 @@ def comprobar_cierre() -> bool:
     El /security-review del 2026-08-29 encontró la aplicación entera legible
     por HTTP. Se comprueba en cada despliegue para que no pueda volver.
     """
-    import urllib.error
-    import urllib.request
-
     print("\n--> Comprobando que nada interno responde por HTTP")
     todo_bien = True
 

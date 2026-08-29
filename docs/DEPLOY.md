@@ -98,6 +98,67 @@ web:
 chmod -R 775 public_html/storage public_html/bootstrap/cache
 ```
 
+## Lo que el despliegue comprueba solo
+
+`deploy_prueba.py` se niega a desplegar si algo no cuadra, antes y después.
+
+### Antes: el árbol de git tiene que estar limpio (OPS-01)
+
+Desplegar con cambios sin commitear deja el servidor en un estado que no
+corresponde a ningún commit, y después no hay forma de saber qué se publicó ni
+de reproducirlo. El script lo comprueba **antes de conectarse**:
+
+```
+--> Estado del repositorio
+ERROR: el arbol de git esta sucio. Commitea o descarta antes de desplegar,
+porque si no lo que quede en el servidor no correspondera a ningun commit:
+
+    M deploy_prueba.py
+
+Si es una urgencia: python deploy_prueba.py --sucio
+```
+
+`--sucio` existe para una urgencia, pero no la esconde: el sello queda marcado
+y se ve publicado.
+
+### El sello de versión
+
+Cada despliegue escribe `public/build/version.json` con la rama, el commit, si
+el árbol estaba sucio y la fecha. Para saber qué hay publicado no hay que
+suponer nada, se le pregunta al servidor:
+
+```bash
+curl -s https://prueba.nodico.com.mx/build/version.json
+```
+
+### Después: nada interno abierto, nada público roto
+
+Ver la sección del document root: se piden por HTTP las rutas de
+`COMPROBAR_CERRADAS` (deben dar 403/404) y las de `COMPROBAR_ABIERTAS` (deben
+dar 200). Blindar de más es tan roto como blindar de menos.
+
+### Después: los dos manifiestos y un asset de verdad (OPS-02)
+
+Este host guarda los assets en dos sitios y ambos tienen que coincidir:
+
+- `public_html/build/` — lo que se sirve por HTTP
+- `public_html/public/build/` — lo que lee `public_path('build/manifest.json')`
+
+Si se desincronizan, Laravel apunta a archivos que no existen y **el sitio se
+queda sin estilos sin dar ningún error**. El script compara el md5 de los dos
+contra el local, y como el manifiesto puede estar bien y el asset no haberse
+subido, además pide el `app-*.js` real por HTTP y comprueba que
+`/build/version.json` trae el commit de este despliegue y no el del anterior.
+
+```
+--> Comprobando los dos manifiestos y un asset publicado
+    local                       6a1f...
+    ok  build/manifest.json         6a1f...
+    ok  public/build/manifest.json  6a1f...
+    ok  /build/assets/app-XXXX.js -> 200, 277 KB
+    ok  /build/version.json -> a1b2c3d4e5f6
+```
+
 ## El document root expone la aplicación entera
 
 Lo encontró el `/security-review` del 29 de agosto de 2026 y **es el riesgo más
