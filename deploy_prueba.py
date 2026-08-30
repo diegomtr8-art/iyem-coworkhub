@@ -1,9 +1,14 @@
 #!/usr/bin/env python3
 """
-Despliegue de CoworkHub a prueba.nodico.com.mx (Hostinger, hosting compartido).
+Despliegue de CoworkHub a Hostinger (hosting compartido).
 
     1. npm run build
-    2. python deploy_prueba.py
+    2. python deploy_prueba.py                              -> prueba.nodico.com.mx
+       python deploy_prueba.py --dominio X --si-produccion  -> cualquier otro
+
+El destino por defecto es el de prueba a proposito: este script sube codigo
+encima de lo que haya en el document root, sin respaldo previo. Apuntarlo a un
+sitio con miembros reales tiene que costar una bandera extra y una lectura.
 
 El servidor NO tiene Node, así que los assets se compilan en local y se suben ya
 construidos. El layout del servidor es plano: `public_html/` es el document root
@@ -34,7 +39,12 @@ SSH_USER = "u489236361"
 KEY_PATH = os.path.expanduser(r"~\.ssh\id_deploy")
 
 LOCAL_ROOT = os.path.dirname(os.path.abspath(__file__))
-REMOTE_ROOT = f"/home/{SSH_USER}/domains/prueba.nodico.com.mx/public_html"
+
+# Destino por defecto. `--dominio` lo cambia; ver la guarda en main(). Se deja
+# como global porque media docena de funciones la leen, y pasarla por parametro
+# a todas solo para esto habria tocado mas codigo del que arregla.
+DOMINIO_PRUEBA = "prueba.nodico.com.mx"
+REMOTE_ROOT = f"/home/{SSH_USER}/domains/{DOMINIO_PRUEBA}/public_html"
 
 # Código de la aplicación: origen local -> destino remoto.
 DIRS_APP = [
@@ -368,23 +378,58 @@ def comprobar_manifiestos(cliente, sello: dict) -> bool:
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Despliegue a prueba.nodico.com.mx")
+    parser = argparse.ArgumentParser(description="Despliegue de CoworkHub a Hostinger")
     parser.add_argument(
         "--sucio",
         action="store_true",
         help="desplegar con cambios sin commitear (queda marcado en version.json)",
     )
+    parser.add_argument(
+        "--dominio",
+        default=DOMINIO_PRUEBA,
+        help=f"dominio destino en Hostinger (por defecto {DOMINIO_PRUEBA})",
+    )
+    parser.add_argument(
+        "--si-produccion",
+        action="store_true",
+        help="confirma un destino distinto del de prueba",
+    )
     args = parser.parse_args()
+
+    global REMOTE_ROOT
+    REMOTE_ROOT = f"/home/{SSH_USER}/domains/{args.dominio}/public_html"
+
+    if args.dominio != DOMINIO_PRUEBA and not args.si_produccion:
+        print(f"ERROR: --dominio {args.dominio} no es el destino de prueba.")
+        print("Este script sobrescribe el document root sin respaldo previo.")
+        print("Si de verdad es lo que quieres, repite con --si-produccion.")
+        print("Antes: respalda la base de datos del destino y comprueba")
+        print("`php artisan nodico:sembrar-libro-horas --simular`.")
+        sys.exit(1)
 
     if not os.path.isdir(os.path.join(LOCAL_ROOT, "public", "build")):
         sys.exit("ERROR: falta public/build. Corre `npm run build` primero.")
 
-    print("\n=== Deploy CoworkHub -> prueba.nodico.com.mx ===\n")
+    print("")
+    print(f"=== Deploy CoworkHub -> {args.dominio} ===")
+    print("")
 
     print("--> Estado del repositorio")
     sello = sellar_version(estado_del_repo(args.sucio))
 
     cliente = conectar()
+
+    # Sin `.env` Laravel no arranca, y subir el codigo primero deja el sitio
+    # roto hasta que alguien lo cree a mano. Se comprueba antes de tocar nada.
+    codigo_env, _, _ = correr(cliente, f"test -f {REMOTE_ROOT}/.env")
+    if codigo_env != 0:
+        cliente.close()
+        print(f"ERROR: {args.dominio} no tiene .env en el document root.")
+        print("El destino no esta configurado todavia: hacen falta la base de")
+        print("datos, el .env y `composer install` antes del primer despliegue.")
+        print("Ver «Primer despliegue a un destino nuevo» en docs/DEPLOY.md.")
+        sys.exit(1)
+
     sftp = cliente.open_sftp()
     total = 0
 

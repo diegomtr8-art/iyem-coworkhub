@@ -251,9 +251,60 @@ se subieron a la raíz de `public_html/`. Comprobar con
 
 ## Paso a producción (nodico.com.mx)
 
-Hoy el dominio principal sigue en Odoo. Cuando se migre, además de repuntar el
-DNS hay que poner `APP_ENV=production` para que se retire el `noindex`, el
-`Disallow: /` y el distintivo de ambiente de prueba.
+**Producción no existe todavía como destino desplegable.** Comprobado el
+2026-08-29 contra la API de Hostinger y el DNS público, porque este documento
+decía antes «el dominio principal sigue en Odoo» y eso es solo media verdad:
+
+| Qué | Estado real |
+|---|---|
+| `nodico.com.mx` (raíz) | **Sin registro `A` ni `CNAME`.** No resuelve a nada. |
+| `www.nodico.com.mx` | `CNAME` → `iyem.odoo.com`. Esto es lo que sirve Odoo. |
+| Vhost en Hostinger | Existe: `/home/u489236361/domains/nodico.com.mx/public_html` |
+| Su contenido | Una página estática de obra (`default.php`, conos, de 2025). Sin `artisan`, sin `.env`. |
+
+O sea: Odoo sirve **`www`**, no la raíz, y el directorio de Hostinger no tiene
+aplicación ninguna. Publicar los portales **no es un despliegue**: son cuatro
+decisiones y luego un despliegue.
+
+1. **Con qué nombre se publica.** Si es `nodico.com.mx` a secas, hay que crear
+   el registro `A` de la raíz apuntando a Hostinger, y eso no toca a Odoo. Si
+   además se quiere `www`, hay que quitarle el CNAME, y eso **tira el sitio
+   público actual**. La tercera vía es un subdominio (`portal.nodico.com.mx`),
+   que deja Odoo intacto y es reversible.
+2. **La base de datos de producción**, que no existe. Hay que crearla y escribir
+   el `.env` con `APP_ENV=production` y `APP_DEBUG=false`.
+3. **Qué se hace con los datos de staging:** no se migran, son de prueba.
+4. **La línea de cron**, con el dominio nuevo (ver más abajo).
+
+`APP_ENV=production` es además lo que retira el `noindex`, el `Disallow: /` y el
+distintivo de ambiente de prueba. Mientras el `.env` diga otra cosa el sitio
+queda invisible para los buscadores aunque esté servido correctamente.
+
+## Primer despliegue a un destino nuevo
+
+`deploy_prueba.py` sube código; no configura un servidor. Contra un document
+root sin `.env` se detiene **antes** de subir nada y lo dice, porque subir el
+código primero deja el sitio roto hasta que alguien cree el archivo a mano.
+
+```bash
+# 1. Base de datos y usuario (hPanel o API), y el .env en el document root:
+#    APP_ENV=production, APP_DEBUG=false, APP_URL con el dominio real.
+# 2. Dependencias de PHP en el servidor (no hay Node; los assets van compilados):
+ssh … "cd ~/domains/DOMINIO/public_html && composer install --no-dev -o"
+# 3. Esquema:
+ssh … "cd ~/domains/DOMINIO/public_html && php artisan migrate --force"
+# 4. Siembra del libro de horas. MIRAR LOS NÚMEROS ANTES DE ESCRIBIR:
+ssh … "cd ~/domains/DOMINIO/public_html && php artisan nodico:sembrar-libro-horas --simular"
+ssh … "cd ~/domains/DOMINIO/public_html && php artisan nodico:sembrar-libro-horas --solo-si-falta"
+# 5. Y entonces sí, el código:
+npm run build
+python deploy_prueba.py --dominio DOMINIO --si-produccion
+```
+
+El paso 4 es el que se paga caro si se hace al revés: sin sembrar, la primera
+consulta al libro devuelve cero para todo el mundo y cada miembro se encuentra
+la bolsa llena. Con miembros reales eso es un regalo de horas que luego hay que
+deshacer uno por uno.
 
 ---
 
