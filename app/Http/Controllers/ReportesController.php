@@ -12,6 +12,7 @@ use App\Models\RentaSalon;
 use App\Models\Reserva;
 use App\Models\Suscripcion;
 use App\Models\User;
+use App\Support\CeldaCsv;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -91,13 +92,14 @@ class ReportesController extends Controller
                 return;
             }
 
-            fputcsv($salida, array_keys((array) $datos[0]));
+            fputcsv($salida, CeldaCsv::fila(array_keys((array) $datos[0])));
 
+            // `CeldaCsv::fila` y no `fputcsv` a secas: varias columnas de estos
+            // informes —nombre del miembro, telefono— las escribe el propio
+            // miembro, y una celda que empieza por «=» la ejecuta Excel en la
+            // maquina de quien abre el archivo. Ver `App\Support\CeldaCsv`.
             foreach ($datos as $fila) {
-                fputcsv($salida, array_map(
-                    fn ($v) => is_array($v) ? json_encode($v, JSON_UNESCAPED_UNICODE) : $v,
-                    (array) $fila,
-                ));
+                fputcsv($salida, CeldaCsv::fila((array) $fila));
             }
 
             fclose($salida);

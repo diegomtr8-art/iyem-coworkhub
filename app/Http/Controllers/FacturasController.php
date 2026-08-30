@@ -6,6 +6,7 @@ use App\Enums\AccionOperativa;
 use App\Models\DatosFiscales;
 use App\Models\EntradaBitacora;
 use App\Models\Factura;
+use App\Support\CeldaCsv;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\Rule;
@@ -126,10 +127,14 @@ class FacturasController extends Controller
                 'Codigo postal', 'Correo para factura',
             ]);
 
+            // Cada celda pasa por `CeldaCsv`: el nombre del miembro y la razon
+            // social los escribe el propio miembro, y este archivo lo abre
+            // administracion en Excel con el RFC de todos los demas en las
+            // celdas de al lado. Ver `App\Support\CeldaCsv`.
             foreach ($facturas as $f) {
                 $d = $f->user?->datosFiscales;
 
-                fputcsv($salida, [
+                fputcsv($salida, CeldaCsv::fila([
                     $f->folio,
                     $f->fecha?->toDateString(),
                     $f->concepto,
@@ -143,7 +148,7 @@ class FacturasController extends Controller
                     $d?->uso_cfdi,
                     $d?->codigo_postal,
                     $d?->email_facturacion,
-                ]);
+                ]));
             }
 
             fclose($salida);
