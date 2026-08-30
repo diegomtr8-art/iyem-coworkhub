@@ -25,8 +25,10 @@ const props = withDefaults(
     version: string
     /** true cuando ya había aceptado una versión anterior. */
     esActualizacion?: boolean
+    /** true si la cuenta tiene un proveedor externo vinculado. */
+    viaExterna?: boolean
   }>(),
-  { esActualizacion: false },
+  { esActualizacion: false, viaExterna: false },
 )
 
 const form = useForm({ acepta: false, version: props.version })
@@ -55,9 +57,15 @@ const salir = () => router.post(route('logout'))
         {{ nombre ? nombre + ', hay' : 'Hay' }} una versión nueva del aviso de privacidad y
         los términos. Necesitamos que la aceptes para seguir usando tu cuenta.
       </template>
+      <template v-else-if="viaExterna">
+        {{ nombre ? '¡Hola, ' + nombre + '! Entraste' : 'Entraste' }} con tu cuenta externa,
+        así que no pasaste por el formulario de registro. Solo falta que aceptes cómo
+        tratamos tus datos.
+      </template>
+
       <template v-else>
-        {{ nombre ? '¡Hola, ' + nombre + '! Entraste' : 'Entraste' }} con tu cuenta externa.
-        Solo falta que aceptes cómo tratamos tus datos.
+        {{ nombre ? '¡Hola, ' + nombre + '! Antes' : 'Antes' }} de entrar al portal
+        necesitamos que aceptes cómo tratamos tus datos.
       </template>
     </p>
 

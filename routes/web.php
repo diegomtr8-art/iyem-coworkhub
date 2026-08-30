@@ -8,6 +8,7 @@ use App\Http\Controllers\BitacoraController;
 use App\Http\Controllers\CheckinAdminController;
 use App\Http\Controllers\ContactoController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\DatosPersonalesController;
 use App\Http\Controllers\EspaciosController;
 use App\Http\Controllers\EventosController;
 use App\Http\Controllers\FacturasController;
@@ -98,7 +99,7 @@ Route::get('/sitemap.xml', function () {
 // entra al panel pero no a planes, espacios, facturacion, eventos ni reportes.
 // B — La sesion del panel caduca antes que la del portal: se usa en una
 // recepcion, en un equipo compartido y a la vista de quien pase.
-Route::middleware(['auth', 'verified', 'portal:operativo', 'no.suspendida', 'inactividad:60'])->group(function () {
+Route::middleware(['auth', 'verified', 'portal:operativo', 'no.suspendida', 'consentimiento', 'inactividad:60'])->group(function () {
     Route::get('dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
     Route::middleware('can:gestionar-planes')->group(function () {
@@ -221,7 +222,7 @@ Route::middleware(['auth', 'verified', 'portal:operativo', 'no.suspendida', 'ina
 // --- PORTAL MIEMBRO ---
 // A.2 — `verified` faltaba en este grupo, que es justo donde cae todo el mundo
 // al registrarse: nadie verificaba su correo.
-Route::middleware(['auth', 'verified', 'portal:miembro', 'no.suspendida', 'inactividad:240'])->prefix('portal')->name('portal.')->group(function () {
+Route::middleware(['auth', 'verified', 'portal:miembro', 'no.suspendida', 'consentimiento', 'inactividad:240'])->prefix('portal')->name('portal.')->group(function () {
     // 2.1 — Inicio.
     Route::get('/', [PortalDashboard::class, 'index'])->name('dashboard');
 
@@ -269,6 +270,12 @@ Route::middleware(['auth', 'verified', 'portal:miembro', 'no.suspendida', 'inact
 // Perfil
 Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
+
+    // E — Derecho de acceso: la persona se lleva sus datos sin pedirselos a
+    // nadie. Con limite, porque genera un volcado completo por peticion.
+    Route::get('/profile/mis-datos', [DatosPersonalesController::class, 'descargar'])
+        ->middleware('throttle:6,1')
+        ->name('datos.descargar');
 
     // Cambiar el correo pide la contrasena actual como campo del formulario;
     // la regla vive en ProfileUpdateRequest, que solo la exige cuando el correo

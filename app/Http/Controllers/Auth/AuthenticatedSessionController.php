@@ -56,7 +56,7 @@ class AuthenticatedSessionController extends Controller
         // Un rol desconocido se detiene aqui con un 403 explicado. Antes se
         // resolvia con `if ($user->esAdmin()) ... else portal`, que mandaba al
         // portal a cualquiera que no fuera admin y arrancaba el rebote de A.1.
-        return redirect()->intended(route($this->rutaDelPortal($usuario)));
+        return $this->alDestinoPrevisto($usuario, $request);
     }
 
     public function destroy(Request $request): RedirectResponse

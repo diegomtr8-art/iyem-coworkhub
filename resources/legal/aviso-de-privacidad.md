@@ -1,6 +1,7 @@
 ---
 titulo: Aviso de privacidad
 descripcion: Aviso de privacidad de Nódico, el coworking del Instituto Yucateco de Emprendedores.
+version: 1.0-provisional
 provisional: true
 ---
 

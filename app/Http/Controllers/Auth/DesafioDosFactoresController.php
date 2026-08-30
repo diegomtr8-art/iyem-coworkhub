@@ -105,7 +105,7 @@ class DesafioDosFactoresController extends Controller
             $this->dosFactores->confiarEnEsteDispositivo($usuario, $request);
         }
 
-        return redirect()->intended(route($this->rutaDelPortal($usuario)));
+        return $this->alDestinoPrevisto($usuario, $request);
     }
 
     /**

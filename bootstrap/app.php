@@ -30,6 +30,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'portal'       => \App\Http\Middleware\PerteneceAlPortal::class,
             'inactividad'  => \App\Http\Middleware\CaducidadPorInactividad::class,
             'no.suspendida' => \App\Http\Middleware\CuentaNoSuspendida::class,
+            'consentimiento' => \App\Http\Middleware\ConsentimientoVigente::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

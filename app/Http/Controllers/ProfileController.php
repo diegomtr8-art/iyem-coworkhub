@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\ProfileUpdateRequest;
+use App\Models\Consentimiento;
+use App\Support\DocumentosLegales;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -21,6 +23,20 @@ class ProfileController extends Controller
         return Inertia::render('Profile/Edit', [
             'mustVerifyEmail' => $request->user() instanceof MustVerifyEmail,
             'status' => session('status'),
+
+            // E — Derechos ARCO: que acepto, cuando y desde donde.
+            'consentimientos' => $request->user()->consentimientos()
+                ->orderByDesc('aceptado_en')
+                ->get()
+                ->map(fn (Consentimiento $c) => [
+                    'etiqueta'   => $c->etiqueta,
+                    'version'    => $c->version,
+                    'aceptadoEn' => $c->aceptado_en->format('d/m/Y H:i'),
+                    'ip'         => $c->ip,
+                ]),
+
+            // BE-04 — sigue sin validacion juridica del IYEM, y se dice.
+            'legalProvisional' => app(DocumentosLegales::class)->algunoEsProvisional(),
         ]);
     }
 

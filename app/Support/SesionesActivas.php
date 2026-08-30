@@ -36,7 +36,8 @@ class SesionesActivas
                 ->orderByDesc('last_activity')
                 ->get()
         )->map(fn ($fila) => [
-            'id'          => $fila->id,
+            // **Nunca el identificador de sesion real.** Ver `referencia()`.
+            'ref'         => $this->referencia((string) $fila->id),
             'esActual'    => $fila->id === $sesionActual,
             'ip'          => $fila->ip_address,
             'dispositivo' => $this->describirDispositivo((string) $fila->user_agent),
@@ -58,18 +59,52 @@ class SesionesActivas
             ->delete();
     }
 
-    public function cerrar(User $usuario, string $sesion): bool
+    /**
+     * Cierra una sesion a partir de su **referencia**, no de su identificador.
+     *
+     * Se recorren las sesiones de esta persona y se compara con `hash_equals`.
+     * El `where` por `user_id` sigue estando: sin el, cualquiera podria cerrar
+     * la sesion de otra persona.
+     */
+    public function cerrar(User $usuario, string $referencia): bool
     {
         if (! $this->disponible()) {
             return false;
         }
 
-        // El `where` por `user_id` no es decorativo: sin él, cualquiera podría
-        // cerrar la sesión de otra persona pasando su identificador.
-        return DB::table(config('session.table', 'sessions'))
+        $filas = DB::table(config('session.table', 'sessions'))
             ->where('user_id', $usuario->id)
-            ->where('id', $sesion)
-            ->delete() > 0;
+            ->get(['id']);
+
+        foreach ($filas as $fila) {
+            if (hash_equals($this->referencia((string) $fila->id), $referencia)) {
+                return DB::table(config('session.table', 'sessions'))
+                    ->where('user_id', $usuario->id)
+                    ->where('id', $fila->id)
+                    ->delete() > 0;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Identificador opaco de una sesion, para enviarlo al navegador.
+     *
+     * **El identificador de sesion es una credencial**, igual que una
+     * contrasena: quien lo tenga es esa sesion. Antes se mandaba en claro a la
+     * pantalla y viajaba dentro de la URL del boton de cerrar
+     * (`DELETE /seguridad/sesiones/<id>`), asi que quedaba escrito en el
+     * historial del navegador y en el log de accesos de Apache — que en este
+     * hosting comparte carpeta con la aplicacion.
+     *
+     * La referencia es un HMAC con `APP_KEY`: sirve para senalar cual cerrar y
+     * no vale para nada mas. No es reversible y no se puede calcular sin la
+     * clave de la aplicacion.
+     */
+    private function referencia(string $idDeSesion): string
+    {
+        return hash_hmac('sha256', $idDeSesion, (string) config('app.key'));
     }
 
     /**
