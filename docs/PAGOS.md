@@ -38,15 +38,24 @@ CASHIER_CURRENCY=mxn
 Sin `STRIPE_KEY` el sitio no ofrece el cobro en línea y cae al enlace de pago de
 respaldo (`stripe_url`) de cada plan.
 
-## Dar de alta los precios en Stripe
+## Puesta en marcha (paso a paso, con las claves en la mano)
 
-Cada plan necesita su precio de Stripe en `planes.stripe_price_id`:
+1. Pon las tres claves de prueba en el `.env` del servidor (ver arriba) y limpia
+   la caché de config: `php artisan config:cache`.
+2. Crea los precios en Stripe **de un solo comando** (no hace falta el panel):
+   ```
+   php artisan nodico:stripe-precios
+   ```
+   Crea el producto y el precio de cada plan —recurrente para Pro/Match, único
+   para Day-Pass/Flex— y guarda el `stripe_price_id` en la tabla. Es idempotente.
+3. Registra el webhook (ver abajo) y pon su `whsec_...` en el `.env`.
+4. Recorre el flujo con las tarjetas de prueba.
 
-1. En el panel de Stripe (modo prueba) crea un **producto** por plan.
-2. Para Nodo Pro y Match, un **precio recurrente mensual**; para Day-Pass y
-   Flex, un **precio único**.
-3. Copia cada `price_...` a la columna `stripe_price_id` del plan
-   correspondiente (por `nombre`).
+### A mano, si se prefiere el panel de Stripe
+
+1. Crea un **producto** por plan; precio recurrente mensual para Pro/Match, único
+   para Day-Pass/Flex.
+2. Copia cada `price_...` a `planes.stripe_price_id` (por `nombre`).
 
 ## Registrar el webhook
 
