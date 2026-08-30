@@ -47,7 +47,8 @@ class Plane extends Model
         'personas',
         'max_reservas_mes', 'acceso_24h',
         'color', 'destacado', 'activo',
-        'stripe_url', 'beneficios', 'descripcion_corta', 'descripcion_larga',
+        'stripe_url', 'stripe_price_id', 'cobro_recurrente',
+        'beneficios', 'descripcion_corta', 'descripcion_larga',
         'periodo_label', 'cta_label', 'imagen', 'orden',
     ];
 
@@ -56,6 +57,7 @@ class Plane extends Model
         'acceso_24h' => 'boolean',
         'destacado'  => 'boolean',
         'activo'     => 'boolean',
+        'cobro_recurrente' => 'boolean',
         'beneficios' => 'array',
     ];
 

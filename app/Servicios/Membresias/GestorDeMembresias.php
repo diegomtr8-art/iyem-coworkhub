@@ -36,7 +36,7 @@ class GestorDeMembresias
     public function alta(
         User $miembro,
         Plane $plan,
-        User $operativo,
+        ?User $operativo,
         ?string $fechaInicio = null,
         ?float $precioPagado = null,
         ?string $nota = null,
@@ -89,7 +89,7 @@ class GestorDeMembresias
     }
 
     /** Extiende la vigencia sin cambiar de plan. */
-    public function renovar(Suscripcion $suscripcion, User $operativo, ?float $precioPagado = null): Suscripcion
+    public function renovar(Suscripcion $suscripcion, ?User $operativo, ?float $precioPagado = null): Suscripcion
     {
         return DB::transaction(function () use ($suscripcion, $operativo, $precioPagado) {
             $plan = $suscripcion->plan;
@@ -138,7 +138,7 @@ class GestorDeMembresias
     public function cambiarDePlan(
         Suscripcion $suscripcion,
         Plane $planNuevo,
-        User $operativo,
+        ?User $operativo,
         string $motivo,
     ): Suscripcion {
         if (trim($motivo) === '') {
@@ -194,7 +194,7 @@ class GestorDeMembresias
     }
 
     /** Suspende la membresía. Exige motivo: el miembro va a preguntar por qué. */
-    public function suspender(Suscripcion $suscripcion, User $operativo, string $motivo): Suscripcion
+    public function suspender(Suscripcion $suscripcion, ?User $operativo, string $motivo): Suscripcion
     {
         if (trim($motivo) === '') {
             throw ValidationException::withMessages([
@@ -216,7 +216,7 @@ class GestorDeMembresias
         return $suscripcion->refresh();
     }
 
-    public function reactivar(Suscripcion $suscripcion, User $operativo): Suscripcion
+    public function reactivar(Suscripcion $suscripcion, ?User $operativo): Suscripcion
     {
         $suscripcion->update(['estatus' => 'Activa']);
 

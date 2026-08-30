@@ -294,3 +294,8 @@ Route::middleware('auth')->group(function () {
 // en cada peticion del resto del sitio.
 Route::middleware(\App\Http\Middleware\CompartirMarcaDeAcceso::class)
     ->group(__DIR__.'/auth.php');
+
+// Fase 4.A — webhook de Stripe. Sin auth (lo llama Stripe) y sin CSRF (excluido
+// en bootstrap/app.php); la firma la verifica el propio controlador vía Cashier.
+Route::post('stripe/webhook', [\App\Http\Controllers\StripeWebhookController::class, 'handleWebhook'])
+    ->name('cashier.webhook');

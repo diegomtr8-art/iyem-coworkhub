@@ -21,7 +21,11 @@ class AppServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
-        //
+        // Fase 4.A — el webhook de Stripe lo atiende nuestro StripeWebhookController
+        // (Cashier + lógica de Nódico), registrado a mano en routes/web.php. Se
+        // desactiva el auto-registro de Cashier para no tener dos rutas al mismo
+        // path, una apuntando a su controller «pelado».
+        \Laravel\Cashier\Cashier::ignoreRoutes();
     }
 
     public function boot(): void
