@@ -40,6 +40,7 @@ class GestorDeAsesorias
         string $diaPreferido,
         string $horarioPreferido,
         float $horas = 1,
+        ?int $asesorPreferidoId = null,
     ): SolicitudAsesoria {
         $plan = $suscripcion->plan;
 
@@ -66,13 +67,14 @@ class GestorDeAsesorias
         $this->verificarCupo($suscripcion, $horas, $dia);
 
         return SolicitudAsesoria::create([
-            'user_id'           => $suscripcion->user_id,
-            'suscripcion_id'    => $suscripcion->id,
-            'tema'              => $tema,
-            'dia_preferido'     => $dia->toDateString(),
-            'horario_preferido' => $horarioPreferido,
-            'horas'             => $horas,
-            'estado'            => EstadoAsesoria::Solicitada,
+            'user_id'             => $suscripcion->user_id,
+            'suscripcion_id'      => $suscripcion->id,
+            'tema'                => $tema,
+            'dia_preferido'       => $dia->toDateString(),
+            'horario_preferido'   => $horarioPreferido,
+            'horas'               => $horas,
+            'estado'              => EstadoAsesoria::Solicitada,
+            'asesor_preferido_id' => $asesorPreferidoId,
         ]);
     }
 

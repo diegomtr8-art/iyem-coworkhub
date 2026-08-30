@@ -22,7 +22,7 @@ class SolicitudAsesoria extends Model
 
     protected $fillable = [
         'user_id', 'suscripcion_id', 'tema', 'dia_preferido', 'horario_preferido',
-        'horas', 'estado', 'asesor_nombre', 'asesor_id', 'fecha_confirmada',
+        'horas', 'estado', 'asesor_nombre', 'asesor_id', 'asesor_preferido_id', 'fecha_confirmada',
         'notas_operativo', 'atendida_por_user_id', 'atendida_en',
     ];
 
@@ -37,6 +37,7 @@ class SolicitudAsesoria extends Model
     public function user()        { return $this->belongsTo(User::class); }
     public function suscripcion() { return $this->belongsTo(Suscripcion::class); }
     public function asesor()      { return $this->belongsTo(Asesor::class, 'asesor_id'); }
+    public function asesorPreferido() { return $this->belongsTo(Asesor::class, 'asesor_preferido_id'); }
     public function atendidaPor() { return $this->belongsTo(User::class, 'atendida_por_user_id'); }
     public function movimientos() { return $this->hasMany(MovimientoHoras::class, 'solicitud_asesoria_id'); }
 

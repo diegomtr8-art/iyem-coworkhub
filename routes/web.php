@@ -177,6 +177,11 @@ Route::middleware(['auth', 'verified', 'portal:operativo', 'no.suspendida', 'con
         Route::get('asesores', [AsesoriasAdminController::class, 'asesores'])->name('asesores.index');
         Route::post('asesores', [AsesoriasAdminController::class, 'guardarAsesor'])->name('asesores.store');
         Route::patch('asesores/{asesor}', [AsesoriasAdminController::class, 'guardarAsesor'])->name('asesores.update');
+
+        // 4.D — catalogo de temas de asesoria.
+        Route::get('temas-asesoria', [AsesoriasAdminController::class, 'temas'])->name('temas.index');
+        Route::post('temas-asesoria', [AsesoriasAdminController::class, 'guardarTema'])->name('temas.store');
+        Route::patch('temas-asesoria/{tema}', [AsesoriasAdminController::class, 'guardarTema'])->name('temas.update');
     });
 
     Route::middleware('can:operar-checkins')->group(function () {

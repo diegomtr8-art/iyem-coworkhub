@@ -276,12 +276,17 @@ class DemoSeeder extends Seeder
     private function sembrarCatalogos(): void
     {
         $asesores = [
-            ['nombre' => 'Lucía Fernández', 'especialidad' => 'Finanzas y costos', 'email' => 'lucia.demo@nodico.com.mx'],
-            ['nombre' => 'Marco Tulio Peña', 'especialidad' => 'Marketing y redes', 'email' => 'marco.demo@nodico.com.mx'],
-            ['nombre' => 'Sofía Canul', 'especialidad' => 'Aspectos legales y fiscales', 'email' => 'sofia.demo@nodico.com.mx'],
+            ['nombre' => 'Lucía Fernández', 'especialidad' => 'Finanzas y costos', 'email' => 'lucia.demo@nodico.com.mx', 'temas' => ['Finanzas básicas', 'Precios y costos', 'Acceso a financiamiento']],
+            ['nombre' => 'Marco Tulio Peña', 'especialidad' => 'Marketing y redes', 'email' => 'marco.demo@nodico.com.mx', 'temas' => ['Marca y redes', 'Ventas', 'Comercio electrónico']],
+            ['nombre' => 'Sofía Canul', 'especialidad' => 'Aspectos legales y fiscales', 'email' => 'sofia.demo@nodico.com.mx', 'temas' => ['Aspectos legales y fiscales', 'Propiedad industrial', 'Modelo de negocio']],
         ];
         foreach ($asesores as $a) {
-            Asesor::updateOrCreate(['email' => $a['email']], $a + ['activo' => true]);
+            $temas = $a['temas'];
+            unset($a['temas']);
+            $asesor = \App\Models\Asesor::updateOrCreate(['email' => $a['email']], $a + ['activo' => true]);
+            // Vincula al asesor con los temas del catálogo (Fase 4.D) que imparte.
+            $ids = \App\Models\TemaAsesoria::whereIn('nombre', $temas)->pluck('id');
+            $asesor->temas()->sync($ids);
         }
 
         $emprendedores = [

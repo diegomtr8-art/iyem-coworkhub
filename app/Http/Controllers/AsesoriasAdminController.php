@@ -3,10 +3,12 @@
 namespace App\Http\Controllers;
 
 use App\Enums\AccionOperativa;
+use App\Enums\CategoriaTema;
 use App\Enums\EstadoAsesoria;
 use App\Models\Asesor;
 use App\Models\EntradaBitacora;
 use App\Models\SolicitudAsesoria;
+use App\Models\TemaAsesoria;
 use App\Servicios\Asesorias\GestorDeAsesorias;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\Request;
@@ -38,6 +40,7 @@ class AsesoriasAdminController extends Controller
                 // deja en null, con lo que el saldo salia siempre en cero.
                 'suscripcion.plan',
                 'asesor:id,nombre',
+                'asesorPreferido:id,nombre',
                 'atendidaPor:id,name',
             ])
             ->when($estado === 'pendientes', fn ($q) => $q->pendientes())
@@ -67,6 +70,9 @@ class AsesoriasAdminController extends Controller
                 'confirmada'        => $s->estado === EstadoAsesoria::Confirmada,
                 'asesor'            => $s->asesorLegible(),
                 'asesor_id'         => $s->asesor_id,
+                // D.4 — el asesor que el miembro pidió, como sugerencia al confirmar.
+                'asesor_sugerido'    => $s->asesorPreferido?->nombre,
+                'asesor_sugerido_id' => $s->asesor_preferido_id,
                 'fecha_confirmada'  => $s->fecha_confirmada?->toIso8601String(),
                 'notas_operativo'   => $s->notas_operativo,
                 'atendida_por'      => $s->atendidaPor?->name,
@@ -154,34 +160,95 @@ class AsesoriasAdminController extends Controller
     public function asesores()
     {
         return Inertia::render('Asesorias/Asesores', [
-            'asesores' => Asesor::orderByDesc('activo')->orderBy('nombre')->get()
+            'asesores' => Asesor::with('temas:id,nombre')->orderByDesc('activo')->orderBy('nombre')->get()
                 ->map(fn (Asesor $a) => [
-                    'id'           => $a->id,
-                    'nombre'       => $a->nombre,
-                    'especialidad' => $a->especialidad,
-                    'email'        => $a->email,
-                    'telefono'     => $a->telefono,
-                    'notas'        => $a->notas,
-                    'activo'       => $a->activo,
-                    'asesorias'    => $a->solicitudes()->count(),
+                    'id'             => $a->id,
+                    'nombre'         => $a->nombre,
+                    'foto'           => $a->foto,
+                    'especialidad'   => $a->especialidad,
+                    'semblanza'      => $a->semblanza,
+                    'disponibilidad' => $a->disponibilidad,
+                    'email'          => $a->email,
+                    'telefono'       => $a->telefono,
+                    'notas'          => $a->notas,
+                    'activo'         => $a->activo,
+                    'temas'          => $a->temas->pluck('id'),
+                    'temas_nombres'  => $a->temas->pluck('nombre'),
+                    'asesorias'      => $a->solicitudes()->count(),
                 ]),
+
+            // El catálogo de temas, para elegir las especialidades de cada asesor.
+            'temasDisponibles' => TemaAsesoria::orderBy('nombre')->get(['id', 'nombre', 'categoria']),
+
+            // D.4 — carga por asesor en los últimos 90 días.
+            'carga' => $this->cargaPorAsesor(),
         ]);
     }
 
     public function guardarAsesor(Request $request, ?Asesor $asesor = null)
     {
         $datos = $request->validate([
-            'nombre'       => ['required', 'string', 'max:150'],
-            'especialidad' => ['nullable', 'string', 'max:150'],
-            'email'        => ['nullable', 'email', 'max:150'],
-            'telefono'     => ['nullable', 'string', 'max:30'],
-            'notas'        => ['nullable', 'string', 'max:500'],
-            'activo'       => ['boolean'],
+            'nombre'         => ['required', 'string', 'max:150'],
+            'foto'           => ['nullable', 'string', 'max:255'],
+            'especialidad'   => ['nullable', 'string', 'max:150'],
+            'semblanza'      => ['nullable', 'string', 'max:1000'],
+            'disponibilidad' => ['nullable', 'string', 'max:255'],
+            'email'          => ['nullable', 'email', 'max:150'],
+            'telefono'       => ['nullable', 'string', 'max:30'],
+            'notas'          => ['nullable', 'string', 'max:500'],
+            'activo'         => ['boolean'],
+            'temas'          => ['array'],
+            'temas.*'        => ['integer', 'exists:temas_asesoria,id'],
         ]);
 
-        $asesor?->exists ? $asesor->update($datos) : Asesor::create($datos);
+        $temas = $datos['temas'] ?? [];
+        unset($datos['temas']);
+
+        $modelo = $asesor?->exists ? tap($asesor)->update($datos) : Asesor::create($datos);
+        $modelo->temas()->sync($temas);
 
         return back()->with('success', $asesor?->exists ? 'Asesor actualizado.' : 'Asesor dado de alta.');
+    }
+
+    // ── D.1 — catálogo de temas ──────────────────────────────────────────────
+
+    public function temas()
+    {
+        return Inertia::render('Asesorias/Temas', [
+            'temas' => TemaAsesoria::orderBy('orden')->orderBy('nombre')->get()
+                ->map(fn (TemaAsesoria $t) => [
+                    'id'                => $t->id,
+                    'nombre'            => $t->nombre,
+                    'descripcion_corta' => $t->descripcion_corta,
+                    'categoria'         => $t->categoria,
+                    'duracion_min'      => $t->duracion_min,
+                    'activo'            => $t->activo,
+                    'validado_iyem'     => $t->validado_iyem,
+                    'orden'             => $t->orden,
+                    'asesores'          => $t->asesores()->count(),
+                ]),
+            'categorias' => collect(CategoriaTema::cases())
+                ->map(fn (CategoriaTema $c) => ['valor' => $c->value, 'etiqueta' => $c->etiqueta()]),
+            // Aviso de que la oferta sembrada sigue pendiente de que el IYEM la valide.
+            'hayProvisionales' => TemaAsesoria::where('validado_iyem', false)->exists(),
+        ]);
+    }
+
+    public function guardarTema(Request $request, ?TemaAsesoria $tema = null)
+    {
+        $datos = $request->validate([
+            'nombre'            => ['required', 'string', 'max:150'],
+            'descripcion_corta' => ['nullable', 'string', 'max:255'],
+            'categoria'         => ['required', Rule::in(CategoriaTema::valores())],
+            'duracion_min'      => ['required', 'integer', 'min:15', 'max:480'],
+            'activo'            => ['boolean'],
+            'validado_iyem'     => ['boolean'],
+            'orden'             => ['nullable', 'integer', 'min:0'],
+        ]);
+
+        $tema?->exists ? $tema->update($datos) : TemaAsesoria::create($datos);
+
+        return back()->with('success', $tema?->exists ? 'Tema actualizado.' : 'Tema agregado.');
     }
 
     /**

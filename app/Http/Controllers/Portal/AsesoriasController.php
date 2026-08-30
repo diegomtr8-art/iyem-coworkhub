@@ -3,9 +3,12 @@
 namespace App\Http\Controllers\Portal;
 
 use App\Enums\BolsaDeHoras;
+use App\Enums\CategoriaTema;
 use App\Http\Controllers\Controller;
 use App\Http\Controllers\Portal\Concerns\ResuelveLaMembresia;
+use App\Models\Asesor;
 use App\Models\SolicitudAsesoria;
+use App\Models\TemaAsesoria;
 use App\Servicios\Asesorias\GestorDeAsesorias;
 use App\Servicios\Horas\LibroDeHoras;
 use Illuminate\Http\Request;
@@ -54,6 +57,11 @@ class AsesoriasController extends Controller
 
             'vigenciaHasta' => $suscripcion?->fecha_fin->toDateString(),
 
+            // D.3 — la oferta: temas por categoría, cada uno con los asesores que
+            // lo imparten. Solo si el plan incluye asesoría, para no consultar de
+            // más cuando no aplica.
+            'oferta' => $incluida ? $this->ofertaDeTemas() : [],
+
             'solicitudes' => $usuario->asesorias()
                 ->orderByDesc('created_at')
                 ->limit(30)
@@ -89,14 +97,17 @@ class AsesoriasController extends Controller
 
     public function store(Request $request)
     {
+        // D.3 — el tema se elige del catálogo (`tema_id`). Se conserva también
+        // el `detalle` libre opcional para matizar, y el asesor preferido.
         $datos = $request->validate([
-            'tema'              => ['required', 'string', 'min:10', 'max:500'],
-            'dia_preferido'     => ['required', 'date', 'after_or_equal:today'],
-            'horario_preferido' => ['required', 'string', 'max:120'],
-            'horas'             => ['nullable', 'numeric', 'min:0.5', 'max:8'],
+            'tema_id'             => ['required', 'integer', 'exists:temas_asesoria,id'],
+            'detalle'             => ['nullable', 'string', 'max:500'],
+            'asesor_preferido_id' => ['nullable', 'integer', 'exists:asesores,id'],
+            'dia_preferido'       => ['required', 'date', 'after_or_equal:today'],
+            'horario_preferido'   => ['required', 'string', 'max:120'],
+            'horas'               => ['nullable', 'numeric', 'min:0.5', 'max:8'],
         ], [
-            'tema.required' => 'Cuéntanos de qué quieres hablar.',
-            'tema.min'      => 'Da un poco más de detalle: ayuda a asignarte al asesor adecuado.',
+            'tema_id.required' => 'Elige un tema.',
         ]);
 
         $suscripcion = $this->membresiaVigente($request->user());
@@ -105,18 +116,53 @@ class AsesoriasController extends Controller
             return back()->withErrors(['general' => 'Necesitas una membresía activa.']);
         }
 
+        // El tema que se guarda es el nombre del catálogo, más el detalle si lo
+        // hubo: así la bandeja lee una frase completa aunque el catálogo cambie.
+        $tema = TemaAsesoria::findOrFail($datos['tema_id'])->nombre;
+        if (! empty($datos['detalle'])) {
+            $tema .= ' — ' . $datos['detalle'];
+        }
+
         $this->gestor->solicitar(
             suscripcion: $suscripcion,
-            tema: $datos['tema'],
+            tema: $tema,
             diaPreferido: $datos['dia_preferido'],
             horarioPreferido: $datos['horario_preferido'],
             horas: (float) ($datos['horas'] ?? 1),
+            asesorPreferidoId: $datos['asesor_preferido_id'] ?? null,
         );
 
         return back()->with(
             'success',
             'Solicitud enviada. Recepción te confirmará día y asesor; te avisamos en cuanto esté.'
         );
+    }
+
+    /**
+     * Temas activos agrupados por categoría, cada uno con los asesores que lo
+     * imparten. Es lo que convierte la pantalla en una oferta que explorar.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    private function ofertaDeTemas(): array
+    {
+        $temas = TemaAsesoria::activos()->with(['asesores' => fn ($q) => $q->where('activo', true)])->get();
+
+        return collect(CategoriaTema::cases())->map(fn (CategoriaTema $cat) => [
+            'categoria' => $cat->value,
+            'etiqueta'  => $cat->etiqueta(),
+            'temas'     => $temas->where('categoria', $cat->value)->values()->map(fn (TemaAsesoria $t) => [
+                'id'                => $t->id,
+                'nombre'            => $t->nombre,
+                'descripcion_corta' => $t->descripcion_corta,
+                'duracion_min'      => $t->duracion_min,
+                'asesores'          => $t->asesores->map(fn (Asesor $a) => [
+                    'id'     => $a->id,
+                    'nombre' => $a->nombre,
+                    'foto'   => $a->foto,
+                ])->values(),
+            ]),
+        ])->filter(fn ($grupo) => $grupo['temas']->isNotEmpty())->values()->all();
     }
 
     public function destroy(Request $request, SolicitudAsesoria $asesoria)

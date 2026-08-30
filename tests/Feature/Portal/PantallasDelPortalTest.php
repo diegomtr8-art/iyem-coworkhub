@@ -335,8 +335,14 @@ class PantallasDelPortalTest extends TestCase
     {
         [$user, $suscripcion] = $this->miembroConPlan();
 
+        // Fase 4.D — el tema se elige del catálogo (`tema_id`), no como texto libre.
+        $tema = \App\Models\TemaAsesoria::create([
+            'nombre' => 'Precios y costos', 'categoria' => 'basicos', 'duracion_min' => 60,
+        ]);
+
         $this->actingAs($user)->post(route('portal.asesoria.store'), [
-            'tema'              => 'Quiero revisar mis precios y mi punto de equilibrio.',
+            'tema_id'           => $tema->id,
+            'detalle'           => 'Quiero revisar mis precios y mi punto de equilibrio.',
             'dia_preferido'     => today()->addDays(4)->toDateString(),
             'horario_preferido' => 'Por la mañana (9:00 a 12:00)',
         ])->assertSessionHasNoErrors();

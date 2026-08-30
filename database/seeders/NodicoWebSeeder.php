@@ -6,6 +6,7 @@ use App\Models\Ajuste;
 use App\Models\DirectorioEmprendedor;
 use App\Models\Espacio;
 use App\Models\Plane;
+use App\Models\TemaAsesoria;
 use Illuminate\Database\Seeder;
 
 /**
@@ -22,12 +23,41 @@ class NodicoWebSeeder extends Seeder
         $this->salones();
         $this->ajustes();
         $this->directorio();
+        $this->temasAsesoria();
     }
 
     /**
      * CNT-02 — directorio de emprendedores y destacado de la semana.
      * Antes vivian dentro de Comunidad.vue.
      */
+    /**
+     * Fase 4.D — oferta inicial de temas de asesoría IYEM. Se siembra como punto
+     * de partida y **sin validar** (`validado_iyem => false`): son los servicios
+     * del IYEM, que tiene que revisarlos antes de darlos por definitivos.
+     * `updateOrCreate` por nombre para no duplicar entre despliegues.
+     */
+    private function temasAsesoria(): void
+    {
+        $temas = [
+            ['nombre' => 'Modelo de negocio', 'categoria' => 'basicos', 'descripcion_corta' => 'Cómo tu idea genera y captura valor.', 'orden' => 1],
+            ['nombre' => 'Finanzas básicas', 'categoria' => 'basicos', 'descripcion_corta' => 'Llevar las cuentas claras desde el inicio.', 'orden' => 2],
+            ['nombre' => 'Precios y costos', 'categoria' => 'basicos', 'descripcion_corta' => 'Poner precio sin perder dinero.', 'orden' => 3],
+            ['nombre' => 'Marca y redes', 'categoria' => 'basicos', 'descripcion_corta' => 'Tu identidad y tu presencia en línea.', 'orden' => 4],
+            ['nombre' => 'Ventas', 'categoria' => 'basicos', 'descripcion_corta' => 'Vender más y mejor.', 'orden' => 5],
+            ['nombre' => 'Aspectos legales y fiscales', 'categoria' => 'especializados', 'descripcion_corta' => 'Constituirte y estar en regla con el SAT.', 'orden' => 6],
+            ['nombre' => 'Propiedad industrial', 'categoria' => 'especializados', 'descripcion_corta' => 'Registrar tu marca y proteger tu creación.', 'orden' => 7],
+            ['nombre' => 'Acceso a financiamiento', 'categoria' => 'especializados', 'descripcion_corta' => 'Créditos, fondos y apoyos para crecer.', 'orden' => 8],
+            ['nombre' => 'Comercio electrónico', 'categoria' => 'especializados', 'descripcion_corta' => 'Vender en línea de principio a fin.', 'orden' => 9],
+        ];
+
+        foreach ($temas as $tema) {
+            TemaAsesoria::updateOrCreate(
+                ['nombre' => $tema['nombre']],
+                $tema + ['duracion_min' => 60, 'activo' => true, 'validado_iyem' => false],
+            );
+        }
+    }
+
     private function directorio(): void
     {
         $emprendedores = [

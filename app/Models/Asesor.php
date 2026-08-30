@@ -23,13 +23,22 @@ class Asesor extends Model
 
     protected $table = 'asesores';
 
-    protected $fillable = ['nombre', 'especialidad', 'email', 'telefono', 'notas', 'activo'];
+    protected $fillable = [
+        'nombre', 'foto', 'especialidad', 'semblanza', 'disponibilidad',
+        'email', 'telefono', 'notas', 'activo',
+    ];
 
     protected $casts = ['activo' => 'boolean'];
 
     public function solicitudes()
     {
         return $this->hasMany(SolicitudAsesoria::class, 'asesor_id');
+    }
+
+    /** Fase 4.D — los temas que este asesor imparte (sus especialidades). */
+    public function temas(): \Illuminate\Database\Eloquent\Relations\BelongsToMany
+    {
+        return $this->belongsToMany(TemaAsesoria::class, 'asesor_tema');
     }
 
     public function scopeActivos(Builder $query): Builder

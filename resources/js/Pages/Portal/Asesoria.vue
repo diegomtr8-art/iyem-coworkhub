@@ -21,14 +21,33 @@ const props = defineProps<{
   vigenciaHasta: string | null
   solicitudes: any[]
   franjas: string[]
+  oferta: any[]
 }>()
 
 const form = useForm({
-  tema: '',
+  tema_id: null as number | null,
+  detalle: '',
+  asesor_preferido_id: null as number | null,
   dia_preferido: '',
   horario_preferido: props.franjas[0] ?? '',
   horas: 1,
 })
+
+// El tema elegido y sus asesores, para ofrecer solo los que lo imparten.
+const temaElegido = computed(() => {
+  for (const grupo of props.oferta) {
+    const t = grupo.temas.find((x: any) => x.id === form.tema_id)
+    if (t) return t
+  }
+  return null
+})
+const asesoresDelTema = computed(() => temaElegido.value?.asesores ?? [])
+
+function elegirTema(id: number) {
+  form.tema_id = id
+  form.asesor_preferido_id = null
+  document.getElementById('form-asesoria')?.scrollIntoView({ behavior: 'smooth' })
+}
 
 const numero = (v: number | null) =>
   v === null ? '—' : Number.isInteger(v) ? String(v) : Number(v).toFixed(1).replace(/\.0$/, '')
@@ -123,36 +142,85 @@ const tonos: Record<string, string> = {
         </div>
       </TarjetaPortal>
 
+      <!-- D.3 — La oferta: temas por categoría, cada uno con sus asesores. -->
+      <section v-if="oferta.length" class="mb-8">
+        <div v-for="grupo in oferta" :key="grupo.categoria" class="mb-6">
+          <h2 class="mb-3 font-display text-sm font-bold uppercase tracking-wide text-dark/60">{{ grupo.etiqueta }}</h2>
+          <div class="grid gap-3 sm:grid-cols-2">
+            <button
+              v-for="tema in grupo.temas" :key="tema.id"
+              type="button" @click="elegirTema(tema.id)"
+              class="border-2 p-4 text-left transition-colors focus-visible:outline focus-visible:outline-2
+                     focus-visible:outline-offset-2 focus-visible:outline-dark"
+              :class="form.tema_id === tema.id ? 'border-dark bg-nodo-400' : 'border-dark/20 bg-white hover:border-dark/50'"
+            >
+              <p class="font-display text-base font-bold text-dark">{{ tema.nombre }}</p>
+              <p v-if="tema.descripcion_corta" class="mt-1 font-body text-sm text-dark/70">{{ tema.descripcion_corta }}</p>
+              <p v-if="tema.asesores.length" class="mt-2 font-body text-xs text-dark/50">
+                {{ tema.asesores.length }} asesor{{ tema.asesores.length === 1 ? '' : 'es' }} disponible{{ tema.asesores.length === 1 ? '' : 's' }}
+              </p>
+            </button>
+          </div>
+        </div>
+      </section>
+
       <!-- Solicitud. -->
-      <form class="mb-8" @submit.prevent="form.post(route('portal.asesoria.store'), {
+      <form id="form-asesoria" class="mb-8" @submit.prevent="form.post(route('portal.asesoria.store'), {
         preserveScroll: true,
-        onSuccess: () => form.reset('tema', 'dia_preferido'),
+        onSuccess: () => form.reset('tema_id', 'detalle', 'asesor_preferido_id', 'dia_preferido'),
       })">
         <TarjetaPortal etiqueta="Pedir una asesoría" numero="02">
           <p class="mb-5 font-body text-sm text-dark/70">
-            Dinos qué necesitas y cuándo te viene bien. Recepción te asigna asesor y te confirma
-            el horario: <strong class="text-dark">esto es una solicitud, no una reserva en firme</strong>.
+            Elige un tema de arriba y dinos cuándo te viene bien. Recepción te asigna asesor y te
+            confirma el horario: <strong class="text-dark">esto es una solicitud, no una reserva en firme</strong>.
             Las horas se descuentan solo cuando te confirmen.
           </p>
 
           <div class="space-y-5">
             <div>
               <label for="tema" class="mb-1.5 block font-display text-sm font-bold text-dark">
-                ¿De qué quieres hablar?
+                Tema
+              </label>
+              <select
+                id="tema" v-model="form.tema_id" required
+                class="w-full border-2 bg-cream-50 px-3.5 py-3 text-base text-dark transition-colors
+                       focus:bg-white focus:outline focus:outline-2 focus:outline-offset-2 focus:outline-dark"
+                :class="form.errors.tema_id ? 'border-coral' : 'border-dark/25 focus:border-nodo-500'"
+              >
+                <option :value="null" disabled>Elige un tema…</option>
+                <optgroup v-for="grupo in oferta" :key="grupo.categoria" :label="grupo.etiqueta">
+                  <option v-for="tema in grupo.temas" :key="tema.id" :value="tema.id">{{ tema.nombre }}</option>
+                </optgroup>
+              </select>
+              <p v-if="form.errors.tema_id" class="mt-1.5 font-body text-xs text-coral">{{ form.errors.tema_id }}</p>
+            </div>
+
+            <div v-if="asesoresDelTema.length">
+              <label for="asesor" class="mb-1.5 block font-display text-sm font-bold text-dark">
+                Asesor preferido <span class="font-body font-normal text-dark/50">(opcional)</span>
+              </label>
+              <select
+                id="asesor" v-model="form.asesor_preferido_id"
+                class="w-full border-2 border-dark/25 bg-cream-50 px-3.5 py-3 text-base text-dark
+                       transition-colors focus:border-nodo-500 focus:bg-white focus:outline
+                       focus:outline-2 focus:outline-offset-2 focus:outline-dark"
+              >
+                <option :value="null">El que haya disponible</option>
+                <option v-for="a in asesoresDelTema" :key="a.id" :value="a.id">{{ a.nombre }}</option>
+              </select>
+            </div>
+
+            <div>
+              <label for="detalle" class="mb-1.5 block font-display text-sm font-bold text-dark">
+                Detalle <span class="font-body font-normal text-dark/50">(opcional)</span>
               </label>
               <textarea
-                id="tema" v-model="form.tema" rows="3" required maxlength="500"
+                id="detalle" v-model="form.detalle" rows="2" maxlength="500"
                 placeholder="Por ejemplo: quiero revisar mis precios y saber si me conviene facturar como RESICO."
-                :aria-invalid="!!form.errors.tema"
-                :aria-describedby="form.errors.tema ? 'tema-error' : undefined"
-                class="w-full border-2 bg-cream-50 px-3.5 py-3 text-base text-dark transition-colors
-                       placeholder:text-dark/40 focus:bg-white focus:outline focus:outline-2
+                class="w-full border-2 border-dark/25 bg-cream-50 px-3.5 py-3 text-base text-dark transition-colors
+                       placeholder:text-dark/40 focus:border-nodo-500 focus:bg-white focus:outline focus:outline-2
                        focus:outline-offset-2 focus:outline-dark"
-                :class="form.errors.tema ? 'border-coral' : 'border-dark/25 focus:border-nodo-500'"
               />
-              <p v-if="form.errors.tema" id="tema-error" class="mt-1.5 font-body text-xs text-coral">
-                {{ form.errors.tema }}
-              </p>
             </div>
 
             <div class="grid gap-5 sm:grid-cols-3">

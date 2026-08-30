@@ -13,13 +13,14 @@ import Estado from '@/Components/Panel/Estado.vue'
  * entran al sistema. Darlos de baja no borra el histórico: cada asesoría guarda
  * el nombre tal como era al confirmarse.
  */
-defineProps<{ asesores: any[] }>()
+defineProps<{ asesores: any[]; temasDisponibles: any[]; carga: any[] }>()
 
 const editando = ref<any | null>(null)
 const abierto = ref(false)
 
 const form = useForm({
-  nombre: '', especialidad: '', email: '', telefono: '', notas: '', activo: true,
+  nombre: '', foto: '', especialidad: '', semblanza: '', disponibilidad: '',
+  email: '', telefono: '', notas: '', activo: true, temas: [] as number[],
 })
 
 function abrir(asesor: any | null = null) {
@@ -29,11 +30,15 @@ function abrir(asesor: any | null = null) {
 
   if (asesor) {
     form.nombre = asesor.nombre
+    form.foto = asesor.foto ?? ''
     form.especialidad = asesor.especialidad ?? ''
+    form.semblanza = asesor.semblanza ?? ''
+    form.disponibilidad = asesor.disponibilidad ?? ''
     form.email = asesor.email ?? ''
     form.telefono = asesor.telefono ?? ''
     form.notas = asesor.notas ?? ''
     form.activo = asesor.activo
+    form.temas = [...(asesor.temas ?? [])]
   }
 
   abierto.value = true
@@ -126,8 +131,34 @@ function guardar() {
             </div>
 
             <div>
-              <label for="as-esp" class="mb-1 block text-xs font-bold text-dark">Especialidad</label>
+              <label for="as-esp" class="mb-1 block text-xs font-bold text-dark">Especialidad (texto libre)</label>
               <input id="as-esp" v-model="form.especialidad" type="text" placeholder="Finanzas, modelo de negocio, legal…" class="w-full border border-dark/25 px-2.5 py-2 text-sm placeholder:text-dark/35 focus:border-dark" />
+            </div>
+
+            <div>
+              <label for="as-sem" class="mb-1 block text-xs font-bold text-dark">Semblanza</label>
+              <textarea id="as-sem" v-model="form.semblanza" rows="2" placeholder="Trayectoria breve, para presentarlo en el portal." class="w-full border border-dark/25 px-2.5 py-2 text-sm placeholder:text-dark/35 focus:border-dark" />
+            </div>
+
+            <div class="grid grid-cols-2 gap-3">
+              <div>
+                <label for="as-disp" class="mb-1 block text-xs font-bold text-dark">Disponibilidad</label>
+                <input id="as-disp" v-model="form.disponibilidad" type="text" placeholder="Martes y jueves por la tarde" class="w-full border border-dark/25 px-2.5 py-2 text-sm placeholder:text-dark/35 focus:border-dark" />
+              </div>
+              <div>
+                <label for="as-foto" class="mb-1 block text-xs font-bold text-dark">Foto (URL)</label>
+                <input id="as-foto" v-model="form.foto" type="text" placeholder="/img/asesores/…" class="w-full border border-dark/25 px-2.5 py-2 text-sm placeholder:text-dark/35 focus:border-dark" />
+              </div>
+            </div>
+
+            <div v-if="temasDisponibles.length">
+              <span class="mb-1 block text-xs font-bold text-dark">Temas que imparte</span>
+              <div class="max-h-32 space-y-1 overflow-y-auto border border-dark/15 p-2">
+                <label v-for="t in temasDisponibles" :key="t.id" class="flex items-center gap-2 text-xs text-dark">
+                  <input type="checkbox" :value="t.id" v-model="form.temas" class="h-4 w-4 rounded-none border-dark" />
+                  {{ t.nombre }}
+                </label>
+              </div>
             </div>
 
             <div class="grid grid-cols-2 gap-3">
