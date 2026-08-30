@@ -138,13 +138,15 @@ const avisos = [
             </p>
           </div>
 
-          <!-- El correo se cambia en seguridad, que ya pide la contraseña. -->
+          <!-- El correo se cambia en «Mi seguridad», dentro del portal, con el
+               flujo seguro (verifica la dirección nueva). Antes este enlace iba a
+               la pantalla de Breeze y sacaba al miembro del portal. -->
           <div class="sm:col-span-2">
             <label class="mb-1.5 block font-display text-sm font-bold text-dark">Correo</label>
             <div class="flex flex-wrap items-center gap-3">
               <p class="font-body text-base text-dark/70">{{ perfil.email }}</p>
               <Link
-                :href="route('profile.edit')"
+                :href="route('seguridad') + '#correo'"
                 class="font-display text-sm font-bold text-dark underline decoration-nodo-500
                        decoration-2 underline-offset-4 hover:decoration-dark focus-visible:outline
                        focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-dark"

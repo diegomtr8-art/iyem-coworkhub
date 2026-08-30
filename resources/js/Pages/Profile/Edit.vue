@@ -9,8 +9,6 @@ import { Head, usePage } from '@inertiajs/vue3'
 import { computed } from 'vue'
 
 defineProps<{
-  mustVerifyEmail?: boolean
-  status?: string
   consentimientos: Array<{ etiqueta: string; version: string; aceptadoEn: string; ip: string | null }>
   legalProvisional: boolean
 }>()
@@ -35,11 +33,7 @@ const Layout = computed(() => (usuario.value?.esOperativo ? AuthenticatedLayout 
       </div>
 
       <div class="rounded-2xl border border-gray-200 bg-white p-6">
-        <UpdateProfileInformationForm
-          :must-verify-email="mustVerifyEmail"
-          :status="status"
-          class="max-w-xl"
-        />
+        <UpdateProfileInformationForm class="max-w-xl" />
       </div>
 
       <div class="rounded-2xl border border-gray-200 bg-white p-6">

@@ -2,11 +2,8 @@
 
 namespace App\Http\Requests;
 
-use App\Models\User;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
-use Illuminate\Support\Str;
-use Illuminate\Validation\Rule;
 
 class ProfileUpdateRequest extends FormRequest
 {
@@ -15,50 +12,12 @@ class ProfileUpdateRequest extends FormRequest
      */
     public function rules(): array
     {
+        // El correo **ya no se cambia aquí** (Fase 4.C): tiene su propio flujo en
+        // «Mi seguridad», con verificación de la dirección nueva y aviso a la
+        // anterior. Este formulario solo edita el nombre; cualquier `email` que
+        // llegue se ignora porque no está entre las reglas.
         return [
-            'name'  => ['required', 'string', 'max:255'],
-            'email' => [
-                'required',
-                'string',
-                'lowercase',
-                'email',
-                'max:255',
-                Rule::unique(User::class)->ignore($this->user()->id),
-            ],
-
-            /*
-             * B — Cambiar el correo pide la contraseña actual.
-             *
-             * El correo es la llave de recuperación de la cuenta: quien lo
-             * cambia puede después pedir un restablecimiento y quedarse con
-             * todo. Es la acción más delicada del perfil, y con una sesión
-             * olvidada en un equipo prestado bastaría un clic.
-             *
-             * Se pide solo cuando el correo cambia de verdad: exigirla también
-             * para corregir una tilde del nombre sería ruido, y el ruido acaba
-             * en gente que teclea su contraseña sin leer.
-             */
-            'current_password' => [
-                Rule::requiredIf(fn () => $this->correoCambia()),
-                'current_password',
-            ],
-        ];
-    }
-
-    private function correoCambia(): bool
-    {
-        $nuevo = Str::lower(trim((string) $this->input('email')));
-
-        return $nuevo !== '' && $nuevo !== Str::lower((string) $this->user()->email);
-    }
-
-    /**
-     * @return array<string, string>
-     */
-    public function messages(): array
-    {
-        return [
-            'current_password.required' => 'Para cambiar tu correo necesitamos tu contraseña actual.',
+            'name' => ['required', 'string', 'max:255'],
         ];
     }
 }

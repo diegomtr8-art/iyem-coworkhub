@@ -24,6 +24,8 @@ enum EventoAuth: string
     case BajaDosFactores  = 'baja_2fa';
     case VinculoSocial    = 'vinculo_social';
     case DesvinculoSocial = 'desvinculo_social';
+    case CambioCorreoSolicitado = 'cambio_correo_solicitado';
+    case CambioCorreoAplicado   = 'cambio_correo_aplicado';
 
     public function etiqueta(): string
     {
@@ -40,6 +42,8 @@ enum EventoAuth: string
             self::BajaDosFactores       => 'Segundo factor desactivado',
             self::VinculoSocial         => 'Cuenta externa vinculada',
             self::DesvinculoSocial      => 'Cuenta externa desvinculada',
+            self::CambioCorreoSolicitado => 'Cambio de correo solicitado',
+            self::CambioCorreoAplicado   => 'Correo electrónico cambiado',
         };
     }
 
@@ -51,6 +55,7 @@ enum EventoAuth: string
             self::IngresoFallido,
             self::BajaDosFactores,
             self::CambioContrasena,
+            self::CambioCorreoAplicado,
         ], true);
     }
 }

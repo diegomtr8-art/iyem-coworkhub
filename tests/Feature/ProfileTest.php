@@ -23,14 +23,17 @@ class ProfileTest extends TestCase
 
     public function test_profile_information_can_be_updated(): void
     {
-        $user = User::factory()->create();
+        // El perfil edita el nombre. Desde la Fase 4.C el correo NO se cambia
+        // aquí: tiene su propio flujo seguro en «Mi seguridad» (verifica la
+        // dirección nueva). Un `email` colado en el PATCH se ignora, y por eso
+        // el correo verificado sigue verificado.
+        $user = User::factory()->create(['email' => 'antes@example.com', 'email_verified_at' => now()]);
 
         $response = $this
             ->actingAs($user)
             ->patch('/profile', [
-                'name' => 'Test User',
-                'email' => 'test@example.com',
-                'current_password' => 'password',
+                'name'  => 'Test User',
+                'email' => 'colado@example.com',
             ]);
 
         $response
@@ -40,8 +43,8 @@ class ProfileTest extends TestCase
         $user->refresh();
 
         $this->assertSame('Test User', $user->name);
-        $this->assertSame('test@example.com', $user->email);
-        $this->assertNull($user->email_verified_at);
+        $this->assertSame('antes@example.com', $user->email);
+        $this->assertNotNull($user->email_verified_at);
     }
 
     public function test_email_verification_status_is_unchanged_when_the_email_address_is_unchanged(): void

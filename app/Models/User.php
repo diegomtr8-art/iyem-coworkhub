@@ -32,7 +32,10 @@ class User extends Authenticatable implements MustVerifyEmail
         'notif_reservas', 'notif_membresia', 'notif_comunidad',
     ];
 
-    protected $hidden = ['password', 'remember_token', 'verificacion_nonce', 'dos_factores_secreto'];
+    protected $hidden = [
+        'password', 'remember_token', 'verificacion_nonce', 'dos_factores_secreto',
+        'email_nuevo_token',
+    ];
 
     protected function casts(): array
     {
@@ -44,11 +47,15 @@ class User extends Authenticatable implements MustVerifyEmail
             // codigo de cada minuto. Depende de APP_KEY.
             'dos_factores_secreto'       => 'encrypted',
             'dos_factores_confirmado_en' => 'datetime',
+            'email_nuevo_expira_en'      => 'datetime',
             'notif_reservas'             => 'boolean',
             'notif_membresia'            => 'boolean',
             'notif_comunidad'            => 'boolean',
         ];
     }
+
+    /** Minutos que vive un enlace de cambio de correo. */
+    public const CAMBIO_CORREO_MINUTOS = 60;
 
     // ── Rol y estado ────────────────────────────────────────────────────────
 
@@ -235,6 +242,79 @@ class User extends Authenticatable implements MustVerifyEmail
         return $this->forceFill([
             'email_verified_at'  => $this->freshTimestamp(),
             'verificacion_nonce' => null,
+        ])->save();
+    }
+
+    // ── Cambio de correo (Fase 4.C) ──────────────────────────────────────────
+
+    /**
+     * Registra una solicitud de cambio de correo y devuelve el token en claro
+     * para armar el enlace. En la base solo queda el **hash** del token: quien
+     * lea la fila no puede reconstruir el enlace.
+     */
+    public function solicitarCambioDeCorreo(string $correoNuevo): string
+    {
+        $token = Str::random(48);
+
+        $this->forceFill([
+            'email_nuevo'           => Str::lower(trim($correoNuevo)),
+            'email_nuevo_token'     => hash('sha256', $token),
+            'email_nuevo_expira_en' => now()->addMinutes(self::CAMBIO_CORREO_MINUTOS),
+        ])->save();
+
+        return $token;
+    }
+
+    /** La dirección pendiente si hay una solicitud viva; `null` si no. */
+    public function correoPendiente(): ?string
+    {
+        if ($this->email_nuevo === null || $this->email_nuevo_expira_en === null) {
+            return null;
+        }
+
+        return $this->email_nuevo_expira_en->isFuture() ? $this->email_nuevo : null;
+    }
+
+    /**
+     * ¿El token corresponde a la solicitud viva? Comparación en tiempo constante
+     * para no filtrar cuántos caracteres coinciden.
+     */
+    public function tokenDeCambioValido(string $token): bool
+    {
+        if ($this->correoPendiente() === null || $this->email_nuevo_token === null) {
+            return false;
+        }
+
+        return hash_equals($this->email_nuevo_token, hash('sha256', $token));
+    }
+
+    /**
+     * Aplica el cambio: el correo pendiente pasa a ser el correo, ya verificado
+     * (quien pulsó el enlace demostró tener acceso a esa dirección), y se limpia
+     * la solicitud. Devuelve el correo anterior por si quien llama quiere avisar.
+     */
+    public function aplicarCambioDeCorreo(): string
+    {
+        $anterior = $this->email;
+
+        $this->forceFill([
+            'email'                 => $this->email_nuevo,
+            'email_verified_at'     => $this->freshTimestamp(),
+            'verificacion_nonce'    => null,
+            'email_nuevo'           => null,
+            'email_nuevo_token'     => null,
+            'email_nuevo_expira_en' => null,
+        ])->save();
+
+        return $anterior;
+    }
+
+    public function cancelarCambioDeCorreo(): void
+    {
+        $this->forceFill([
+            'email_nuevo'           => null,
+            'email_nuevo_token'     => null,
+            'email_nuevo_expira_en' => null,
         ])->save();
     }
 

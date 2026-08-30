@@ -14,6 +14,7 @@ use App\Http\Controllers\Auth\PasswordController;
 use App\Http\Controllers\Auth\PasswordResetLinkController;
 use App\Http\Controllers\Auth\RegisteredUserController;
 use App\Http\Controllers\Auth\VerifyEmailController;
+use App\Http\Controllers\CambioDeCorreoController;
 use App\Http\Controllers\SeguridadController;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Route;
@@ -201,5 +202,22 @@ Route::middleware('auth')->group(function () {
 
         Route::delete('seguridad/dispositivos/{dispositivo}', [SeguridadController::class, 'olvidarDispositivo'])
             ->name('seguridad.olvidar-dispositivo');
+
+        // C — Pedir el cambio de correo. Detrás de `password.confirm` como el
+        // resto de lo delicado: el correo es la llave de recuperación.
+        Route::post('seguridad/correo', [CambioDeCorreoController::class, 'solicitar'])
+            ->name('seguridad.correo.solicitar');
+
+        Route::delete('seguridad/correo', [CambioDeCorreoController::class, 'cancelar'])
+            ->name('seguridad.correo.cancelar');
     });
 });
+
+/*
+ * C — Confirmación de la dirección nueva. Va **fuera** de `auth`: el enlace
+ * suele abrirse en otro dispositivo, sin sesión. La firma y el token de un solo
+ * uso son la garantía, no la sesión.
+ */
+Route::get('seguridad/correo/verificar/{user}/{token}', [CambioDeCorreoController::class, 'verificar'])
+    ->middleware('signed')
+    ->name('seguridad.correo.verificar');

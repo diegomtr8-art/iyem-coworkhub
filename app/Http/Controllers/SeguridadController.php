@@ -33,6 +33,13 @@ class SeguridadController extends Controller
         $usuario = $request->user();
 
         return Inertia::render('Seguridad/Index', [
+            // C — Correo de la cuenta y, si la hay, la solicitud de cambio viva.
+            'correo' => [
+                'actual'     => $usuario->email,
+                'verificado' => $usuario->hasVerifiedEmail(),
+                'pendiente'  => $usuario->correoPendiente(),
+            ],
+
             'sesiones'          => $this->sesiones->listar($usuario, $request->session()->getId()),
             'sesionesLegibles'  => $this->sesiones->disponible(),
 

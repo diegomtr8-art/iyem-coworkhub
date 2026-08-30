@@ -345,16 +345,19 @@ class SeguridadDelAccesoTest extends TestCase
 
     // ── Perfil ───────────────────────────────────────────────────────────────
 
-    public function test_cambiar_el_correo_pide_la_contrasena_actual(): void
+    public function test_el_perfil_ya_no_cambia_el_correo(): void
     {
-        $usuario = User::factory()->create();
+        // Desde la Fase 4.C el correo no se cambia por /profile: tiene su flujo
+        // seguro en «Mi seguridad», con verificación de la dirección nueva (ver
+        // CambioDeCorreoTest). Un `email` colado en el PATCH se ignora.
+        $usuario = User::factory()->create(['email' => 'antes@example.com']);
 
         $this->actingAs($usuario)
             ->from('/profile')
             ->patch('/profile', ['name' => $usuario->name, 'email' => 'otro@example.com'])
-            ->assertSessionHasErrors('current_password');
+            ->assertSessionHasNoErrors();
 
-        $this->assertNotSame('otro@example.com', $usuario->fresh()->email);
+        $this->assertSame('antes@example.com', $usuario->fresh()->email);
     }
 
     public function test_cambiar_solo_el_nombre_no_pide_contrasena(): void

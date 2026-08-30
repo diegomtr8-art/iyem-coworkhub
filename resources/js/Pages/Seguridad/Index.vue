@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue'
 import PortalLayout from '@/Layouts/PortalLayout.vue'
-import { Head, Link, router, usePage } from '@inertiajs/vue3'
-import { Monitor, ShieldCheck, ShieldAlert, LogOut, Link2, KeyRound, Smartphone } from 'lucide-vue-next'
-import { computed } from 'vue'
+import { Head, Link, router, useForm, usePage } from '@inertiajs/vue3'
+import { Monitor, ShieldCheck, ShieldAlert, LogOut, Link2, KeyRound, Smartphone, Mail, Clock } from 'lucide-vue-next'
+import { computed, ref } from 'vue'
 
 interface Sesion {
   /** Referencia opaca; el identificador de sesion nunca sale del servidor. */
@@ -46,7 +46,14 @@ interface Evento {
   cuando: string | null
 }
 
+interface Correo {
+  actual: string
+  verificado: boolean
+  pendiente: string | null
+}
+
 const props = defineProps<{
+  correo: Correo
   sesiones: Sesion[]
   sesionesLegibles: boolean
   eventos: Evento[]
@@ -59,6 +66,25 @@ const props = defineProps<{
 
 const page = usePage()
 const usuario = computed(() => (page.props.auth as any)?.user ?? null)
+const flashStatus = computed(() => (page.props.flash as any)?.status ?? page.props.status ?? null)
+
+// ── Cambio de correo ────────────────────────────────────────────────────────
+const editandoCorreo = ref(false)
+const formCorreo = useForm({ email: '' })
+
+function solicitarCorreo() {
+  formCorreo.post(route('seguridad.correo.solicitar'), {
+    preserveScroll: true,
+    onSuccess: () => {
+      formCorreo.reset()
+      editandoCorreo.value = false
+    },
+  })
+}
+
+function cancelarCorreo() {
+  router.delete(route('seguridad.correo.cancelar'), { preserveScroll: true })
+}
 
 // La pantalla es la misma para el equipo y para los miembros; solo cambia el
 // armazón de navegación que la envuelve.
@@ -102,6 +128,117 @@ function olvidarDispositivo(id: number) {
           Dónde está abierta tu cuenta y qué ha pasado con ella.
         </p>
       </div>
+
+      <!-- Correo electrónico -->
+      <section id="correo" class="rounded-2xl border border-gray-200 bg-white">
+        <div class="border-b border-gray-100 p-5">
+          <div class="flex items-center gap-2">
+            <Mail :size="18" class="text-gray-500" aria-hidden="true" />
+            <h2 class="font-semibold text-gray-900">Correo electrónico</h2>
+          </div>
+        </div>
+
+        <div class="p-5">
+          <!-- Avisos de resultado -->
+          <p
+            v-if="flashStatus === 'cambio-correo-enviado'"
+            class="mb-4 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800"
+            role="status"
+          >
+            Te enviamos un enlace a tu dirección nueva para confirmarla. Tu correo
+            actual sigue funcionando hasta entonces.
+          </p>
+          <p
+            v-else-if="flashStatus === 'correo-cambiado'"
+            class="mb-4 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800"
+            role="status"
+          >
+            Tu correo se cambió correctamente.
+          </p>
+          <p
+            v-else-if="flashStatus === 'cambio-correo-cancelado'"
+            class="mb-4 rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-700"
+            role="status"
+          >
+            Cancelamos la solicitud de cambio de correo.
+          </p>
+
+          <div class="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <p class="font-medium text-gray-900">{{ correo.actual }}</p>
+              <p class="mt-0.5 text-sm" :class="correo.verificado ? 'text-emerald-600' : 'text-amber-600'">
+                {{ correo.verificado ? 'Verificado' : 'Sin verificar' }}
+              </p>
+            </div>
+            <button
+              v-if="!editandoCorreo && !correo.pendiente"
+              type="button"
+              @click="editandoCorreo = true"
+              class="inline-flex min-h-[44px] items-center rounded-xl border-2 border-dark px-4 text-sm font-semibold text-dark transition hover:bg-dark hover:text-white"
+            >
+              Cambiar correo
+            </button>
+          </div>
+
+          <!-- Solicitud pendiente -->
+          <div
+            v-if="correo.pendiente"
+            class="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3"
+          >
+            <div class="flex items-start gap-2">
+              <Clock :size="16" class="mt-0.5 shrink-0 text-amber-600" aria-hidden="true" />
+              <p class="text-sm text-amber-900">
+                Pendiente de confirmar: <strong>{{ correo.pendiente }}</strong>.
+                Revisa esa bandeja y pulsa el enlace que te enviamos.
+              </p>
+            </div>
+            <button
+              type="button"
+              @click="cancelarCorreo"
+              class="inline-flex min-h-[44px] shrink-0 items-center text-sm font-semibold text-amber-800 underline hover:text-amber-900"
+            >
+              Cancelar
+            </button>
+          </div>
+
+          <!-- Formulario -->
+          <form v-if="editandoCorreo && !correo.pendiente" @submit.prevent="solicitarCorreo" class="mt-4 space-y-3">
+            <p class="text-sm text-gray-600">
+              Te pediremos tu contraseña y enviaremos un enlace de confirmación a la
+              dirección nueva. El cambio no se aplica hasta que la confirmes.
+            </p>
+            <div>
+              <label for="email-nuevo" class="block text-sm font-medium text-gray-700">Nuevo correo</label>
+              <input
+                id="email-nuevo"
+                v-model="formCorreo.email"
+                type="email"
+                autocomplete="email"
+                required
+                class="mt-1 block w-full rounded-lg border-gray-300 text-base shadow-sm focus:border-nodo-400 focus:ring-nodo-400"
+                placeholder="tu-nuevo-correo@ejemplo.com"
+              />
+              <p v-if="formCorreo.errors.email" class="mt-1 text-sm text-red-600">{{ formCorreo.errors.email }}</p>
+            </div>
+            <div class="flex items-center gap-3">
+              <button
+                type="submit"
+                :disabled="formCorreo.processing"
+                class="inline-flex min-h-[44px] items-center rounded-xl bg-dark px-4 text-sm font-semibold text-white transition hover:bg-dark/90 disabled:opacity-50"
+              >
+                Enviar confirmación
+              </button>
+              <button
+                type="button"
+                @click="editandoCorreo = false; formCorreo.reset()"
+                class="inline-flex min-h-[44px] items-center px-2 text-sm font-medium text-gray-500 hover:text-gray-700"
+              >
+                Cancelar
+              </button>
+            </div>
+          </form>
+        </div>
+      </section>
 
       <!-- Sesiones abiertas -->
       <section class="rounded-2xl border border-gray-200 bg-white">
