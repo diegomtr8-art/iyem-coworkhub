@@ -6,7 +6,7 @@
 > que dos horas se consumían como dos horas.
 
 ```bash
-php artisan test          # 277 pruebas, 1.284 aserciones
+php artisan test          # 290 pruebas, 1.322 aserciones
 npm run build             # assets, sin errores
 ```
 
@@ -31,6 +31,10 @@ npm run build             # assets, sin errores
 | Un miembro no ve ni toca lo de otro | `test_un_miembro_no_ve_ni_toca_nada_de_otro_miembro` y 3 más | `Portal/PantallasDelPortalTest` |
 | `staff` no accede a reportes ni a planes | `test_recepcion_no_entra_a_lo_que_es_de_administracion` (6 rutas) | `Panel/PanelOperativoTest` |
 | El RFC se valida en formato y se guarda normalizado | `test_un_rfc_bien_formado_pasa` (4 casos), `test_un_rfc_mal_formado_se_rechaza` (7 casos), `test_el_rfc_se_guarda_normalizado` | `Portal/AsesoriasYDatosFiscalesTest` |
+
+Y una que el prompt no pedía pero salió de `/security-review`: que las fórmulas
+que un miembro escriba en su nombre o razón social no se ejecuten en el Excel de
+administración. Ver «Inyección de fórmulas» abajo.
 
 ---
 
