@@ -128,6 +128,16 @@ COMPROBAR_ABIERTAS = [
 EXCLUDE_DIRS = {"node_modules", ".git", "__pycache__", "vendor"}
 EXCLUDE_EXT = {".log", ".map"}
 
+# Manifiestos compilados de bootstrap/cache. Se REGENERAN en el servidor con
+# `composer install --no-dev` + `package:discover`; subirlos desde local mete
+# los paquetes de **dev** (p. ej. Pail) que en el servidor no existen, y el
+# sitio arranca con «Class Laravel\Pail\PailServiceProvider not found» → 500.
+# Comprobado el 2026-08-30. Estos nombres solo aparecen en bootstrap/cache/.
+EXCLUDE_FILES = {
+    "packages.php", "services.php", "compiled.php",
+    "config.php", "routes-v7.php", "events.scanned.php",
+}
+
 
 def conectar() -> paramiko.SSHClient:
     """
@@ -192,6 +202,8 @@ def mkdir_p(sftp, ruta):
 def omitir(rel):
     partes = rel.replace("\\", "/").split("/")
     if any(p in EXCLUDE_DIRS for p in partes):
+        return True
+    if partes[-1] in EXCLUDE_FILES:
         return True
     return os.path.splitext(rel)[1] in EXCLUDE_EXT
 

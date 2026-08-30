@@ -14,6 +14,13 @@ set -euo pipefail
 RAIZ="/home/u489236361/domains/prueba.nodico.com.mx/public_html"
 cd "$RAIZ"
 
+echo "==> Manifiestos compilados fuera antes de instalar"
+# `composer install --no-dev` los regenera sin los paquetes de dev, pero si por
+# lo que sea llega uno viejo (subido de local, o un install a medias), arranca
+# el sitio con un ServiceProvider de dev que aquí no existe -> 500. Borrarlos
+# antes es barato y los deja regenerar limpios. Comprobado el 2026-08-30 (Pail).
+rm -f "$RAIZ/bootstrap/cache/packages.php" "$RAIZ/bootstrap/cache/services.php"
+
 echo "==> Dependencias de PHP"
 composer install --no-dev --optimize-autoloader --no-interaction
 
