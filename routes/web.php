@@ -10,6 +10,7 @@ use App\Http\Controllers\DaypassInteriorController;
 use App\Http\Controllers\ContactoController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DatosPersonalesController;
+use App\Http\Controllers\EmprendedoresController;
 use App\Http\Controllers\EspaciosController;
 use App\Http\Controllers\EventosController;
 use App\Http\Controllers\FacturasController;
@@ -219,6 +220,12 @@ Route::middleware(['auth', 'verified', 'portal:operativo', 'no.suspendida', 'con
         Route::get('admin/eventos/{evento}/editar', [EventosController::class, 'edit'])->name('eventos.admin.edit');
         Route::patch('admin/eventos/{evento}', [EventosController::class, 'update'])->name('eventos.admin.update');
         Route::delete('admin/eventos/{evento}', [EventosController::class, 'destroy'])->name('eventos.admin.destroy');
+
+        // 4.H — catalogo de emprendimientos y rotacion del destacado.
+        Route::get('admin/emprendedores', [EmprendedoresController::class, 'index'])->name('emprendedores.index');
+        Route::post('admin/emprendedores', [EmprendedoresController::class, 'guardar'])->name('emprendedores.store');
+        Route::patch('admin/emprendedores/{emprendedor}', [EmprendedoresController::class, 'guardar'])->name('emprendedores.update');
+        Route::post('admin/emprendedores/{emprendedor}/fijar', [EmprendedoresController::class, 'fijar'])->name('emprendedores.fijar');
     });
 
     Route::middleware('can:ver-reportes')->group(function () {

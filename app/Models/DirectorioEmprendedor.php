@@ -10,13 +10,25 @@ class DirectorioEmprendedor extends Model
 
     protected $fillable = [
         'nombre', 'instagram', 'foto', 'descripcion',
-        'url_destino', 'destacado_semana', 'activo', 'orden',
+        'giro', 'municipio', 'url_destino', 'sitio_web', 'egresado_iyem',
+        'destacado_semana', 'elegible_destacado', 'destacado_ultima_vez', 'fijado_hasta',
+        'activo', 'orden',
     ];
 
     protected $casts = [
-        'destacado_semana' => 'boolean',
-        'activo'           => 'boolean',
+        'destacado_semana'     => 'boolean',
+        'elegible_destacado'   => 'boolean',
+        'egresado_iyem'        => 'boolean',
+        'activo'               => 'boolean',
+        'destacado_ultima_vez' => 'date',
+        'fijado_hasta'         => 'date',
     ];
+
+    /** Candidatos a destacado: activos y marcados como elegibles. */
+    public function scopeElegibles($query)
+    {
+        return $query->where('activo', true)->where('elegible_destacado', true);
+    }
 
     public function scopePublicos($query)
     {

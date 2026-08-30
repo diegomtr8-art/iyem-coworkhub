@@ -45,7 +45,6 @@ use Illuminate\Support\Facades\Hash;
  * Qué NO puede sembrar todavía, porque su estructura llega en fases posteriores
  * (queda anotado en docs/DEMOSTRACION.md):
  *   - Catálogo de temas de asesoría (aquí el tema es texto) → Fase D.
- *   - Catálogo de emprendimientos con rotación del destacado → Fase H.
  *
  * Las horas de asesoría por plan (Nodo Pro y Match, 4 h/mes) las define el
  * seeder base (NodicoWebSeeder), no este.
@@ -290,13 +289,16 @@ class DemoSeeder extends Seeder
         }
 
         $emprendedores = [
-            ['nombre' => 'Salabtún', 'instagram' => '@salabtun', 'descripcion' => 'Chocolatería artesanal maya.', 'destacado_semana' => true,  'orden' => 1],
-            ['nombre' => 'Kinimitas', 'instagram' => '@kinimitas', 'descripcion' => 'Repostería yucateca de temporada.', 'destacado_semana' => false, 'orden' => 2],
-            ['nombre' => 'Zentto', 'instagram' => '@zentto', 'descripcion' => 'Diseño de mobiliario sustentable.', 'destacado_semana' => false, 'orden' => 3],
-            ['nombre' => 'Saboreli', 'instagram' => '@saboreli', 'descripcion' => 'Conservas y salsas de la milpa.', 'destacado_semana' => false, 'orden' => 4],
+            ['nombre' => 'Salabtún', 'instagram' => 'salabtun', 'descripcion' => 'Chocolatería artesanal maya.', 'giro' => 'Alimentos', 'municipio' => 'Mérida', 'egresado_iyem' => true, 'destacado_semana' => true, 'orden' => 1],
+            ['nombre' => 'Kinimitas', 'instagram' => 'kinimitas', 'descripcion' => 'Repostería yucateca de temporada.', 'giro' => 'Repostería', 'municipio' => 'Valladolid', 'orden' => 2],
+            ['nombre' => 'Zentto', 'instagram' => 'zentto.mid', 'descripcion' => 'Diseño de mobiliario sustentable.', 'giro' => 'Diseño', 'municipio' => 'Mérida', 'orden' => 3],
+            ['nombre' => 'Saboreli', 'instagram' => 'saborelimx', 'descripcion' => 'Conservas y salsas de la milpa.', 'giro' => 'Alimentos', 'municipio' => 'Maxcanú', 'orden' => 4],
         ];
         foreach ($emprendedores as $e) {
-            DirectorioEmprendedor::updateOrCreate(['nombre' => $e['nombre']], $e + ['activo' => true]);
+            DirectorioEmprendedor::updateOrCreate(
+                ['nombre' => $e['nombre']],
+                $e + ['activo' => true, 'elegible_destacado' => true],
+            );
         }
 
         $eventos = [

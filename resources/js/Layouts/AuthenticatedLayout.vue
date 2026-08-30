@@ -67,6 +67,7 @@ const grupos = computed(() => [
       { label: 'Asesores',     href: route('asesores.index'),      icon: UserCheck,   active: 'asesores*', ver: puede('gestionar-catalogos') },
       { label: 'Temas de asesoría', href: route('temas.index'),    icon: Lightbulb,   active: 'temas*',    ver: puede('gestionar-catalogos') },
       { label: 'Contenido web', href: route('eventos.admin.index'), icon: Newspaper,  active: 'eventos*',  ver: puede('gestionar-eventos') },
+      { label: 'Emprendedores', href: route('emprendedores.index'), icon: PartyPopper, active: 'emprendedores*', ver: puede('gestionar-eventos') },
     ],
   },
   {

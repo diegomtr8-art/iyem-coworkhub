@@ -63,3 +63,12 @@ Schedule::command('nodico:reconstruir-saldos')
     ->withoutOverlapping()
     ->onOneServer()
     ->appendOutputTo($bitacoraDeTareas);
+
+// Fase 4.H — el emprendedor de la semana rota los lunes a primera hora, para
+// que quien entre el lunes ya vea al nuevo.
+Schedule::command('nodico:rotar-emprendedor')
+    ->weeklyOn(1, '06:00')
+    ->timezone('America/Merida')
+    ->withoutOverlapping()
+    ->onOneServer()
+    ->appendOutputTo($bitacoraDeTareas);
