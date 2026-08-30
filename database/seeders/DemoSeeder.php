@@ -47,6 +47,9 @@ use Illuminate\Support\Facades\Hash;
  *   - Day-pass gratuito del interior con municipio y giro  → Fase E.
  *   - Catálogo de temas de asesoría (aquí el tema es texto) → Fase D.
  *   - Catálogo de emprendimientos con rotación del destacado → Fase H.
+ *
+ * Las horas de asesoría por plan (Nodo Pro y Match, 4 h/mes) las define el
+ * seeder base (NodicoWebSeeder), no este.
  */
 class DemoSeeder extends Seeder
 {
@@ -72,8 +75,6 @@ class DemoSeeder extends Seeder
         $this->bloques    = app(RegistroDeBloques::class);
 
         $this->limpiarDemoAnterior();
-
-        $this->asegurarAsesoriaEnPlanes();
 
         $this->sembrarEquipo();
         $this->sembrarMiembroEstrella();
@@ -122,22 +123,6 @@ class DemoSeeder extends Seeder
         }
 
         return $usuario;
-    }
-
-    /**
-     * PROVISIONAL — cuántas horas de asesoría IYEM incluye cada plan **no está
-     * definido** en el prompt, y es una regla de negocio que decide el IYEM. El
-     * seeder base deja `horas_asesoria_mes` en null (o sea, sin asesoría), así
-     * que sin esto la demo no podría mostrar el módulo de asesoría.
-     *
-     * Estos valores son solo para que la demostración tenga datos; hay que
-     * confirmarlos con Diego/el IYEM antes de producción. Queda anotado en
-     * docs/DEMOSTRACION.md.
-     */
-    private function asegurarAsesoriaEnPlanes(): void
-    {
-        Plane::where('nombre', 'Nodo Pro')->update(['horas_asesoria_mes' => 2, 'max_horas_asesoria_dia' => 1]);
-        Plane::where('nombre', 'Nodo Match')->update(['horas_asesoria_mes' => 3, 'max_horas_asesoria_dia' => 1]);
     }
 
     // ── Usuarios ─────────────────────────────────────────────────────────────

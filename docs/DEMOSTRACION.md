@@ -74,10 +74,11 @@ prompt aún no tenga estructura. Se completará al llegar cada fase:
 - **Catálogo de emprendimientos con rotación del destacado**: llega en la
   **Fase H**. Hoy se siembra el directorio con un destacado fijo.
 
-## Regla de negocio pendiente (⚠ preguntar al IYEM)
+## Horas de asesoría por plan
 
-**Cuántas horas de asesoría IYEM incluye cada plan no está definido.** El seeder
-base deja `horas_asesoria_mes` en `null` (ningún plan incluye asesoría), así que
-para que la demostración pueda mostrar el módulo, el `DemoSeeder` fija valores
-**provisionales**: Nodo Pro = 2 h/mes, Nodo Match = 3 h/mes. Hay que confirmarlos
-con el IYEM antes de producción — ver `asegurarAsesoriaEnPlanes()` en el seeder.
+Definido por Diego el 2026-08-30 y ya en el seeder base (`NodicoWebSeeder`):
+
+- **Nodo Pro:** 4 h de asesoría IYEM al mes, máximo 1 h por día.
+- **Nodo Match:** 4 h al mes también, **compartidas entre los dos** integrantes
+  de la dupla (la bolsa de Match es compartida por diseño), máximo 1 h por día.
+- **Nódico Flex y Day-Pass:** sin asesoría.

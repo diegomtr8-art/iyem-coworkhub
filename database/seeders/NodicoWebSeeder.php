@@ -125,6 +125,10 @@ class NodicoWebSeeder extends Seeder
                 'cta_label'        => 'Contrata Ahora',
                 'color'            => '#D6E265',
                 'stripe_url'       => 'https://buy.stripe.com/6oU8wJggq91FeC1e716Zy03',
+                // Asesoría IYEM: 4 h/mes, 1 h/día (decisión de Diego, 2026-08-30).
+                // El beneficio de abajo ya lo decía; esto lo hace efectivo.
+                'horas_asesoria_mes'     => 4,
+                'max_horas_asesoria_dia' => 1,
                 'descripcion_corta' => 'Perfecta para emprendedores y creadores que buscan un espacio de trabajo constante.',
                 'descripcion_larga' => 'Ideal para emprendedores activos, freelancers o creadores de contenido que necesitan un lugar de trabajo constante. Incluye asesoría, uso de salas y horas de creación de contenido.',
                 'beneficios'       => [
@@ -148,12 +152,19 @@ class NodicoWebSeeder extends Seeder
                 'cta_label'        => 'Empezar Ahora',
                 'color'            => '#864B95',
                 'stripe_url'       => 'https://buy.stripe.com/28EcMZc0agu73Xn6Ez6Zy02',
+                // Asesoría IYEM: 4 h/mes, 1 h/día, **compartidas entre los dos**
+                // integrantes de la dupla (decisión de Diego, 2026-08-30). La
+                // bolsa de Match ya es compartida por diseño, así que 4 h en la
+                // suscripción cubren a titular y acompañante.
+                'horas_asesoria_mes'     => 4,
+                'max_horas_asesoria_dia' => 1,
                 'descripcion_corta' => 'Ideal para emprendedores, freelancers y creadores de contenido que requieren un espacio estable para trabajar.',
                 'descripcion_larga' => 'La misma libertad que Nodo Pro, pero para dos personas: pensada para socios o duplas que trabajan juntos todos los días.',
                 'beneficios'       => [
                     'Acceso completo al coworking',
                     '20 horas al mes en oficinas privadas y sala de juntas (2 horas por día)',
                     '15 horas al mes en sala de creación de contenido (previa reserva en la aplicación)',
+                    '4 horas Asesor IYEM al mes, entre los dos (1 hora por día)',
                     'Agua y café durante tu estancia',
                     'Acceso directo a programas del Instituto Yucateco de Emprendedores',
                     'Acceso libre a eventos de Cultura emprendedora',
