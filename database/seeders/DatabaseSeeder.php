@@ -104,17 +104,32 @@ class DatabaseSeeder extends Seeder
 
         foreach ($planes as $p) Plane::create($p);
 
-        // Espacios NODICO
+        // Espacios NODICO — Fase 4.B: los espacios reales de Nódico.
+        //   4 cubículos · 2 salas de juntas · 1 contenido · 1 fotografía ·
+        //   1 coworking · 2 salones = 11.
+        // La cantidad y el tipo son la realidad de Nódico (prompt Fase 4.B). Las
+        // amenidades y capacidades exactas de cada sala las confirma recepción;
+        // aquí van las conocidas. Un entorno nuevo nace ya con esta forma; para
+        // los que ya tienen datos, la migración 2026_08_30_100001 los ajusta sin
+        // romper reservas.
         $espacios = [
-            ['nombre' => 'Área de Coworking General',    'tipo' => 'coworking',  'capacidad' => 70, 'precio_hora' => 0,   'amenidades' => ['WiFi 200MB','Café y agua','Recepción de paquetes'], 'disponible' => true, 'piso' => 1],
-            ['nombre' => 'Cubículo Privado 1',           'tipo' => 'privado',    'capacidad' => 4,  'precio_hora' => 0,   'amenidades' => ['WiFi','Escritorio','Privacidad'], 'disponible' => true,  'piso' => 1],
-            ['nombre' => 'Cubículo Privado 2',           'tipo' => 'privado',    'capacidad' => 4,  'precio_hora' => 0,   'amenidades' => ['WiFi','Escritorio','Privacidad'], 'disponible' => true,  'piso' => 1],
-            ['nombre' => 'Cubículo Privado 3',           'tipo' => 'privado',    'capacidad' => 4,  'precio_hora' => 0,   'amenidades' => ['WiFi','Escritorio','Privacidad'], 'disponible' => true,  'piso' => 1],
-            ['nombre' => 'Cubículo Privado 4',           'tipo' => 'privado',    'capacidad' => 4,  'precio_hora' => 0,   'amenidades' => ['WiFi','Escritorio','Privacidad'], 'disponible' => true,  'piso' => 2],
-            ['nombre' => 'Cubículo Privado 5',           'tipo' => 'privado',    'capacidad' => 4,  'precio_hora' => 0,   'amenidades' => ['WiFi','Escritorio','Privacidad'], 'disponible' => true,  'piso' => 2],
-            ['nombre' => 'Sala de Juntas Nodico',        'tipo' => 'sala_juntas','capacidad' => 12, 'precio_hora' => 0,   'amenidades' => ['WiFi','Proyector','Pantalla 85"','Videoconferencia','Café'], 'disponible' => true, 'piso' => 2],
-            ['nombre' => 'Estudio Podcast / Contenido',  'tipo' => 'contenido',  'capacidad' => 4,  'precio_hora' => 0,   'amenidades' => ['Equipo de grabación','Insonorización','Iluminación profesional','WiFi'], 'disponible' => true, 'piso' => 1],
-            ['nombre' => 'Estudio Fotografía',           'tipo' => 'fotografia', 'capacidad' => 6,  'precio_hora' => 0,   'amenidades' => ['Fondos removibles','Luces profesionales','Reflectores','WiFi'], 'disponible' => true, 'piso' => 1],
+            ['nombre' => 'Área de Coworking General', 'tipo' => 'coworking',  'capacidad' => 70, 'precio_hora' => 0, 'amenidades' => ['WiFi 200MB','Café y agua','Recepción de paquetes'], 'disponible' => true, 'piso' => 1],
+
+            ['nombre' => 'Cubículo Privado 1', 'tipo' => 'privado', 'capacidad' => 4, 'precio_hora' => 0, 'amenidades' => ['WiFi','Escritorio','Privacidad'], 'disponible' => true, 'piso' => 1],
+            ['nombre' => 'Cubículo Privado 2', 'tipo' => 'privado', 'capacidad' => 4, 'precio_hora' => 0, 'amenidades' => ['WiFi','Escritorio','Privacidad'], 'disponible' => true, 'piso' => 1],
+            ['nombre' => 'Cubículo Privado 3', 'tipo' => 'privado', 'capacidad' => 4, 'precio_hora' => 0, 'amenidades' => ['WiFi','Escritorio','Privacidad'], 'disponible' => true, 'piso' => 2],
+            ['nombre' => 'Cubículo Privado 4', 'tipo' => 'privado', 'capacidad' => 4, 'precio_hora' => 0, 'amenidades' => ['WiFi','Escritorio','Privacidad'], 'disponible' => true, 'piso' => 2],
+
+            ['nombre' => 'Sala de Juntas 1', 'tipo' => 'sala_juntas', 'capacidad' => 12, 'precio_hora' => 0, 'amenidades' => ['WiFi','Proyector','Pantalla 85\"','Videoconferencia','Café'], 'disponible' => true, 'piso' => 2],
+            ['nombre' => 'Sala de Juntas 2', 'tipo' => 'sala_juntas', 'capacidad' => 8,  'precio_hora' => 0, 'amenidades' => ['WiFi','Pantalla','Pizarrón','Café'], 'disponible' => true, 'piso' => 2],
+
+            ['nombre' => 'Sala de Creación de Contenido / Podcast', 'tipo' => 'contenido', 'capacidad' => 4, 'precio_hora' => 0, 'amenidades' => ['Equipo de grabación','Insonorización','Iluminación profesional','WiFi'], 'disponible' => true, 'piso' => 1],
+            ['nombre' => 'Sala de Fotografía', 'tipo' => 'fotografia', 'capacidad' => 6, 'precio_hora' => 0, 'amenidades' => ['Fondos removibles','Luces profesionales','Reflectores','WiFi'], 'disponible' => true, 'piso' => 1],
+
+            // Salones para eventos: se rentan por hora, no consumen bolsa y los
+            // agenda el operativo. Capacidades por montaje del cotizador (Fase 3.5).
+            ['nombre' => 'Yucatán Emprende 1', 'tipo' => 'salon_eventos', 'capacidad' => 120, 'precio_hora' => 600, 'amenidades' => ['Proyector','Sonido','WiFi','Mobiliario'], 'medidas' => '15x14 m', 'cap_herradura' => 45, 'cap_mesas' => 70, 'cap_escuela' => 54, 'cap_auditorio' => 120, 'disponible' => true, 'publicado' => true, 'orden' => 1, 'piso' => 1],
+            ['nombre' => 'Yucatán Emprende 2', 'tipo' => 'salon_eventos', 'capacidad' => 120, 'precio_hora' => 600, 'amenidades' => ['Proyector','Sonido','WiFi','Mobiliario'], 'medidas' => '15x14 m', 'cap_herradura' => 45, 'cap_mesas' => 70, 'cap_escuela' => 54, 'cap_auditorio' => 120, 'disponible' => true, 'publicado' => true, 'orden' => 2, 'piso' => 1],
         ];
 
         foreach ($espacios as $e) Espacio::create($e);
