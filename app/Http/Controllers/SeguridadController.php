@@ -152,11 +152,11 @@ class SeguridadController extends Controller
 
     public function cerrarUna(Request $request, string $sesion): RedirectResponse
     {
-        if ($sesion === $request->session()->getId()) {
-            return back()->with('error', 'Esa es la sesión que estás usando ahora. Usa «Cerrar sesión» para salir.');
+        // `$sesion` es una referencia opaca, no el identificador real: ver
+        // `SesionesActivas::referencia()`.
+        if (! $this->sesiones->cerrar($request->user(), $sesion)) {
+            return back()->with('error', 'Esa sesión ya no existe o no es tuya.');
         }
-
-        $this->sesiones->cerrar($request->user(), $sesion);
 
         EventoAutenticacion::registrar(
             EventoAuth::CierreRemoto,

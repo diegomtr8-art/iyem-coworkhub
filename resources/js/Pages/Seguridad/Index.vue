@@ -6,7 +6,8 @@ import { Monitor, ShieldCheck, ShieldAlert, LogOut, Link2, KeyRound, Smartphone 
 import { computed } from 'vue'
 
 interface Sesion {
-  id: string
+  /** Referencia opaca; el identificador de sesion nunca sale del servidor. */
+  ref: string
   esActual: boolean
   ip: string | null
   dispositivo: string
@@ -69,8 +70,8 @@ function cerrarOtras() {
   router.delete(route('seguridad.cerrar-otras'), { preserveScroll: true })
 }
 
-function cerrarUna(id: string) {
-  router.delete(route('seguridad.cerrar-una', { sesion: id }), { preserveScroll: true })
+function cerrarUna(ref: string) {
+  router.delete(route('seguridad.cerrar-una', { sesion: ref }), { preserveScroll: true })
 }
 
 // El servidor vuelve a comprobarlo: esto solo evita ofrecer un botón que va a
@@ -129,7 +130,7 @@ function olvidarDispositivo(id: number) {
         <ul v-else class="divide-y divide-gray-100">
           <li
             v-for="sesion in sesiones"
-            :key="sesion.id"
+            :key="sesion.ref"
             class="flex flex-wrap items-center justify-between gap-3 px-5 py-4"
           >
             <div class="min-w-0">
@@ -149,7 +150,7 @@ function olvidarDispositivo(id: number) {
               v-if="!sesion.esActual"
               type="button"
               class="min-h-[44px] px-3 text-sm font-semibold text-red-600 transition hover:text-red-800"
-              @click="cerrarUna(sesion.id)"
+              @click="cerrarUna(sesion.ref)"
             >
               Cerrar
             </button>

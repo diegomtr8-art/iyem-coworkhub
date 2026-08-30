@@ -296,11 +296,42 @@ class SeguridadDelAccesoTest extends TestCase
             'last_activity' => now()->getTimestamp(),
         ]);
 
+        // Se manda la referencia legitima de la sesion ajena: el caso fuerte,
+        // no una cadena inventada que fallaria por no existir.
+        $referenciaAjena = hash_hmac('sha256', 'sesion-ajena', (string) config('app.key'));
+
         $this->actingAs($mia)
             ->withSession(['auth.password_confirmed_at' => time()])
-            ->delete(route('seguridad.cerrar-una', ['sesion' => 'sesion-ajena']));
+            ->delete(route('seguridad.cerrar-una', ['sesion' => $referenciaAjena]));
 
         $this->assertDatabaseHas('sessions', ['id' => 'sesion-ajena']);
+    }
+
+    /**
+     * El identificador de sesion es una credencial: quien lo tenga **es** esa
+     * sesion. Se enviaba en claro a la pantalla y viajaba dentro de la URL del
+     * boton de cerrar, asi que quedaba en el historial del navegador y en el
+     * log de accesos del servidor. Ahora solo sale una referencia opaca.
+     */
+    public function test_el_identificador_de_sesion_nunca_llega_al_navegador(): void
+    {
+        config(['session.driver' => 'database']);
+
+        $usuario = User::factory()->miembro()->create();
+
+        DB::table('sessions')->insert([
+            'id'            => 'identificador-secreto-de-sesion',
+            'user_id'       => $usuario->id,
+            'ip_address'    => '10.0.0.9',
+            'user_agent'    => 'Mozilla/5.0',
+            'payload'       => '',
+            'last_activity' => now()->getTimestamp(),
+        ]);
+
+        $respuesta = $this->actingAs($usuario)->get('/seguridad');
+
+        $respuesta->assertOk();
+        $respuesta->assertDontSee('identificador-secreto-de-sesion');
     }
 
     public function test_cerrar_otras_sesiones_exige_confirmar_la_contrasena(): void
