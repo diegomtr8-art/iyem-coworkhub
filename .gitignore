@@ -33,3 +33,6 @@ Thumbs.db
 # Fuentes originales OTF/TTF (4.2 MB). Se conservan localmente y en
 # nodico/PAGINA WEB NODICO/Fonts/; en public/ van los WOFF2 subseteados.
 /recursos/fuentes-originales/
+
+# Basura de los scripts de utilidad en Python
+__pycache__/
