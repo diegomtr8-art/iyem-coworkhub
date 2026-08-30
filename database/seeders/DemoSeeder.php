@@ -44,7 +44,6 @@ use Illuminate\Support\Facades\Hash;
  *
  * Qué NO puede sembrar todavía, porque su estructura llega en fases posteriores
  * (queda anotado en docs/DEMOSTRACION.md):
- *   - Day-pass gratuito del interior con municipio y giro  → Fase E.
  *   - Catálogo de temas de asesoría (aquí el tema es texto) → Fase D.
  *   - Catálogo de emprendimientos con rotación del destacado → Fase H.
  *
@@ -81,6 +80,7 @@ class DemoSeeder extends Seeder
         $this->sembrarOtrosMiembros();
         $this->llenarLaAgenda();
         $this->sembrarCatalogos();
+        $this->sembrarDaypassInterior();
 
         $this->command?->info('DemoSeeder: sistema poblado. Accesos en docs/DEMOSTRACION.md.');
     }
@@ -315,6 +315,34 @@ class DemoSeeder extends Seeder
         ];
         foreach ($avisos as $av) {
             AnuncioCoworking::updateOrCreate(['titulo' => $av['titulo']], $av);
+        }
+    }
+
+    /** Fase 4.E — day-passes gratuitos del interior, de varios municipios. */
+    private function sembrarDaypassInterior(): void
+    {
+        $gente = [
+            ['nombre' => 'Rosa May Canché',   'telefono' => '9851110001', 'municipio' => 'Valladolid', 'giro' => 'Bordado y urdido de hamaca', 'como_se_entero' => 'Redes sociales'],
+            ['nombre' => 'Pedro Uc Dzib',     'telefono' => '9861110002', 'municipio' => 'Tizimín',    'giro' => 'Talla de madera',            'como_se_entero' => 'Un conocido'],
+            ['nombre' => 'Manuela Pech Tun',  'telefono' => '9971110003', 'municipio' => 'Izamal',     'giro' => 'Alfarería',                  'como_se_entero' => 'IYEM'],
+            ['nombre' => 'José Chan Balam',   'telefono' => '9881110004', 'municipio' => 'Ticul',      'giro' => 'Calzado artesanal',          'como_se_entero' => 'Redes sociales'],
+            ['nombre' => 'Lucía Ek Poot',     'telefono' => '9991110005', 'municipio' => 'Maxcanú',    'giro' => 'Alimentos regionales',       'como_se_entero' => 'Evento del IYEM'],
+        ];
+
+        foreach ($gente as $i => $datos) {
+            $visitante = \App\Models\VisitanteInterior::create($datos);
+            // Una visita reciente; a un par se les añade una segunda para que se
+            // vea a alguien que ya volvió.
+            $visitante->visitas()->create([
+                'fecha'                  => $this->habil(-($i + 1)),
+                'registrado_por_user_id' => $this->recepcion->id,
+            ]);
+            if ($i % 2 === 0) {
+                $visitante->visitas()->create([
+                    'fecha'                  => $this->habil(-1),
+                    'registrado_por_user_id' => $this->recepcion->id,
+                ]);
+            }
         }
     }
 

@@ -6,6 +6,7 @@ use App\Http\Controllers\AsesoriasAdminController;
 use App\Http\Controllers\SalonesController;
 use App\Http\Controllers\BitacoraController;
 use App\Http\Controllers\CheckinAdminController;
+use App\Http\Controllers\DaypassInteriorController;
 use App\Http\Controllers\ContactoController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DatosPersonalesController;
@@ -188,6 +189,12 @@ Route::middleware(['auth', 'verified', 'portal:operativo', 'no.suspendida', 'con
         Route::get('checkins', [CheckinAdminController::class, 'index'])->name('checkins.index');
         Route::post('checkins/entrada', [CheckinAdminController::class, 'entrada'])->name('checkins.entrada');
         Route::post('checkins/{checkin}/salida', [CheckinAdminController::class, 'salida'])->name('checkins.salida');
+
+        // 4.E — day-pass gratuito del interior. Operación de mostrador.
+        Route::get('daypass-interior', [DaypassInteriorController::class, 'index'])->name('daypass.index');
+        Route::get('daypass-interior/buscar', [DaypassInteriorController::class, 'buscar'])->name('daypass.buscar');
+        Route::post('daypass-interior', [DaypassInteriorController::class, 'registrar'])->name('daypass.registrar');
+        Route::get('daypass-interior/exportar', [DaypassInteriorController::class, 'exportar'])->name('daypass.exportar');
     });
 
     Route::middleware('can:gestionar-facturacion')->group(function () {

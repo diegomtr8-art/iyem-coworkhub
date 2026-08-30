@@ -45,6 +45,7 @@ const grupos = computed(() => [
     enlaces: [
       { label: 'Hoy',          href: route('dashboard'),      icon: LayoutDashboard, active: 'dashboard', ver: true },
       { label: 'Check-in',     href: route('checkins.index'), icon: Clock,           active: 'checkins*', ver: puede('operar-checkins') },
+      { label: 'Day-pass interior', href: route('daypass.index'), icon: UserCheck,   active: 'daypass*',  ver: puede('operar-checkins') },
       { label: 'Agenda',       href: route('agenda.index'),   icon: CalendarDays,    active: 'agenda*',   ver: puede('gestionar-reservas') },
       { label: 'Miembros',     href: route('miembros.index'), icon: Users,           active: 'miembros*', ver: puede('ver-miembros') },
     ],
