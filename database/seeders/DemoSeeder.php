@@ -6,6 +6,8 @@ use App\Enums\BolsaDeHoras;
 use App\Enums\EstadoAsesoria;
 use App\Enums\EstadoCuenta;
 use App\Enums\MotivoMovimiento;
+use App\Enums\RolUsuario;
+use App\Support\DocumentosLegales;
 use App\Models\AnuncioCoworking;
 use App\Models\Asesor;
 use App\Models\Checkin;
@@ -93,6 +95,36 @@ class DemoSeeder extends Seeder
     }
 
     /**
+     * Crea un usuario de demo **sin factory**: en staging se corre con
+     * `composer install --no-dev`, así que Faker no existe y `User::factory()`
+     * revienta. `tipo` y `estado_cuenta` van por `forceFill` porque no son
+     * asignables en masa a propósito. Se le deja el consentimiento aceptado
+     * para que el middleware no lo frene en la demostración.
+     */
+    private function crearUsuario(array $attrs, RolUsuario $rol = RolUsuario::Miembro, EstadoCuenta $estado = EstadoCuenta::Activa): User
+    {
+        $usuario = new User();
+        $usuario->forceFill(array_merge([
+            'password'          => 'demo1234', // el cast 'hashed' lo cifra.
+            'email_verified_at' => now(),
+        ], $attrs, [
+            'tipo'          => $rol->value,
+            'estado_cuenta' => $estado->value,
+        ]))->save();
+
+        foreach (app(DocumentosLegales::class)->versiones() as $documento => $version) {
+            $usuario->consentimientos()->create([
+                'documento'   => $documento,
+                'version'     => $version,
+                'aceptado_en' => now(),
+                'ip'          => '127.0.0.1',
+            ]);
+        }
+
+        return $usuario;
+    }
+
+    /**
      * PROVISIONAL — cuántas horas de asesoría IYEM incluye cada plan **no está
      * definido** en el prompt, y es una regla de negocio que decide el IYEM. El
      * seeder base deja `horas_asesoria_mes` en null (o sea, sin asesoría), así
@@ -112,27 +144,24 @@ class DemoSeeder extends Seeder
 
     private function sembrarEquipo(): void
     {
-        User::factory()->admin()->create([
+        $this->crearUsuario([
             'name'  => 'Admin (demo)',
             'email' => 'admin.demo@nodico.com.mx',
-            'password' => Hash::make('demo1234'),
             'empresa'  => 'NODICO',
-        ]);
+        ], RolUsuario::Admin);
 
-        $this->recepcion = User::factory()->staff()->create([
+        $this->recepcion = $this->crearUsuario([
             'name'  => 'Recepción (demo)',
             'email' => 'recepcion.demo@nodico.com.mx',
-            'password' => Hash::make('demo1234'),
             'empresa'  => 'NODICO',
-        ]);
+        ], RolUsuario::Staff);
     }
 
     private function sembrarMiembroEstrella(): void
     {
-        $ana = User::factory()->miembro()->create([
+        $ana = $this->crearUsuario([
             'name'      => 'Ana Pro (demo)',
             'email'     => 'pro.demo@nodico.com.mx',
-            'password'  => Hash::make('demo1234'),
             'empresa'   => 'Estudio Aracena',
             'ocupacion' => 'Arquitecta',
             'telefono'  => '9990000001',
@@ -193,17 +222,17 @@ class DemoSeeder extends Seeder
     private function sembrarOtrosMiembros(): void
     {
         // Nodo Match activa.
-        $beto = User::factory()->miembro()->create([
+        $beto = $this->crearUsuario([
             'name' => 'Beto Match (demo)', 'email' => 'match.demo@nodico.com.mx',
-            'password' => Hash::make('demo1234'), 'empresa' => 'Dúo Creativo', 'telefono' => '9990000002',
+            'empresa' => 'Dúo Creativo', 'telefono' => '9990000002',
         ]);
         $this->membresias->alta($beto, Plane::where('nombre', 'Nodo Match')->firstOrFail(),
             $this->recepcion, CarbonImmutable::today()->subDays(10)->toDateString());
 
         // Nódico Flex activa (por días), con algún check-in.
-        $carla = User::factory()->miembro()->create([
+        $carla = $this->crearUsuario([
             'name' => 'Carla Flex (demo)', 'email' => 'flex.demo@nodico.com.mx',
-            'password' => Hash::make('demo1234'), 'empresa' => 'Freelance', 'telefono' => '9990000003',
+            'empresa' => 'Freelance', 'telefono' => '9990000003',
         ]);
         $this->membresias->alta($carla, Plane::where('nombre', 'Nódico Flex')->firstOrFail(),
             $this->recepcion, CarbonImmutable::today()->subDays(8)->toDateString());
@@ -211,33 +240,33 @@ class DemoSeeder extends Seeder
         $this->checkinLibre($carla, $this->habil(-1), '10:00', '13:30');
 
         // Day-Pass.
-        $dani = User::factory()->miembro()->create([
+        $dani = $this->crearUsuario([
             'name' => 'Dani Day-Pass (demo)', 'email' => 'daypass.demo@nodico.com.mx',
-            'password' => Hash::make('demo1234'), 'telefono' => '9990000004',
+            'telefono' => '9990000004',
         ]);
         $this->membresias->alta($dani, Plane::where('nombre', 'Day-Pass')->firstOrFail(),
             $this->recepcion, CarbonImmutable::today()->subDays(1)->toDateString());
         $this->checkinLibre($dani, $this->habil(-1), '09:30', '17:00');
 
         // Pendiente de activación (sin membresía).
-        User::factory()->miembro()->pendiente()->create([
+        $this->crearUsuario([
             'name' => 'Emma Pendiente (demo)', 'email' => 'pendiente.demo@nodico.com.mx',
-            'password' => Hash::make('demo1234'), 'telefono' => '9990000005',
-        ]);
+            'telefono' => '9990000005',
+        ], RolUsuario::Miembro, EstadoCuenta::Pendiente);
 
         // Suspendida.
-        $fer = User::factory()->miembro()->suspendida()->create([
+        $fer = $this->crearUsuario([
             'name' => 'Fer Suspendida (demo)', 'email' => 'suspendida.demo@nodico.com.mx',
-            'password' => Hash::make('demo1234'), 'telefono' => '9990000006',
+            'telefono' => '9990000006',
         ]);
         $this->membresias->alta($fer, Plane::where('nombre', 'Nodo Pro')->firstOrFail(),
             $this->recepcion, CarbonImmutable::today()->subDays(15)->toDateString());
         $fer->cambiarEstado(EstadoCuenta::Suspendida);
 
         // Membresía por vencer esta semana.
-        $gabi = User::factory()->miembro()->create([
+        $gabi = $this->crearUsuario([
             'name' => 'Gabi Por Vencer (demo)', 'email' => 'porvencer.demo@nodico.com.mx',
-            'password' => Hash::make('demo1234'), 'empresa' => 'Taller Gabi', 'telefono' => '9990000007',
+            'empresa' => 'Taller Gabi', 'telefono' => '9990000007',
         ]);
         $susGabi = $this->membresias->alta($gabi, Plane::where('nombre', 'Nodo Pro')->firstOrFail(),
             $this->recepcion, CarbonImmutable::today()->subDays(27)->toDateString());
