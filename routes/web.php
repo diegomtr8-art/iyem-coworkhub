@@ -1,6 +1,9 @@
 <?php
 
+use App\Http\Controllers\AgendaController;
 use App\Http\Controllers\AnunciosController;
+use App\Http\Controllers\AsesoriasAdminController;
+use App\Http\Controllers\SalonesController;
 use App\Http\Controllers\BitacoraController;
 use App\Http\Controllers\CheckinAdminController;
 use App\Http\Controllers\ContactoController;
@@ -111,16 +114,67 @@ Route::middleware(['auth', 'verified', 'portal:operativo', 'no.suspendida', 'ina
         Route::get('miembros/{miembro}', [MiembrosController::class, 'show'])->name('miembros.show');
     });
 
+    // 3.2 - Ajuste de horas y notas. Recepcion tambien: es operacion de
+    // mostrador, y es seguro darselo porque siempre exige motivo y siempre
+    // acaba en un movimiento del libro, nunca editando un contador.
+    Route::middleware('can:ajustar-horas')->group(function () {
+        Route::post('miembros/{miembro}/ajustar-horas', [MiembrosController::class, 'ajustarHoras'])->name('miembros.ajustar-horas');
+        Route::patch('miembros/{miembro}/notas', [MiembrosController::class, 'notas'])->name('miembros.notas');
+    });
+
+    // 3.3 - Membresias: alta, renovacion, cambio de plan y suspension.
     Route::middleware('can:editar-miembros')->group(function () {
         Route::post('miembros/{miembro}/suscripcion', [MiembrosController::class, 'crearSuscripcion'])->name('miembros.suscripcion');
+        Route::post('miembros/{miembro}/cambiar-plan', [MiembrosController::class, 'cambiarPlan'])->name('miembros.cambiar-plan');
+        Route::post('miembros/{miembro}/renovar', [MiembrosController::class, 'renovar'])->name('miembros.renovar');
+        Route::post('miembros/{miembro}/suspender', [MiembrosController::class, 'suspender'])->name('miembros.suspender');
+        Route::post('miembros/{miembro}/reactivar', [MiembrosController::class, 'reactivar'])->name('miembros.reactivar');
         Route::patch('miembros/{miembro}/faceid', [MiembrosController::class, 'toggleFaceId'])->name('miembros.faceid');
         Route::patch('miembros/{miembro}/companion', [MiembrosController::class, 'setCompanion'])->name('miembros.companion');
     });
 
+    // 3.1 - Buscador global de miembro, siempre a mano en la cabecera.
+    Route::get('buscar-miembro', [DashboardController::class, 'buscar'])
+        ->middleware(['can:ver-miembros', 'throttle:120,1'])
+        ->name('buscar.miembro');
+
+    // 3.4 - Agenda semanal de espacios.
     Route::middleware('can:gestionar-reservas')->group(function () {
+        Route::get('agenda', [AgendaController::class, 'index'])->name('agenda.index');
+        Route::post('agenda/reservar', [AgendaController::class, 'store'])->name('agenda.reservar');
+        Route::patch('agenda/reservas/{reserva}', [AgendaController::class, 'mover'])->name('agenda.mover');
+        Route::delete('agenda/reservas/{reserva}', [AgendaController::class, 'cancelar'])->name('agenda.cancelar');
+        Route::post('agenda/bloqueos', [AgendaController::class, 'bloquear'])->name('agenda.bloquear');
+        Route::delete('agenda/bloqueos/{bloqueo}', [AgendaController::class, 'desbloquear'])->name('agenda.desbloquear');
+
         Route::get('reservas', [ReservasController::class, 'index'])->name('reservas.index');
         Route::patch('reservas/{reserva}', [ReservasController::class, 'update'])->name('reservas.update');
         Route::delete('reservas/{reserva}', [ReservasController::class, 'destroy'])->name('reservas.destroy');
+    });
+
+    // 3.5 - Salones para eventos.
+    Route::middleware('can:gestionar-salones')->group(function () {
+        Route::get('salones', [SalonesController::class, 'index'])->name('salones.index');
+        Route::post('salones/cotizar', [SalonesController::class, 'cotizar'])->middleware('throttle:120,1')->name('salones.cotizar');
+        Route::post('salones', [SalonesController::class, 'store'])->name('salones.store');
+        Route::patch('salones/{salon}', [SalonesController::class, 'update'])->name('salones.update');
+        Route::post('salones/{salon}/anticipo', [SalonesController::class, 'anticipo'])->name('salones.anticipo');
+        Route::delete('salones/{salon}', [SalonesController::class, 'destroy'])->name('salones.destroy');
+    });
+
+    // 3.7 - Bandeja de solicitudes de asesoria.
+    Route::middleware('can:gestionar-asesorias')->group(function () {
+        Route::get('asesorias', [AsesoriasAdminController::class, 'index'])->name('asesorias.index');
+        Route::post('asesorias/{asesoria}/confirmar', [AsesoriasAdminController::class, 'confirmar'])->name('asesorias.confirmar');
+        Route::post('asesorias/{asesoria}/rechazar', [AsesoriasAdminController::class, 'rechazar'])->name('asesorias.rechazar');
+        Route::post('asesorias/{asesoria}/realizada', [AsesoriasAdminController::class, 'realizada'])->name('asesorias.realizada');
+    });
+
+    // El catalogo de asesores es configuracion, no operacion: solo admin.
+    Route::middleware('can:gestionar-catalogos')->group(function () {
+        Route::get('asesores', [AsesoriasAdminController::class, 'asesores'])->name('asesores.index');
+        Route::post('asesores', [AsesoriasAdminController::class, 'guardarAsesor'])->name('asesores.store');
+        Route::patch('asesores/{asesor}', [AsesoriasAdminController::class, 'guardarAsesor'])->name('asesores.update');
     });
 
     Route::middleware('can:operar-checkins')->group(function () {
@@ -131,6 +185,8 @@ Route::middleware(['auth', 'verified', 'portal:operativo', 'no.suspendida', 'ina
 
     Route::middleware('can:gestionar-facturacion')->group(function () {
         Route::get('facturas', [FacturasController::class, 'index'])->name('facturas.index');
+        // Va antes del {factura} para que 'exportar' no se lea como un id.
+        Route::get('facturas/exportar', [FacturasController::class, 'exportar'])->name('facturas.exportar');
         Route::post('facturas/{factura}/pagar', [FacturasController::class, 'pagar'])->name('facturas.pagar');
     });
 
@@ -153,6 +209,7 @@ Route::middleware(['auth', 'verified', 'portal:operativo', 'no.suspendida', 'ina
 
     Route::middleware('can:ver-reportes')->group(function () {
         Route::get('reportes', [ReportesController::class, 'index'])->name('reportes.index');
+        Route::get('reportes/exportar', [ReportesController::class, 'exportar'])->name('reportes.exportar');
     });
 
     // B — Bitacora completa de autenticacion.

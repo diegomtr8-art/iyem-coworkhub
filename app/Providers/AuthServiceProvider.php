@@ -24,6 +24,14 @@ class AuthServiceProvider extends ServiceProvider
         'gestionar-reservas',
         'ver-miembros',
         'gestionar-anuncios',
+        // Fase 3: recepcion atiende asesorias y cotiza salones. Son operacion
+        // diaria de mostrador, no configuracion del negocio.
+        'gestionar-asesorias',
+        'gestionar-salones',
+        // El prompt lo pide explicito: recepcion repone o descuenta horas.
+        // Siempre con motivo obligatorio y siempre como movimiento del libro,
+        // que es lo que hace seguro darle este permiso.
+        'ajustar-horas',
     ];
 
     /** Configuracion del negocio y dinero: solo administracion. */
@@ -35,6 +43,9 @@ class AuthServiceProvider extends ServiceProvider
         'editar-miembros',
         'ver-reportes',
         'ver-bitacora',
+        // Fase 3: el catalogo de asesores y los dias festivos son
+        // configuracion, no operacion. Y ajustar horas mueve saldo.
+        'gestionar-catalogos',
     ];
 
     /**

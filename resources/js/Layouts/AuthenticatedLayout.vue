@@ -4,9 +4,10 @@ import { Link, usePage } from '@inertiajs/vue3'
 import {
   LayoutDashboard, Users, CalendarDays, Clock, Receipt,
   Megaphone, BarChart3, Building2, Tag, LogOut, Menu, X, Home, UserCheck, PartyPopper,
-  ScrollText, ShieldCheck
+  ScrollText, ShieldCheck, Lightbulb, Newspaper
 } from 'lucide-vue-next'
 import { Toaster } from 'vue-sonner'
+import BuscadorMiembro from '@/Components/Panel/BuscadorMiembro.vue'
 import { toast } from 'vue-sonner'
 import { watch } from 'vue'
 
@@ -30,47 +31,100 @@ const permisos = computed<Record<string, boolean>>(
 
 const puede = (permiso: string) => permisos.value[permiso] === true
 
-const nav = computed(() => [
-  { label: 'Dashboard',    href: route('dashboard'),           icon: LayoutDashboard, active: 'dashboard',   ver: true },
-  { label: 'Planes',       href: route('planes.index'),        icon: Tag,             active: 'planes*',     ver: puede('gestionar-planes') },
-  { label: 'Espacios',     href: route('espacios.index'),      icon: Building2,       active: 'espacios*',   ver: puede('gestionar-espacios') },
-  { label: 'Miembros',     href: route('miembros.index'),      icon: Users,           active: 'miembros*',   ver: puede('ver-miembros') },
-  { label: 'Reservas',     href: route('reservas.index'),      icon: CalendarDays,    active: 'reservas*',   ver: puede('gestionar-reservas') },
-  { label: 'Check-ins',    href: route('checkins.index'),      icon: Clock,           active: 'checkins*',   ver: puede('operar-checkins') },
-  { label: 'Facturas',     href: route('facturas.index'),      icon: Receipt,         active: 'facturas*',   ver: puede('gestionar-facturacion') },
-  { label: 'Anuncios',     href: route('anuncios.index'),      icon: Megaphone,       active: 'anuncios*',   ver: puede('gestionar-anuncios') },
-  { label: 'Eventos',      href: route('eventos.admin.index'), icon: PartyPopper,     active: 'eventos*',    ver: puede('gestionar-eventos') },
-  { label: 'Reportes',     href: route('reportes.index'),      icon: BarChart3,       active: 'reportes*',   ver: puede('ver-reportes') },
-  { label: 'Bitácora',     href: route('bitacora.index'),      icon: ScrollText,      active: 'bitacora*',   ver: puede('ver-bitacora') },
-  { label: 'Mi seguridad', href: route('seguridad'),           icon: ShieldCheck,     active: 'seguridad*',  ver: true },
-].filter((enlace) => enlace.ver))
+/**
+ * El menu se agrupa por **con que frecuencia se usa**, no por tipo de entidad.
+ * Recepcion entra veinte veces al dia al tablero, a check-ins y a la agenda; a
+ * planes entra tres veces al ano. Ordenarlo alfabeticamente o por modulo pone
+ * lo raro al lado de lo constante.
+ */
+const grupos = computed(() => [
+  {
+    titulo: null,
+    enlaces: [
+      { label: 'Hoy',          href: route('dashboard'),      icon: LayoutDashboard, active: 'dashboard', ver: true },
+      { label: 'Check-in',     href: route('checkins.index'), icon: Clock,           active: 'checkins*', ver: puede('operar-checkins') },
+      { label: 'Agenda',       href: route('agenda.index'),   icon: CalendarDays,    active: 'agenda*',   ver: puede('gestionar-reservas') },
+      { label: 'Miembros',     href: route('miembros.index'), icon: Users,           active: 'miembros*', ver: puede('ver-miembros') },
+    ],
+  },
+  {
+    titulo: 'Atender',
+    enlaces: [
+      { label: 'Asesorías',    href: route('asesorias.index'), icon: Lightbulb,   active: 'asesorias*', ver: puede('gestionar-asesorias'), aviso: 'asesorias_pendientes' },
+      { label: 'Eventos',      href: route('salones.index'),   icon: PartyPopper, active: 'salones*',   ver: puede('gestionar-salones') },
+      { label: 'Facturación',  href: route('facturas.index'),  icon: Receipt,     active: 'facturas*',  ver: puede('gestionar-facturacion') },
+      { label: 'Anuncios',     href: route('anuncios.index'),  icon: Megaphone,   active: 'anuncios*',  ver: puede('gestionar-anuncios') },
+    ],
+  },
+  {
+    titulo: 'Configurar',
+    enlaces: [
+      { label: 'Espacios',     href: route('espacios.index'),      icon: Building2,   active: 'espacios*', ver: puede('gestionar-espacios') },
+      { label: 'Planes',       href: route('planes.index'),        icon: Tag,         active: 'planes*',   ver: puede('gestionar-planes') },
+      { label: 'Asesores',     href: route('asesores.index'),      icon: UserCheck,   active: 'asesores*', ver: puede('gestionar-catalogos') },
+      { label: 'Contenido web', href: route('eventos.admin.index'), icon: Newspaper,  active: 'eventos*',  ver: puede('gestionar-eventos') },
+    ],
+  },
+  {
+    titulo: 'Revisar',
+    enlaces: [
+      { label: 'Reportes',     href: route('reportes.index'), icon: BarChart3,  active: 'reportes*', ver: puede('ver-reportes') },
+      { label: 'Bitácora',     href: route('bitacora.index'), icon: ScrollText, active: 'bitacora*', ver: puede('ver-bitacora') },
+    ],
+  },
+].map((grupo) => ({ ...grupo, enlaces: grupo.enlaces.filter((e) => e.ver) }))
+ .filter((grupo) => grupo.enlaces.length > 0))
+
+/** Plano, para el menu de movil. */
+const nav = computed(() => grupos.value.flatMap((g) => g.enlaces))
+
+/** Contadores que pintan el punto de aviso junto a un enlace. */
+const avisos = computed<Record<string, number>>(
+  () => ((page.props as any)?.avisosPanel ?? {}),
+)
 </script>
 
 <template>
-  <div class="min-h-screen bg-gray-50 flex">
+  <div class="flex min-h-screen bg-cream font-body text-dark">
     <Toaster position="top-right" richColors />
 
     <!-- Sidebar desktop -->
-    <aside class="hidden lg:flex lg:flex-col lg:w-64 lg:fixed lg:inset-y-0 bg-dark text-white">
+    <aside class="hidden lg:fixed lg:inset-y-0 lg:flex lg:w-56 lg:flex-col bg-tinta text-white">
       <div class="flex items-center gap-3 px-6 py-5 border-b border-white/10">
         <div>
-          <span class="font-black text-lg tracking-tight text-white">NODICO</span>
-          <p class="text-xs text-nodo-400 -mt-0.5">Panel Administrador</p>
+          <span class="font-display text-xl font-extrabold tracking-tight text-white">NÓDICO</span>
+          <p class="-mt-0.5 font-mono text-[0.625rem] uppercase tracking-[0.14em] text-nodo-400">
+            {{ ($page.props.auth.user as any).rolEtiqueta }}
+          </p>
         </div>
       </div>
 
       <nav class="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
-        <Link v-for="item in nav" :key="item.label"
-          :href="item.href"
-          :class="[
-            'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all',
-            route().current(item.active)
-              ? 'bg-nodo-400 text-dark font-bold'
-              : 'text-gray-400 hover:bg-white/5 hover:text-white'
-          ]">
-          <component :is="item.icon" :size="18" />
-          {{ item.label }}
-        </Link>
+        <div v-for="(grupo, g) in grupos" :key="g" :class="g > 0 ? 'mt-5' : ''">
+          <p
+            v-if="grupo.titulo"
+            class="px-3 pb-1.5 font-mono text-[0.625rem] uppercase tracking-[0.14em] text-white/35"
+          >{{ grupo.titulo }}</p>
+
+          <Link
+            v-for="item in grupo.enlaces" :key="item.label"
+            :href="item.href"
+            :aria-current="route().current(item.active) ? 'page' : undefined"
+            :class="[
+              'flex min-h-[38px] items-center gap-2.5 px-3 py-2 text-sm font-medium transition-colors',
+              route().current(item.active)
+                ? 'bg-nodo-400 font-bold text-dark'
+                : 'text-white/60 hover:bg-white/5 hover:text-white'
+            ]">
+            <component :is="item.icon" :size="17" aria-hidden="true" />
+            <span class="flex-1">{{ item.label }}</span>
+            <span
+              v-if="item.aviso && avisos[item.aviso]"
+              class="flex h-5 min-w-[1.25rem] items-center justify-center px-1 font-mono text-[0.625rem]"
+              :class="route().current(item.active) ? 'bg-dark text-nodo-400' : 'bg-amber-500 text-dark'"
+            >{{ avisos[item.aviso] }}</span>
+          </Link>
+        </div>
       </nav>
 
       <div class="px-4 py-4 border-t border-white/10 space-y-2">
@@ -99,41 +153,63 @@ const nav = computed(() => [
     <!-- Mobile sidebar -->
     <aside :class="['fixed inset-y-0 left-0 z-30 w-64 bg-dark text-white transition-transform lg:hidden', sidebarOpen ? 'translate-x-0' : '-translate-x-full']">
       <div class="flex items-center justify-between px-6 py-5 border-b border-white/10">
-        <span class="font-black text-lg text-white">NODICO</span>
+        <span class="font-display text-lg font-extrabold text-white">NÓDICO</span>
         <button @click="sidebarOpen = false"><X :size="20" class="text-gray-400" /></button>
       </div>
       <nav class="flex-1 px-3 py-4 space-y-0.5">
         <Link v-for="item in nav" :key="item.label" :href="item.href" @click="sidebarOpen = false"
+          :aria-current="route().current(item.active) ? 'page' : undefined"
           :class="[
-            'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all',
+            'flex min-h-[44px] items-center gap-3 px-3 py-2.5 text-sm font-medium transition-colors',
             route().current(item.active)
-              ? 'bg-nodo-400 text-dark font-bold'
-              : 'text-gray-400 hover:bg-white/5 hover:text-white'
+              ? 'bg-nodo-400 font-bold text-dark'
+              : 'text-white/60 hover:bg-white/5 hover:text-white'
           ]">
-          <component :is="item.icon" :size="18" />
-          {{ item.label }}
+          <component :is="item.icon" :size="18" aria-hidden="true" />
+          <span class="flex-1">{{ item.label }}</span>
+          <span
+            v-if="item.aviso && avisos[item.aviso]"
+            class="flex h-5 min-w-[1.25rem] items-center justify-center bg-amber-500 px-1 font-mono text-[0.625rem] text-dark"
+          >{{ avisos[item.aviso] }}</span>
         </Link>
       </nav>
     </aside>
 
     <!-- Main -->
-    <div class="flex-1 min-w-0 lg:ml-64 flex flex-col min-h-screen">
-      <header class="bg-white border-b border-gray-200 px-4 lg:px-8 py-3 flex items-center gap-4 sticky top-0 z-10">
-        <button @click="sidebarOpen = true" class="lg:hidden p-2 text-gray-400 hover:text-gray-600">
+    <div class="flex-1 min-w-0 lg:ml-56 flex flex-col min-h-screen">
+      <header
+        class="sticky top-0 z-10 flex items-center gap-3 border-b border-dark/20 bg-white px-4 py-2.5 lg:px-6"
+      >
+        <button
+          type="button"
+          class="flex h-10 w-10 items-center justify-center text-dark/60 hover:text-dark lg:hidden
+                 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2
+                 focus-visible:outline-dark"
+          aria-label="Abrir menú"
+          @click="sidebarOpen = true"
+        >
           <Menu :size="20" />
         </button>
-        <div class="flex items-center gap-1 text-sm text-gray-500">
+
+        <div class="flex min-w-0 items-center gap-1 text-sm text-dark/60">
           <slot name="breadcrumb" />
         </div>
-        <div class="ml-auto flex items-center gap-2 text-sm text-gray-600">
-          <span class="hidden sm:block font-medium">{{ ($page.props.auth.user as any).name }}</span>
-          <div class="w-8 h-8 bg-nodo-400 rounded-full flex items-center justify-center text-xs font-black uppercase text-dark">
-            {{ ($page.props.auth.user as any).name?.charAt(0) }}
-          </div>
+
+        <!-- El buscador va en la cabecera y no en una pantalla: recepcion lo
+             necesita desde donde este, con alguien esperando enfrente. -->
+        <div class="ml-auto flex items-center gap-3">
+          <BuscadorMiembro />
+
+          <span
+            class="flex h-8 w-8 shrink-0 items-center justify-center border border-dark bg-nodo-400
+                   font-display text-[0.6875rem] font-extrabold uppercase text-dark"
+            :title="($page.props.auth.user as any).name"
+            aria-hidden="true"
+          >{{ ($page.props.auth.user as any).name?.charAt(0) }}</span>
         </div>
       </header>
 
-      <main class="flex-1 p-4 lg:p-8">
+      <main class="flex-1 bg-cream p-4 lg:p-6">
         <slot />
       </main>
     </div>

@@ -205,4 +205,30 @@ return [
         'dias_ventana_planes_por_dia' => 30,
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Renta de salones (Fase 3.5)
+    |--------------------------------------------------------------------------
+    | Los salones Yucatán Emprende se rentan por hora y no consumen bolsa de
+    | nadie. El coffee break tiene dos tramos conocidos y un hueco entre ellos
+    | que Nódico decidió (01/09/2026) **cotizar a mano**: fuera de los tramos,
+    | recepción escribe el precio por persona acordado.
+    |
+    | Estos valores son el punto de partida del cotizador; lo que se cobró queda
+    | congelado en cada fila de `rentas_salon`, porque una cotización de hace
+    | tres meses tiene que seguir diciendo su precio y no el de hoy.
+    */
+    'salones' => [
+        'precio_hora' => env('NODICO_SALON_PRECIO_HORA', 600),
+
+        // Tramos de coffee break: hasta_pax => precio por persona.
+        // Entre 26 y 99 no hay tramo: el cotizador deja el precio editable.
+        'coffee' => [
+            ['hasta_pax' => 25,   'precio' => 45],
+            ['desde_pax' => 100,  'precio' => 35],
+        ],
+
+        'anticipo_libre' => true,
+    ],
+
 ];

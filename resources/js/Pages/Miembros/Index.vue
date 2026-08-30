@@ -1,126 +1,164 @@
 <script setup lang="ts">
-import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue'
-import { Head, Link, router } from '@inertiajs/vue3'
-import { Search, Eye, UserPlus } from 'lucide-vue-next'
 import { ref, watch } from 'vue'
-import debounce from 'lodash/debounce'
+import { Head, Link, router } from '@inertiajs/vue3'
+import { Search, ScanFace, ChevronRight } from 'lucide-vue-next'
+import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue'
+import Panel from '@/Components/Panel/Panel.vue'
+import Estado from '@/Components/Panel/Estado.vue'
 
-interface PaginatedData<T> { data: T[]; links: any[]; meta: any }
-interface Miembro {
-  id: number; name: string; email: string; empresa: string|null
-  telefono: string|null; face_id_ok: boolean; suscripciones: any[]
-}
-
+/** Listado de miembros con filtros (Fase 3.2). */
 const props = defineProps<{
-  miembros: PaginatedData<Miembro>
-  filters: { search?: string }
+  miembros: any
+  planes: any[]
+  filtros: Record<string, any>
 }>()
 
-const search = ref(props.filters.search ?? '')
-const applyFilters = () => {
-  router.get(route('miembros.index'), { search: search.value }, { preserveState: true, replace: true })
-}
-watch(search, debounce(applyFilters, 300))
+const buscar = ref(props.filtros.buscar ?? '')
+const planId = ref(props.filtros.plan_id ?? '')
+const estado = ref(props.filtros.estado ?? '')
 
-function suscripcionActiva(suscripciones: any[]) {
-  const s = suscripciones?.find(s => s.estatus === 'Activa')
-  if (!s) return null
-  const dias = Math.max(0, Math.ceil((new Date(s.fecha_fin).getTime() - Date.now()) / 86400000))
-  return { dias, plan: s.plan?.nombre }
+let temporizador: number | undefined
+
+function filtrar() {
+  router.get(route('miembros.index'), {
+    buscar: buscar.value || undefined,
+    plan_id: planId.value || undefined,
+    estado: estado.value || undefined,
+  }, { preserveState: true, replace: true })
 }
+
+watch(buscar, () => {
+  if (temporizador) window.clearTimeout(temporizador)
+  temporizador = window.setTimeout(filtrar, 300)
+})
+
+watch([planId, estado], filtrar)
+
+const fecha = (iso: string | null) =>
+  iso ? new Date(`${iso}T12:00:00`).toLocaleDateString('es-MX', { day: 'numeric', month: 'short' }) : '—'
+
+/** El estado combina membresía y cuenta: lo que recepción necesita ver de un vistazo. */
+function tono(m: any): { tono: 'bien' | 'atencion' | 'problema' | 'neutro'; texto: string } {
+  if (m.estado_cuenta === 'suspendida') return { tono: 'problema', texto: 'suspendida' }
+  if (!m.plan) return { tono: 'neutro', texto: 'sin plan' }
+  if (m.dias_para_vencer === null) return { tono: 'neutro', texto: '—' }
+  if (m.dias_para_vencer < 0) return { tono: 'problema', texto: 'vencida' }
+  if (m.dias_para_vencer <= 7) return { tono: 'atencion', texto: `${m.dias_para_vencer} d` }
+  return { tono: 'bien', texto: 'activa' }
+}
+
+const filtrosEstado = [
+  { valor: '', etiqueta: 'Todos' },
+  { valor: 'activa', etiqueta: 'Con membresía activa' },
+  { valor: 'por_vencer', etiqueta: 'Vencen esta semana' },
+  { valor: 'vencida', etiqueta: 'Sin membresía activa' },
+  { valor: 'suspendida', etiqueta: 'Cuenta suspendida' },
+  { valor: 'sin_faceid', etiqueta: 'Sin Face ID' },
+]
 </script>
 
 <template>
-  <Head title="Miembros — NODICO Admin" />
+  <Head title="Miembros" />
+
   <AuthenticatedLayout>
-    <template #breadcrumb>Miembros</template>
-    <div class="space-y-6">
-      <div class="flex items-center justify-between">
-        <div>
-          <h1 class="text-2xl font-black text-dark">Miembros</h1>
-          <p class="text-sm text-gray-400 mt-1">{{ miembros.meta?.total ?? miembros.data.length }} miembros registrados</p>
+    <template #breadcrumb>
+      <span class="font-display font-bold text-dark">Miembros</span>
+    </template>
+
+    <Panel padding="none">
+      <template #acciones>
+        <span class="font-mono text-[0.6875rem] text-dark/55">{{ miembros.total }} en total</span>
+      </template>
+
+      <div class="border-b border-dark/15 bg-cream-50 p-3">
+        <div class="grid gap-2 sm:grid-cols-[1fr_auto_auto]">
+          <div class="relative">
+            <Search :size="15" class="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-dark/40" aria-hidden="true" />
+            <input
+              v-model="buscar" type="search" placeholder="Nombre, correo, empresa o teléfono…"
+              aria-label="Buscar miembro"
+              class="w-full border border-dark/25 bg-white py-2 pl-8 pr-3 text-sm focus:border-dark"
+            />
+          </div>
+
+          <select v-model="planId" aria-label="Filtrar por plan" class="border border-dark/25 bg-white px-2.5 py-2 text-sm focus:border-dark">
+            <option value="">Todos los planes</option>
+            <option v-for="p in planes" :key="p.id" :value="p.id">{{ p.nombre }}</option>
+          </select>
+
+          <select v-model="estado" aria-label="Filtrar por estado" class="border border-dark/25 bg-white px-2.5 py-2 text-sm focus:border-dark">
+            <option v-for="f in filtrosEstado" :key="f.valor" :value="f.valor">{{ f.etiqueta }}</option>
+          </select>
         </div>
       </div>
 
-      <!-- Search -->
-      <div class="relative max-w-sm">
-        <Search :size="16" class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-        <input v-model="search" type="search" placeholder="Buscar por nombre o email..."
-          class="w-full pl-9 pr-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-nodo-400 focus:border-transparent outline-none" />
+      <p v-if="!miembros.data.length" class="px-4 py-10 text-center text-sm text-dark/50">
+        Nadie con esos filtros.
+      </p>
+
+      <div v-else class="overflow-x-auto">
+        <table class="w-full min-w-[44rem] text-sm">
+          <thead class="border-b border-dark/15 bg-cream-50">
+            <tr class="text-left font-mono text-[0.625rem] uppercase tracking-[0.1em] text-dark/50">
+              <th scope="col" class="px-4 py-2 font-normal">Miembro</th>
+              <th scope="col" class="px-3 py-2 font-normal">Contacto</th>
+              <th scope="col" class="px-3 py-2 font-normal">Plan</th>
+              <th scope="col" class="px-3 py-2 font-normal">Vence</th>
+              <th scope="col" class="px-3 py-2 font-normal">Estado</th>
+              <th scope="col" class="w-8 px-3 py-2"><span class="sr-only">Abrir</span></th>
+            </tr>
+          </thead>
+
+          <tbody class="divide-y divide-dark/10">
+            <tr
+              v-for="m in miembros.data" :key="m.id"
+              class="cursor-pointer transition-colors hover:bg-cream-50"
+              @click="router.visit(route('miembros.show', m.id))"
+            >
+              <td class="px-4 py-2.5">
+                <Link
+                  :href="route('miembros.show', m.id)"
+                  class="flex items-center gap-2 font-display font-bold text-dark
+                         focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2
+                         focus-visible:outline-dark"
+                  @click.stop
+                >
+                  {{ m.nombre }}
+                  <ScanFace v-if="!m.face_id_ok" :size="14" class="shrink-0 text-amber-600" aria-label="Sin Face ID" />
+                </Link>
+                <span v-if="m.empresa" class="text-xs text-dark/55">{{ m.empresa }}</span>
+              </td>
+
+              <td class="px-3 py-2.5 text-xs text-dark/70">
+                <span class="block truncate">{{ m.email }}</span>
+                <span v-if="m.telefono" class="block font-mono text-[0.6875rem] text-dark/50">{{ m.telefono }}</span>
+              </td>
+
+              <td class="px-3 py-2.5 text-xs text-dark">{{ m.plan ?? '—' }}</td>
+              <td class="px-3 py-2.5 font-mono text-xs text-dark/70">{{ fecha(m.vence) }}</td>
+              <td class="px-3 py-2.5"><Estado v-bind="tono(m)" /></td>
+              <td class="px-3 py-2.5 text-dark/30"><ChevronRight :size="15" aria-hidden="true" /></td>
+            </tr>
+          </tbody>
+        </table>
       </div>
 
-      <!-- Table -->
-      <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-        <div class="overflow-x-auto">
-          <table class="w-full text-sm min-w-[640px]">
-            <thead class="bg-gray-50 border-b border-gray-100">
-              <tr>
-                <th class="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Miembro</th>
-                <th class="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Empresa</th>
-                <th class="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Plan activo</th>
-                <th class="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Vence</th>
-                <th class="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Face ID</th>
-                <th class="px-5 py-3" />
-              </tr>
-            </thead>
-            <tbody class="divide-y divide-gray-50">
-              <tr v-if="!miembros.data.length">
-                <td colspan="6" class="px-5 py-10 text-center text-gray-400">
-                  Sin miembros encontrados
-                </td>
-              </tr>
-              <tr v-for="m in miembros.data" :key="m.id" class="hover:bg-gray-50 transition-colors">
-                <td class="px-5 py-4">
-                  <div class="flex items-center gap-3">
-                    <div class="w-9 h-9 bg-nodo-100 text-nodo-700 rounded-full flex items-center justify-center text-sm font-bold uppercase flex-shrink-0">
-                      {{ m.name?.charAt(0) }}
-                    </div>
-                    <div>
-                      <div class="font-semibold text-dark">{{ m.name }}</div>
-                      <div class="text-xs text-gray-400">{{ m.email }}</div>
-                    </div>
-                  </div>
-                </td>
-                <td class="px-5 py-4 text-gray-600">{{ m.empresa ?? '—' }}</td>
-                <td class="px-5 py-4">
-                  <span v-if="suscripcionActiva(m.suscripciones)" class="px-2.5 py-1 bg-nodo-50 text-nodo-700 rounded-full text-xs font-semibold">
-                    {{ suscripcionActiva(m.suscripciones)?.plan }}
-                  </span>
-                  <span v-else class="text-gray-400 text-xs">Sin plan</span>
-                </td>
-                <td class="px-5 py-4">
-                  <span v-if="suscripcionActiva(m.suscripciones)"
-                    :class="['font-semibold text-sm', (suscripcionActiva(m.suscripciones)?.dias ?? 99) <= 5 ? 'text-red-600' : 'text-gray-700']">
-                    {{ suscripcionActiva(m.suscripciones)?.dias }}d
-                  </span>
-                  <span v-else class="text-gray-300">—</span>
-                </td>
-                <td class="px-5 py-4">
-                  <span :class="['text-xs font-semibold px-2 py-0.5 rounded-full', m.face_id_ok ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700']">
-                    {{ m.face_id_ok ? '✓ Registrado' : '⏳ Pendiente' }}
-                  </span>
-                </td>
-                <td class="px-5 py-4 text-right">
-                  <Link :href="route('miembros.show', m.id)"
-                    class="inline-flex items-center gap-1.5 text-xs text-nodo-600 hover:text-nodo-800 font-semibold bg-nodo-50 hover:bg-nodo-100 px-3 py-1.5 rounded-lg transition-all">
-                    <Eye :size="13" /> Ver detalles
-                  </Link>
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-
-        <!-- Pagination -->
-        <div v-if="miembros.links?.length > 3" class="px-5 py-3 border-t border-gray-100 flex justify-end gap-1">
-          <template v-for="link in miembros.links" :key="link.label">
-            <Link v-if="link.url" :href="link.url"
-              :class="['px-3 py-1.5 text-xs rounded-lg', link.active ? 'bg-nodo-400 text-dark font-bold' : 'text-gray-600 hover:bg-gray-100']"
-              v-html="link.label" />
-            <span v-else class="px-3 py-1.5 text-xs text-gray-300" v-html="link.label" />
-          </template>
-        </div>
-      </div>
-    </div>
+      <nav
+        v-if="miembros.last_page > 1"
+        class="flex flex-wrap items-center justify-center gap-1 border-t border-dark/15 bg-cream-50 px-4 py-3"
+        aria-label="Paginación"
+      >
+        <Link
+          v-for="enlace in miembros.links" :key="enlace.label"
+          :href="enlace.url ?? ''"
+          :disabled="!enlace.url"
+          class="min-h-[32px] min-w-[32px] border px-2 py-1 text-center font-mono text-xs transition-colors"
+          :class="enlace.active
+            ? 'border-dark bg-dark text-white'
+            : enlace.url ? 'border-dark/20 text-dark hover:border-dark' : 'border-transparent text-dark/25'"
+          v-html="enlace.label"
+        />
+      </nav>
+    </Panel>
   </AuthenticatedLayout>
 </template>

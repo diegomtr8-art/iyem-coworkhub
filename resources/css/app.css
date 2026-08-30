@@ -84,10 +84,21 @@
   /* Los anclas (#hablemos) no deben quedar debajo del nav fijo. */
   [id] { scroll-margin-top: 6rem; }
 
-  /* Foco visible uniforme en todo el sitio público. */
+  /*
+   * Foco visible uniforme, con DOS colores.
+   *
+   * La regla anterior usaba solo `nodo-400`, y la propia SKILL avisa de que un
+   * anillo amarillo sobre crema o blanco da 1.75:1 y es invisible. Solo se
+   * veía sobre las bandas oscuras.
+   *
+   * Ahora el contorno es `dark` —que se lee sobre cualquier fondo claro— con
+   * un halo amarillo por fuera, que es lo que lo hace visible sobre `tinta` y
+   * `dark`. Sobre fondo oscuro manda el halo; sobre claro, el contorno.
+   */
   :where(a, button, input, textarea, select, [tabindex]):focus-visible {
-    outline: 2px solid theme('colors.nodo.400');
-    outline-offset: 3px;
+    outline: 2px solid theme('colors.dark.DEFAULT');
+    outline-offset: 2px;
+    box-shadow: 0 0 0 4px theme('colors.nodo.400');
     border-radius: 2px;
   }
 
@@ -96,6 +107,27 @@
 }
 
 @layer components {
+  /*
+   * Foco de los campos de formulario.
+   *
+   * Va en `components` y no en `base`, y con selector normal en vez de
+   * `:where()`, porque `@tailwindcss/forms` inyecta en `base` un
+   * `outline: 2px solid transparent` mas un anillo AZUL —su color por
+   * defecto, que no es de la marca— y le gana a una regla de especificidad
+   * cero. El resultado era un foco invisible en el panel y azul en el resto.
+   *
+   * Se sustituye la sombra entera para neutralizar el anillo del plugin.
+   */
+  input:focus-visible,
+  textarea:focus-visible,
+  select:focus-visible {
+    outline: 2px solid theme('colors.dark.DEFAULT');
+    outline-offset: 2px;
+    box-shadow: 0 0 0 4px theme('colors.nodo.400');
+    border-color: theme('colors.dark.DEFAULT');
+  }
+
+
   /* Etiqueta mono numerada: «01 — SERVICIOS» */
   .etiqueta-tecnica {
     @apply font-mono text-etiqueta uppercase;

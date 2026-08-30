@@ -5,6 +5,7 @@ namespace Tests\Feature\Portal;
 use App\Enums\BolsaDeHoras;
 use App\Enums\EstadoAsesoria;
 use App\Enums\MotivoMovimiento;
+use App\Models\Asesor;
 use App\Models\DatosFiscales;
 use App\Models\MovimientoHoras;
 use App\Models\Plane;
@@ -61,6 +62,7 @@ class AsesoriasYDatosFiscalesTest extends TestCase
         $suscripcion = $this->nodoProConAsesoria();
         $gestor      = app(GestorDeAsesorias::class);
         $operativo   = User::factory()->admin()->create();
+        $asesor      = Asesor::create(['nombre' => 'Lic. Ramírez', 'especialidad' => 'Finanzas']);
 
         $solicitud = $gestor->solicitar(
             $suscripcion, 'Modelo de negocio', today()->addDays(3)->toDateString(), 'Por la mañana'
@@ -70,7 +72,7 @@ class AsesoriasYDatosFiscalesTest extends TestCase
             solicitud: $solicitud,
             operativo: $operativo,
             fechaConfirmada: today()->addDays(3)->setTime(10, 0)->toDateTimeString(),
-            asesorNombre: 'Lic. Ramírez',
+            asesor: $asesor,
         );
 
         $this->assertSame(EstadoAsesoria::Confirmada, $solicitud->refresh()->estado);
@@ -87,6 +89,7 @@ class AsesoriasYDatosFiscalesTest extends TestCase
         $suscripcion = $this->nodoProConAsesoria();
         $gestor      = app(GestorDeAsesorias::class);
         $operativo   = User::factory()->admin()->create();
+        $asesor      = Asesor::create(['nombre' => 'Lic. Ramírez', 'especialidad' => 'Finanzas']);
 
         $solicitud = $gestor->solicitar(
             $suscripcion, 'Tema', today()->addDays(3)->toDateString(), 'Por la tarde'
@@ -117,6 +120,7 @@ class AsesoriasYDatosFiscalesTest extends TestCase
         $suscripcion = $this->nodoProConAsesoria();
         $gestor      = app(GestorDeAsesorias::class);
         $operativo   = User::factory()->admin()->create();
+        $asesor      = Asesor::create(['nombre' => 'Lic. Ramírez', 'especialidad' => 'Finanzas']);
 
         $solicitud = $gestor->solicitar(
             $suscripcion, 'Tema', today()->addDays(5)->toDateString(), 'Por la mañana'
@@ -126,7 +130,7 @@ class AsesoriasYDatosFiscalesTest extends TestCase
             solicitud: $solicitud,
             operativo: $operativo,
             fechaConfirmada: today()->addDays(5)->setTime(10, 0)->toDateTimeString(),
-            asesorNombre: 'Lic. Ramírez',
+            asesor: $asesor,
         );
 
         $this->assertSame(1.0, (float) $suscripcion->refresh()->horas_asesoria_usadas);
@@ -142,6 +146,7 @@ class AsesoriasYDatosFiscalesTest extends TestCase
         $suscripcion = $this->nodoProConAsesoria();
         $gestor      = app(GestorDeAsesorias::class);
         $operativo   = User::factory()->admin()->create();
+        $asesor      = Asesor::create(['nombre' => 'Lic. Ramírez', 'especialidad' => 'Finanzas']);
         $dia         = today()->addDays(3);
 
         $primera = $gestor->solicitar($suscripcion, 'Uno', $dia->toDateString(), 'Mañana');
@@ -149,7 +154,7 @@ class AsesoriasYDatosFiscalesTest extends TestCase
             solicitud: $primera,
             operativo: $operativo,
             fechaConfirmada: $dia->copy()->setTime(10, 0)->toDateTimeString(),
-            asesorNombre: 'Lic. Ramírez',
+            asesor: $asesor,
         );
 
         // El tope se avisa ya al **solicitar**: dejar pedir algo que se va a
@@ -169,7 +174,7 @@ class AsesoriasYDatosFiscalesTest extends TestCase
             solicitud: $tercera,
             operativo: $operativo,
             fechaConfirmada: $otroDia->copy()->setTime(10, 0)->toDateTimeString(),
-            asesorNombre: 'Lic. Ramírez',
+            asesor: $asesor,
         );
 
         $this->assertSame(2.0, (float) $suscripcion->refresh()->horas_asesoria_usadas);
@@ -197,6 +202,7 @@ class AsesoriasYDatosFiscalesTest extends TestCase
         $suscripcion = $this->nodoProConAsesoria();
         $gestor      = app(GestorDeAsesorias::class);
         $operativo   = User::factory()->admin()->create();
+        $asesor      = Asesor::create(['nombre' => 'Lic. Ramírez', 'especialidad' => 'Finanzas']);
 
         $solicitud = $gestor->solicitar(
             $suscripcion, 'Tema', today()->addDays(3)->toDateString(), 'Mañana'
@@ -204,10 +210,10 @@ class AsesoriasYDatosFiscalesTest extends TestCase
 
         $cuando = today()->addDays(3)->setTime(10, 0)->toDateTimeString();
 
-        $gestor->confirmar($solicitud, $operativo, $cuando, 'Lic. Ramírez');
+        $gestor->confirmar($solicitud, $operativo, $cuando, $asesor);
 
         try {
-            $gestor->confirmar($solicitud->refresh(), $operativo, $cuando, 'Lic. Ramírez');
+            $gestor->confirmar($solicitud->refresh(), $operativo, $cuando, $asesor);
             $this->fail('La segunda confirmación debió rechazarse.');
         } catch (ValidationException) {
             // Esperado.

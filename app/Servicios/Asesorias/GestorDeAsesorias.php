@@ -5,6 +5,7 @@ namespace App\Servicios\Asesorias;
 use App\Enums\BolsaDeHoras;
 use App\Enums\EstadoAsesoria;
 use App\Enums\MotivoMovimiento;
+use App\Models\Asesor;
 use App\Models\SolicitudAsesoria;
 use App\Models\Suscripcion;
 use App\Models\User;
@@ -83,8 +84,8 @@ class GestorDeAsesorias
         SolicitudAsesoria $solicitud,
         User $operativo,
         string $fechaConfirmada,
+        ?Asesor $asesor = null,
         ?string $asesorNombre = null,
-        ?User $asesor = null,
         ?string $notas = null,
     ): SolicitudAsesoria {
         return DB::transaction(function () use ($solicitud, $operativo, $fechaConfirmada, $asesorNombre, $asesor, $notas) {
@@ -96,9 +97,9 @@ class GestorDeAsesorias
                 ]);
             }
 
-            if ($asesorNombre === null && $asesor === null) {
+            if ($asesor === null && trim((string) $asesorNombre) === '') {
                 throw ValidationException::withMessages([
-                    'asesor_nombre' => 'Asigna un asesor antes de confirmar.',
+                    'asesor_id' => 'Asigna un asesor antes de confirmar.',
                 ]);
             }
 
@@ -109,10 +110,13 @@ class GestorDeAsesorias
                 $fresca->id,
             );
 
+            // El nombre se **congela** aquí, aunque venga del catálogo: si al
+            // asesor lo dan de baja o le cambian el nombre, esta asesoría tiene
+            // que seguir diciendo quién la dio.
             $fresca->update([
                 'estado'               => EstadoAsesoria::Confirmada,
-                'asesor_nombre'        => $asesorNombre,
-                'asesor_user_id'       => $asesor?->id,
+                'asesor_nombre'        => $asesor?->nombre ?? $asesorNombre,
+                'asesor_id'            => $asesor?->id,
                 'fecha_confirmada'     => $fechaConfirmada,
                 'notas_operativo'      => $notas,
                 'atendida_por_user_id' => $operativo->id,
@@ -126,7 +130,7 @@ class GestorDeAsesorias
                 motivo: MotivoMovimiento::Asesoria,
                 solicitud: $fresca,
                 autor: $operativo,
-                nota: 'Asesoría confirmada con ' . ($asesor?->name ?? $asesorNombre) . '.',
+                nota: 'Asesoría confirmada con ' . ($asesor?->nombre ?? $asesorNombre) . '.',
             );
 
             return $fresca->refresh();

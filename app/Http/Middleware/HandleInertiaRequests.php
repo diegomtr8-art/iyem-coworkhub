@@ -33,6 +33,15 @@ class HandleInertiaRequests extends Middleware
             ],
             'isStaging' => app()->environment('staging'),
 
+            // Fase 3.1 - Contadores del menu del panel operativo. Es lo que
+            // pone el punto de aviso junto a "Asesorias" sin obligar a entrar
+            // para descubrir que hay algo pendiente.
+            //
+            // Cerrado (`Closure`) para que Inertia solo lo evalue cuando la
+            // pagina lo pide: en el sitio publico y en el portal del miembro
+            // esta consulta no tiene por que correr.
+            'avisosPanel' => fn () => $this->avisosDelPanel($request),
+
             // F — Que botones de acceso externo dibujar. La ruta de cada
             // proveedor comprueba el mismo interruptor por su cuenta: esconder
             // el boton no es control de acceso.
@@ -207,6 +216,24 @@ class HandleInertiaRequests extends Middleware
                 'closes'    => '19:00',
             ]],
             'sameAs' => array_values(array_filter((array) config('nodico.redes'))),
+        ];
+    }
+
+    /**
+     * Pendientes que el panel ensena como aviso en el menu.
+     *
+     * @return array<string, int>
+     */
+    private function avisosDelPanel(Request $request): array
+    {
+        $usuario = $request->user();
+
+        if (! $usuario || ! $usuario->esOperativo()) {
+            return [];
+        }
+
+        return [
+            'asesorias_pendientes' => \App\Models\SolicitudAsesoria::pendientes()->count(),
         ];
     }
 }
