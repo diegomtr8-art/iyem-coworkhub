@@ -128,6 +128,7 @@ class HandleInertiaRequests extends Middleware
             'rolEtiqueta'    => $usuario->rol?->etiqueta(),
             'esOperativo'    => $usuario->esOperativo(),
             'portalRuta'     => $usuario->rutaInicio(),
+            'dosFactores'    => $usuario->tieneDosFactores(),
             'estado'         => $usuario->estado->value,
             'estadoEtiqueta' => $usuario->estado->etiqueta(),
             'cuentaActiva'   => $usuario->cuentaActiva(),

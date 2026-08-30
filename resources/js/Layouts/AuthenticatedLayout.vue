@@ -4,7 +4,7 @@ import { Link, usePage } from '@inertiajs/vue3'
 import {
   LayoutDashboard, Users, CalendarDays, Clock, Receipt,
   Megaphone, BarChart3, Building2, Tag, LogOut, Menu, X, Home, UserCheck, PartyPopper,
-  ScrollText, ShieldCheck
+  ScrollText, ShieldCheck, ShieldAlert
 } from 'lucide-vue-next'
 import { Toaster } from 'vue-sonner'
 import { toast } from 'vue-sonner'
@@ -24,6 +24,8 @@ watch(() => flash.value, (f) => {
 // A.3 — El menu se filtra por permiso: recepcion no debe ver Planes ni
 // Reportes para descubrir al pulsarlos que le dan 403. Esto **no** es control
 // de acceso —cada ruta lo hace en el servidor con su `can:`— sino cortesia.
+const usuario = computed(() => (page.props.auth as any)?.user ?? null)
+
 const permisos = computed<Record<string, boolean>>(
   () => ((usePage().props.auth as any)?.permisos ?? {}),
 )
@@ -134,6 +136,36 @@ const nav = computed(() => [
       </header>
 
       <main class="flex-1 p-4 lg:p-8">
+        <!--
+          G — El segundo factor es opcional, asi que no se impone: se recomienda
+          donde se nota. Este es el panel que maneja miembros, cobros y datos de
+          otras personas, y el aviso queda a la vista mientras no este activo.
+
+          Es una recomendacion, no un bloqueo: `nodico.dos_factores.obligatorio_para`
+          esta listo para el dia que el IYEM lo exija por rol.
+        -->
+        <div
+          v-if="usuario && !usuario.dosFactores"
+          class="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-amber-200 bg-amber-50 px-5 py-4"
+          role="note"
+        >
+          <div class="flex items-start gap-3">
+            <ShieldAlert class="mt-0.5 h-5 w-5 shrink-0 text-amber-600" aria-hidden="true" />
+            <p class="text-sm text-amber-900">
+              <strong class="font-semibold">Tu cuenta no tiene segundo factor.</strong>
+              Desde aqui se manejan miembros, cobros y datos de otras personas: con la
+              contrasena sola, quien la sepa entra.
+            </p>
+          </div>
+
+          <Link
+            :href="route('dos-factores.crear')"
+            class="inline-flex min-h-[44px] shrink-0 items-center rounded-xl bg-amber-600 px-4 text-sm font-semibold text-white transition hover:bg-amber-700"
+          >
+            Activarlo
+          </Link>
+        </div>
+
         <slot />
       </main>
     </div>
