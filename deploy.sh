@@ -23,6 +23,19 @@ php artisan migrate --force
 echo "==> Contenido público del sitio (idempotente)"
 php artisan db:seed --class=NodicoWebSeeder --force
 
+echo "==> Libro de horas: saldo de arranque (solo la primera vez)"
+# Sin esto, la primera consulta al libro devuelve cero para todo el mundo y
+# cada miembro se encuentra la bolsa llena: un regalo de horas el dia del
+# despliegue. `--solo-si-falta` hace que en los despliegues siguientes no
+# haga nada en vez de abortar.
+php artisan nodico:sembrar-libro-horas --solo-si-falta
+
+echo "==> Comprobando que los contadores cuadran con el libro"
+# Sin --arreglar: solo informa. Si diverge, sale con codigo != 0 y el
+# despliegue se detiene aqui, que es lo que hay que hacer con saldos que no
+# cuadran: mirarlos, no corregirlos a ciegas.
+php artisan nodico:reconstruir-saldos
+
 echo "==> robots.txt lo sirve Laravel según APP_ENV; se retira el estático"
 rm -f "$RAIZ/robots.txt"
 

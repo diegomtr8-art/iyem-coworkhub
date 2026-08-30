@@ -29,7 +29,8 @@ class SembrarLibroDeHoras extends Command
 {
     protected $signature = 'nodico:sembrar-libro-horas
                             {--revertir : Borra los movimientos de saldo inicial.}
-                            {--simular : No escribe nada; solo dice qué haría.}';
+                            {--simular : No escribe nada; solo dice qué haría.}
+                            {--solo-si-falta : Si ya está sembrado, sale con éxito en vez de con error. Para el despliegue.}';
 
     protected $description = 'Convierte los contadores de bolsas existentes en movimientos del libro.';
 
@@ -47,6 +48,15 @@ class SembrarLibroDeHoras extends Command
         $yaSembradas = MovimientoHoras::where('motivo', MotivoMovimiento::SaldoInicial->value)->count();
 
         if ($yaSembradas > 0 && ! $simular) {
+            // En el despliegue esto no es un fallo: es que ya se hizo. Fuera
+            // del despliegue sí lo es, porque significa que alguien está a
+            // punto de duplicar el consumo de todo el mundo.
+            if ($this->option('solo-si-falta')) {
+                $this->info("El libro ya estaba sembrado ({$yaSembradas} movimiento(s)). No se toca nada.");
+
+                return self::SUCCESS;
+            }
+
             $this->error(
                 "Ya hay {$yaSembradas} movimiento(s) de saldo inicial. Sembrar dos veces duplicaría "
                 . 'el consumo. Usa --revertir primero si de verdad quieres rehacerlo.'
