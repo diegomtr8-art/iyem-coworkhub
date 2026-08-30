@@ -269,20 +269,34 @@ En hPanel → *Avanzado* → *Cron Jobs*, una sola entrada **cada minuto**. Lara
 decide por su cuenta qué toca ejecutar en cada pasada; no hay que dar de alta
 una entrada por comando.
 
+**La que está puesta en staging**, creada el 01/09/2026 (uid `1D9AJDprHu`):
+
 ```
-* * * * * cd /home/USUARIO/domains/DOMINIO/public_html && /usr/bin/php artisan schedule:run >> storage/logs/cron.log 2>&1
+* * * * * /usr/bin/php /home/u489236361/domains/prueba.nodico.com.mx/public_html/artisan schedule:run >> /home/u489236361/domains/prueba.nodico.com.mx/public_html/storage/logs/cron.log 2>&1
 ```
 
-Sustituye `USUARIO` y `DOMINIO`. Comprueba la ruta de PHP antes, porque Hostinger
-tiene varias versiones instaladas y la de por defecto no siempre es la 8.2:
+Tres detalles que importan y que se descubren solo cuando no funciona:
+
+- **Rutas absolutas, no `cd …&&`.** El cron de Hostinger no arranca en el
+  directorio del proyecto, y encadenar un `cd` es una fuente de fallos
+  silenciosos: si falla, el `artisan` no se encuentra y nadie se entera.
+- **`/usr/bin/php`** es la 8.2.31 en este host, comprobado con `which php`. Si
+  algún día la 8.2 se mueve (`/opt/alt/php82/usr/bin/php`, por ejemplo), esa es
+  la que va: con otra versión el comando corre igual, pero contra otro
+  `vendor/` y otra configuración.
+- **El log va a un archivo, no a `/dev/null`.** Es lo único que permite
+  comprobar después que la tarea existe de verdad. `schedule:run` apenas
+  escribe cuando no hay nada debido, así que no crece solo; si algún día
+  molesta, se cambia a `/dev/null` **después** de haber verificado que
+  funciona, nunca antes.
+
+Para producción, la misma línea cambiando el dominio.
+
+Antes de crearla en otro host, comprueba dónde vive la 8.2:
 
 ```bash
 ssh USUARIO@HOST 'which php83 php82 php; php -v'
 ```
-
-Si la 8.2 vive en otra ruta (`/opt/alt/php82/usr/bin/php`, por ejemplo), esa es
-la que va en el cron: con una versión distinta a la del sitio, el comando corre
-pero con otro `vendor/` y otra configuración.
 
 ## Qué corre y cuándo
 
