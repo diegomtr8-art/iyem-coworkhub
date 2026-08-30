@@ -240,6 +240,61 @@ class MotorDeReservasTest extends TestCase
         $this->assertSame('Cancelada', $reserva->refresh()->estatus);
     }
 
+    /**
+     * La otra mitad de la regla de las 2 horas, y la que de verdad la sostiene:
+     * **cancelar tarde consume igual**.
+     *
+     * Sin esto, cancelar a última hora sería gratis y la regla no significaría
+     * nada: bastaría con cancelar cinco minutos antes para recuperarlo todo.
+     */
+    public function test_cancelar_con_menos_de_dos_horas_de_antelacion_no_devuelve(): void
+    {
+        [$user, $suscripcion, $sala] = $this->miembroConNodoPro();
+
+        // Una reserva de dentro de una hora: dentro del plazo de penalización.
+        $reserva = Reserva::factory()->create([
+            'user_id'        => $user->id,
+            'espacio_id'     => $sala->id,
+            'suscripcion_id' => $suscripcion->id,
+            'fecha'          => today(),
+            'hora_inicio'    => now()->addHour()->format('H:i:s'),
+            'hora_fin'       => now()->addHours(3)->format('H:i:s'),
+        ]);
+
+        $this->consumir($suscripcion, BolsaDeHoras::Sala, 2);
+
+        $this->assertFalse(
+            $reserva->cancelarDevuelveHoras(),
+            'A una hora vista, la cancelación ya penaliza.'
+        );
+
+        $this->actingAs($user)->delete(route('portal.reservas.cancel', $reserva));
+
+        $this->assertSame('Cancelada', $reserva->refresh()->estatus, 'La reserva sí se cancela…');
+        $this->assertSame(
+            2.0,
+            (float) $suscripcion->refresh()->horas_sala_usadas,
+            '…pero las horas se consumen igual: es lo que hace que la regla de las 2 h signifique algo.'
+        );
+    }
+
+    /** Justo en el límite: a dos horas y un minuto, todavía devuelve. */
+    public function test_en_el_limite_exacto_de_las_dos_horas_todavia_devuelve(): void
+    {
+        [$user, $suscripcion, $sala] = $this->miembroConNodoPro();
+
+        $reserva = Reserva::factory()->create([
+            'user_id'        => $user->id,
+            'espacio_id'     => $sala->id,
+            'suscripcion_id' => $suscripcion->id,
+            'fecha'          => today(),
+            'hora_inicio'    => now()->addHours(2)->addMinutes(5)->format('H:i:s'),
+            'hora_fin'       => now()->addHours(4)->format('H:i:s'),
+        ]);
+
+        $this->assertTrue($reserva->cancelarDevuelveHoras());
+    }
+
     /** Dos peticiones seguidas devolvían las horas dos veces. */
     public function test_cancelar_dos_veces_no_devuelve_las_horas_dos_veces(): void
     {
