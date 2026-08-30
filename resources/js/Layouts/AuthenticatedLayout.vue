@@ -65,7 +65,7 @@ const nav = computed(() => [
         <Link v-for="item in nav" :key="item.label"
           :href="item.href"
           :class="[
-            'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all',
+            'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-nodo-400',
             route().current(item.active)
               ? 'bg-nodo-400 text-dark font-bold'
               : 'text-gray-400 hover:bg-white/5 hover:text-white'
@@ -107,7 +107,7 @@ const nav = computed(() => [
       <nav class="flex-1 px-3 py-4 space-y-0.5">
         <Link v-for="item in nav" :key="item.label" :href="item.href" @click="sidebarOpen = false"
           :class="[
-            'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all',
+            'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-nodo-400',
             route().current(item.active)
               ? 'bg-nodo-400 text-dark font-bold'
               : 'text-gray-400 hover:bg-white/5 hover:text-white'
