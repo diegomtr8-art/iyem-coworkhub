@@ -315,21 +315,46 @@ Las tres son idempotentes: repetirlas no duplica nada. `reiniciar-ciclos` acepta
 terminar el despliegue, y no antes de darlo por bueno:
 
 ```bash
+R=~/domains/prueba.nodico.com.mx/public_html
+
 # 1. El planificador ve las tres tareas
-ssh USUARIO@HOST 'cd ~/domains/DOMINIO/public_html && php artisan schedule:list'
+ssh … "cd $R && php artisan schedule:list"
 
 # 2. Cada comando corre a mano sin reventar (--simular no escribe nada)
-ssh USUARIO@HOST 'cd ~/domains/DOMINIO/public_html && php artisan nodico:reiniciar-ciclos --simular'
-ssh USUARIO@HOST 'cd ~/domains/DOMINIO/public_html && php artisan nodico:marcar-no-show --simular'
+ssh … "cd $R && php artisan nodico:reiniciar-ciclos --simular"
+ssh … "cd $R && php artisan nodico:marcar-no-show --simular"
 
-# 3. Veinte minutos después: el cron está escribiendo de verdad
-ssh USUARIO@HOST 'tail -20 ~/domains/DOMINIO/public_html/storage/logs/cron.log'
+# 3. El cron arranca: cron.log existe
+ssh … "ls -l $R/storage/logs/cron.log"
+
+# 4. LO QUE DE VERDAD IMPORTA: el cron ejecuta tareas.
+#    `marcar-no-show` corre en :00 y :30, así que a la media hora como mucho
+#    tiene que haber una línea aquí.
+ssh … "cat $R/storage/logs/tareas.log"
 ```
 
-El paso 3 es el que importa. Los dos primeros solo dicen que el código funciona;
-el tercero, que Hostinger lo está llamando. Si `cron.log` no existe o está vacío
-media hora después, el cron no está corriendo, por muy bien que se vea la
-entrada en hPanel.
+### Por qué hay dos logs, y por qué el que cuenta es el segundo
+
+`cron.log` recoge la salida de **`schedule:run`**. `tareas.log` recoge la de
+**los comandos que `schedule:run` ejecuta**, vía `appendOutputTo` en
+`routes/console.php`.
+
+No son lo mismo, y confundirlos cuesta una tarde: **`schedule:run` no vuelca a
+su salida lo que imprimen los comandos que lanza**. Los corre y descarta su
+salida. Comprobado aquí el 01/09/2026 — el cron llevaba diez minutos
+funcionando perfectamente y `cron.log` seguía en **cero bytes**, con lo que era
+imposible distinguir «corrió y no había nada que hacer» de «el cron no existe».
+
+Así que:
+
+| Archivo | Qué prueba |
+|---|---|
+| `cron.log` existe | Hostinger está llamando a `schedule:run`. Puede estar vacío y estar todo bien. |
+| `tareas.log` tiene líneas | Una tarea **se ejecutó de verdad**. Esto es lo que hay que ver antes de dar el despliegue por bueno. |
+
+Si a los 35 minutos `tareas.log` no tiene nada, algo falla: mira la entrada en
+hPanel, la ruta de PHP y que `CACHE_STORE` soporte locks (`onOneServer` los
+necesita; `database` y `redis` valen, `array` no).
 
 ## Migración del libro de horas
 

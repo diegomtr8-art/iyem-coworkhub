@@ -86,6 +86,11 @@ php artisan nodico:marcar-no-show --simular
 con código distinto de cero** si algún contador se separó del libro. Es la red
 que detectaría un BUG-01 nuevo al día siguiente, no a los seis meses.
 
+La salida de las tres queda en `storage/logs/tareas.log` gracias a
+`appendOutputTo` en `routes/console.php`. Sin eso no hay forma de comprobar que
+el cron ejecuta algo: `schedule:run` descarta la salida de los comandos que
+lanza, y el log del cron se queda vacío aunque todo funcione.
+
 ---
 
 ## Comprobaciones de interfaz
@@ -112,6 +117,18 @@ crema y es invisible, y el `outline: transparent` que inyecta
 **Consola:** limpia en las 20 rutas de panel y portal.
 
 ---
+
+## Inyección de fórmulas en los CSV
+
+Encontrada por `/security-review` el 01/09/2026 y cerrada en el mismo commit.
+`App\Support\CeldaCsv` neutraliza toda celda que empiece por `=`, `+`, `-`,
+`@`, tabulador o retorno de carro antes de escribirla.
+
+`tests/Feature/Panel/ExportacionCsvTest.php` prueba las ocho cargas que una hoja
+de cálculo ejecutaría —`HYPERLINK` que exfiltra, DDE hacia el shell,
+`WEBSERVICE`— y además el camino completo: un miembro pone la fórmula en su
+nombre o en su razón social, y se comprueba que llega neutralizada al archivo
+que descarga administración.
 
 ## Cómo correr todo antes de un despliegue
 
