@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Head, Link } from '@inertiajs/vue3'
+import { Head, Link, router } from '@inertiajs/vue3'
 import { Check, ExternalLink, ScanFace, UserPlus, Users } from 'lucide-vue-next'
 import PortalLayout from '@/Layouts/PortalLayout.vue'
 import EncabezadoPortal from '@/Components/Portal/EncabezadoPortal.vue'
@@ -15,7 +15,21 @@ defineProps<{
   acompanante: any
   historial: any[]
   otrosPlanes: any[]
+  facturacion: {
+    cobro_en_linea: boolean
+    metodo_pago: { marca: string; ultimos4: string } | null
+    tiene_recurrente: boolean
+    renovacion_activa: boolean
+    en_periodo_de_gracia: boolean
+  }
 }>()
+
+function cancelarRenovacion() {
+  router.post(route('portal.membresia.cancelar'), {}, { preserveScroll: true })
+}
+function reactivarRenovacion() {
+  router.post(route('portal.membresia.reactivar'), {}, { preserveScroll: true })
+}
 
 const precio = (v: number) =>
   new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN', minimumFractionDigits: 0 }).format(v)
@@ -83,8 +97,20 @@ const fecha = (iso: string) =>
           </div>
         </dl>
 
+        <!-- 4.A — el cobro ocurre dentro de Nódico si está configurado; si no,
+             cae al enlace de pago de respaldo (stripe_url). -->
+        <Link
+          v-if="facturacion.cobro_en_linea"
+          :href="route('portal.contratar', { plan: suscripcion.plan.id })"
+          class="mt-6 inline-flex min-h-[48px] items-center gap-2 border-2 border-nodo-400 bg-nodo-400
+                 px-5 font-display text-sm font-bold text-dark transition-all duration-200 ease-salida
+                 hover:-translate-y-0.5 focus-visible:outline focus-visible:outline-2
+                 focus-visible:outline-offset-2 focus-visible:outline-nodo-400"
+        >
+          Renovar mi membresía
+        </Link>
         <a
-          v-if="suscripcion.plan.stripe_url"
+          v-else-if="suscripcion.plan.stripe_url"
           :href="suscripcion.plan.stripe_url"
           target="_blank" rel="noopener noreferrer"
           class="mt-6 inline-flex min-h-[48px] items-center gap-2 border-2 border-nodo-400 bg-nodo-400
@@ -94,6 +120,21 @@ const fecha = (iso: string) =>
         >
           Renovar mi membresía <ExternalLink :size="16" aria-hidden="true" />
         </a>
+
+        <!-- 4.A — método de pago y renovación automática. -->
+        <div v-if="facturacion.metodo_pago || facturacion.tiene_recurrente" class="mt-6 border-t-2 border-white/10 pt-5">
+          <p v-if="facturacion.metodo_pago" class="font-body text-sm text-cream/70">
+            Método de pago: {{ facturacion.metodo_pago.marca }} ···· {{ facturacion.metodo_pago.ultimos4 }}
+          </p>
+          <p v-if="facturacion.en_periodo_de_gracia" class="mt-2 font-body text-sm text-coral">
+            Renovación cancelada. Sigues con acceso hasta el fin del periodo pagado.
+            <button type="button" @click="reactivarRenovacion" class="font-bold underline">Reactivar</button>
+          </p>
+          <p v-else-if="facturacion.renovacion_activa" class="mt-2 font-body text-sm text-cream/70">
+            Se renueva sola.
+            <button type="button" @click="cancelarRenovacion" class="font-bold underline hover:text-coral">Cancelar renovación</button>
+          </p>
+        </div>
       </TarjetaPortal>
 
       <!-- Bolsas del ciclo. -->
@@ -187,8 +228,18 @@ const fecha = (iso: string) =>
               </li>
             </ul>
 
+            <Link
+              v-if="facturacion.cobro_en_linea"
+              :href="route('portal.contratar', { plan: plan.id })"
+              class="mt-5 inline-flex min-h-[44px] items-center justify-center gap-2 border-2
+                     border-dark bg-nodo-400 px-4 font-display text-sm font-bold text-dark
+                     transition-colors hover:bg-nodo-500 focus-visible:outline focus-visible:outline-2
+                     focus-visible:outline-offset-2 focus-visible:outline-dark"
+            >
+              Cambiarme
+            </Link>
             <a
-              v-if="plan.stripe_url"
+              v-else-if="plan.stripe_url"
               :href="plan.stripe_url" target="_blank" rel="noopener noreferrer"
               class="mt-5 inline-flex min-h-[44px] items-center justify-center gap-2 border-2
                      border-dark bg-nodo-400 px-4 font-display text-sm font-bold text-dark

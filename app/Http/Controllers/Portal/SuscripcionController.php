@@ -8,6 +8,7 @@ use App\Http\Controllers\Portal\Concerns\ResuelveLaMembresia;
 use App\Models\Plane;
 use App\Models\Suscripcion;
 use App\Servicios\Horas\ResumenDeBolsas;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 
@@ -77,7 +78,61 @@ class SuscripcionController extends Controller
                 ->when($suscripcion?->plan_id, fn ($q, $id) => $q->whereKeyNot($id))
                 ->get()
                 ->map(fn (Plane $plan) => $this->planParaLaVista($plan)),
+
+            // Fase 4.A — cobro y renovación. Solo datos locales (los que Cashier
+            // guarda en `users`); los cobros de Stripe se piden aparte, para no
+            // llamar a su API en cada carga del portal.
+            'facturacion' => $this->datosDeFacturacion($usuario),
         ]);
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function datosDeFacturacion($usuario): array
+    {
+        $stripe = $usuario->subscription('default');
+
+        return [
+            // El cobro en línea está disponible si hay claves y el sitio tiene
+            // configurado el precio de Stripe.
+            'cobro_en_linea'      => (bool) config('cashier.key'),
+            'metodo_pago'         => $usuario->pm_last_four
+                ? ['marca' => $usuario->pm_type, 'ultimos4' => $usuario->pm_last_four]
+                : null,
+            // Estado de la suscripción recurrente en Stripe, si la hay.
+            'tiene_recurrente'    => (bool) $stripe,
+            'renovacion_activa'   => $stripe ? $stripe->active() && ! $stripe->canceled() : false,
+            'en_periodo_de_gracia' => $stripe ? $stripe->onGracePeriod() : false,
+        ];
+    }
+
+    /** A.4 — cancelar la renovación: sigue con acceso hasta el fin del periodo. */
+    public function cancelarRenovacion(Request $request): RedirectResponse
+    {
+        $stripe = $request->user()->subscription('default');
+
+        if (! $stripe || $stripe->canceled()) {
+            return back()->with('info', 'Tu membresía ya no tiene renovación automática.');
+        }
+
+        $stripe->cancel();
+
+        return back()->with('success', 'Cancelamos la renovación. Sigues con acceso hasta el fin del periodo que ya pagaste.');
+    }
+
+    /** A.4 — reactivar la renovación mientras siga dentro del periodo pagado. */
+    public function reactivarRenovacion(Request $request): RedirectResponse
+    {
+        $stripe = $request->user()->subscription('default');
+
+        if (! $stripe || ! $stripe->onGracePeriod()) {
+            return back()->with('error', 'No se puede reactivar: el periodo ya terminó. Contrata de nuevo.');
+        }
+
+        $stripe->resume();
+
+        return back()->with('success', 'Reactivamos la renovación automática.');
     }
 
     /**

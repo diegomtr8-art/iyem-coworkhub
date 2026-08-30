@@ -29,6 +29,11 @@ class CabecerasDeSeguridad
         'luma'      => ['https://luma.com', 'https://*.luma.com', 'https://lu.ma'],
         'maps'      => ['https://maps.google.com', 'https://www.google.com', 'https://*.googleapis.com', 'https://*.gstatic.com'],
         'fuentes'   => ['https://fonts.googleapis.com', 'https://fonts.gstatic.com'],
+        // Fase 4.A — Stripe Elements: el script de Stripe.js, sus iframes (el
+        // campo de tarjeta y el reto 3-D Secure) y las llamadas a su API.
+        'stripe_js'      => ['https://js.stripe.com'],
+        'stripe_frames'  => ['https://js.stripe.com', 'https://hooks.stripe.com'],
+        'stripe_connect' => ['https://api.stripe.com'],
     ];
 
     public function handle(Request $request, Closure $next): Response
@@ -71,7 +76,7 @@ class CabecerasDeSeguridad
 
     private function politica(string $nonce): string
     {
-        $marcos  = array_merge(self::ORIGENES['youtube'], self::ORIGENES['luma'], self::ORIGENES['maps'], self::ORIGENES['instagram']);
+        $marcos  = array_merge(self::ORIGENES['youtube'], self::ORIGENES['luma'], self::ORIGENES['maps'], self::ORIGENES['instagram'], self::ORIGENES['stripe_frames']);
         $imagenes = array_merge(self::ORIGENES['youtube'], self::ORIGENES['instagram'], self::ORIGENES['maps']);
 
         $directivas = [
@@ -79,7 +84,7 @@ class CabecerasDeSeguridad
             // `unsafe-inline` va **detrás** del nonce a propósito: los navegadores
             // modernos lo ignoran cuando hay nonce, y los viejos que no entienden
             // nonce se quedan con él en vez de romper la página.
-            "script-src 'self' 'nonce-{$nonce}' 'unsafe-inline' " . implode(' ', array_merge(self::ORIGENES['youtube'], self::ORIGENES['luma'])),
+            "script-src 'self' 'nonce-{$nonce}' 'unsafe-inline' " . implode(' ', array_merge(self::ORIGENES['youtube'], self::ORIGENES['luma'], self::ORIGENES['stripe_js'])),
             // Tailwind y los estilos en línea de los componentes obligan a
             // `unsafe-inline` en estilos. Es un riesgo bajo comparado con el de
             // scripts, y quitarlo exigiría reescribir el front entero.
@@ -87,7 +92,7 @@ class CabecerasDeSeguridad
             'font-src \'self\' data: ' . implode(' ', self::ORIGENES['fuentes']),
             "img-src 'self' data: blob: " . implode(' ', $imagenes),
             "frame-src 'self' " . implode(' ', $marcos),
-            "connect-src 'self' " . implode(' ', self::ORIGENES['maps']),
+            "connect-src 'self' " . implode(' ', array_merge(self::ORIGENES['maps'], self::ORIGENES['stripe_connect'])),
             "media-src 'self'",
             "object-src 'none'",
             "base-uri 'self'",

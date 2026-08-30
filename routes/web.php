@@ -20,6 +20,7 @@ use App\Http\Controllers\ReservasController;
 use App\Http\Controllers\WelcomeController;
 use App\Http\Controllers\Portal\DashboardController as PortalDashboard;
 use App\Http\Controllers\Portal\ReservasController as PortalReservas;
+use App\Http\Controllers\Portal\CheckoutController;
 use App\Http\Controllers\Portal\SuscripcionController;
 use App\Http\Controllers\Portal\CheckinController as PortalCheckin;
 use App\Http\Controllers\Portal\PerfilController as PortalPerfil;
@@ -242,6 +243,15 @@ Route::middleware(['auth', 'verified', 'portal:miembro', 'no.suspendida', 'conse
 
     // 2.4 — Mi membresia.
     Route::get('mi-membresia', [SuscripcionController::class, 'index'])->name('suscripcion');
+
+    // 4.A — Cobro dentro de Nódico (Stripe Elements). La activación la hace el
+    // webhook; estas rutas solo preparan el pago y consultan el estado.
+    Route::get('contratar/{plan}', [CheckoutController::class, 'mostrar'])->name('contratar');
+    Route::post('contratar/{plan}', [CheckoutController::class, 'procesarSuscripcion'])->name('contratar.suscripcion');
+    Route::get('pago/confirmando', [CheckoutController::class, 'confirmando'])->name('pago.confirmando');
+    Route::get('pago/estado', [CheckoutController::class, 'estado'])->name('pago.estado');
+    Route::post('membresia/cancelar-renovacion', [SuscripcionController::class, 'cancelarRenovacion'])->name('membresia.cancelar');
+    Route::post('membresia/reactivar-renovacion', [SuscripcionController::class, 'reactivarRenovacion'])->name('membresia.reactivar');
 
     // 2.2 — Mi perfil.
     Route::get('mi-perfil', [PortalPerfil::class, 'edit'])->name('perfil');
