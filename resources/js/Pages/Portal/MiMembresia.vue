@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { Head, Link, router } from '@inertiajs/vue3'
-import { Check, ExternalLink, ScanFace, UserPlus, Users } from 'lucide-vue-next'
+import { Head, Link, router, useForm } from '@inertiajs/vue3'
+import { Check, Mail, ScanFace, UserPlus, Users, X } from 'lucide-vue-next'
 import PortalLayout from '@/Layouts/PortalLayout.vue'
 import EncabezadoPortal from '@/Components/Portal/EncabezadoPortal.vue'
 import TarjetaPortal from '@/Components/Portal/TarjetaPortal.vue'
@@ -29,6 +29,18 @@ function cancelarRenovacion() {
 }
 function reactivarRenovacion() {
   router.post(route('portal.membresia.reactivar'), {}, { preserveScroll: true })
+}
+
+/** Nodo Match: asignar al acompañante por su correo. */
+const formAcompanante = useForm({ email: '' })
+function asignarAcompanante() {
+  formAcompanante.post(route('portal.membresia.acompanante'), {
+    preserveScroll: true,
+    onSuccess: () => formAcompanante.reset(),
+  })
+}
+function quitarAcompanante() {
+  router.delete(route('portal.membresia.acompanante.quitar'), { preserveScroll: true })
 }
 
 const precio = (v: number) =>
@@ -157,28 +169,70 @@ const fecha = (iso: string) =>
             </div>
           </div>
 
-          <p
-            class="flex items-center gap-2 border-2 px-3 py-2 font-body text-xs"
-            :class="acompanante.face_id_ok
-              ? 'border-dark bg-white text-dark'
-              : 'border-dark bg-nodo-400 text-dark'"
-          >
-            <ScanFace :size="15" aria-hidden="true" />
-            {{ acompanante.face_id_ok ? 'Face ID registrado' : 'Face ID pendiente' }}
-          </p>
-        </div>
-
-        <div v-else class="flex items-start gap-3">
-          <UserPlus :size="20" class="mt-0.5 shrink-0 text-dark" aria-hidden="true" />
-          <div>
-            <p class="font-body text-sm text-dark">
-              Tu plan es para dos personas y todavía no has registrado a tu acompañante.
+          <div class="flex items-center gap-3">
+            <p
+              class="flex items-center gap-2 border-2 px-3 py-2 font-body text-xs"
+              :class="acompanante.face_id_ok
+                ? 'border-dark bg-white text-dark'
+                : 'border-dark bg-nodo-400 text-dark'"
+            >
+              <ScanFace :size="15" aria-hidden="true" />
+              {{ acompanante.face_id_ok ? 'Face ID registrado' : 'Face ID pendiente' }}
             </p>
-            <p class="mt-1 font-body text-xs text-dark/70">
-              Pásate por recepción con quien vaya a acompañarte: le damos de alta y le registramos el Face ID.
-            </p>
+            <button
+              type="button" @click="quitarAcompanante"
+              class="flex min-h-[44px] items-center gap-1.5 border-2 border-dark/25 px-3 font-display
+                     text-xs font-bold text-dark transition-colors hover:border-coral hover:text-coral
+                     focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-dark"
+            >
+              <X :size="14" aria-hidden="true" /> Quitar
+            </button>
           </div>
         </div>
+
+        <!-- Sin acompañante: se agrega por correo. La persona debe tener cuenta activa. -->
+        <form v-else class="flex flex-col gap-3" @submit.prevent="asignarAcompanante">
+          <div class="flex items-start gap-3">
+            <UserPlus :size="20" class="mt-0.5 shrink-0 text-dark" aria-hidden="true" />
+            <div>
+              <p class="font-body text-sm text-dark">
+                Tu plan es para dos personas. Agrega a tu acompañante con su correo.
+              </p>
+              <p class="mt-1 font-body text-xs text-dark/70">
+                Debe tener una cuenta en Nódico con su correo verificado. Luego pásalo por recepción
+                para registrar su Face ID.
+              </p>
+            </div>
+          </div>
+
+          <div class="flex flex-col gap-2 sm:flex-row">
+            <div class="relative flex-1">
+              <Mail :size="16" class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-dark/40" aria-hidden="true" />
+              <input
+                v-model="formAcompanante.email"
+                type="email" inputmode="email" autocomplete="off"
+                placeholder="correo@ejemplo.com"
+                aria-label="Correo del acompañante"
+                class="min-h-[48px] w-full border-2 border-dark/25 bg-white pl-9 pr-3 font-body text-base
+                       text-dark focus:border-dark focus:outline-none"
+                :class="formAcompanante.errors.email ? 'border-coral' : ''"
+              />
+            </div>
+            <button
+              type="submit" :disabled="formAcompanante.processing"
+              class="flex min-h-[48px] items-center justify-center gap-2 border-2 border-dark bg-nodo-400
+                     px-5 font-display text-sm font-bold text-dark transition-all duration-200 ease-salida
+                     hover:-translate-y-0.5 hover:shadow-dura-sm disabled:opacity-50
+                     focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-dark"
+            >
+              {{ formAcompanante.processing ? 'Asignando…' : 'Asignar acompañante' }}
+            </button>
+          </div>
+
+          <p v-if="formAcompanante.errors.email" class="border-2 border-coral bg-coral/10 px-3 py-2 font-body text-sm text-dark" role="alert">
+            {{ formAcompanante.errors.email }}
+          </p>
+        </form>
 
         <p class="mt-4 flex items-start gap-2 border-t-2 border-dark/10 pt-4 font-body text-xs text-dark/70">
           <Users :size="14" class="mt-0.5 shrink-0" aria-hidden="true" />

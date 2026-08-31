@@ -272,6 +272,10 @@ Route::middleware(['auth', 'verified', 'portal:miembro', 'no.suspendida', 'conse
     Route::post('membresia/cancelar-renovacion', [SuscripcionController::class, 'cancelarRenovacion'])->name('membresia.cancelar');
     Route::post('membresia/reactivar-renovacion', [SuscripcionController::class, 'reactivarRenovacion'])->name('membresia.reactivar');
 
+    // Nodo Match — asignar/quitar al acompañante por su correo.
+    Route::post('membresia/acompanante', [SuscripcionController::class, 'asignarAcompanante'])->name('membresia.acompanante');
+    Route::delete('membresia/acompanante', [SuscripcionController::class, 'quitarAcompanante'])->name('membresia.acompanante.quitar');
+
     // 2.2 — Mi perfil.
     Route::get('mi-perfil', [PortalPerfil::class, 'edit'])->name('perfil');
     Route::patch('mi-perfil', [PortalPerfil::class, 'update'])->name('perfil.update');

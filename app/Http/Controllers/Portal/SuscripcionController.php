@@ -3,13 +3,16 @@
 namespace App\Http\Controllers\Portal;
 
 use App\Enums\BolsaDeHoras;
+use App\Enums\EstadoCuenta;
 use App\Http\Controllers\Controller;
 use App\Http\Controllers\Portal\Concerns\ResuelveLaMembresia;
 use App\Models\Plane;
 use App\Models\Suscripcion;
+use App\Models\User;
 use App\Servicios\Horas\ResumenDeBolsas;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 
 /**
@@ -133,6 +136,84 @@ class SuscripcionController extends Controller
         $stripe->resume();
 
         return back()->with('success', 'Reactivamos la renovación automática.');
+    }
+
+    /**
+     * Nodo Match — asignar al acompañante por su correo.
+     *
+     * Solo un plan de dos personas (personas > 1) vigente lo admite. El
+     * acompañante tiene que ser una cuenta **registrada, con el correo verificado
+     * y sin suspender** (decisión de Diego, 31/08/2026): no necesita membresía
+     * propia —para eso es acompañante—, pero sí una cuenta real, porque comparte
+     * el acceso y la bolsa de horas. Si no la hay, se rechaza con el aviso que
+     * pide registrarse primero. El Face ID sigue registrándose en recepción.
+     */
+    public function asignarAcompanante(Request $request): RedirectResponse
+    {
+        $usuario     = $request->user();
+        $suscripcion = $this->membresiaVigente($usuario);
+
+        if (! $suscripcion || ($suscripcion->plan?->personas ?? 1) <= 1) {
+            return back()->with('error', 'Tu plan no admite acompañante.');
+        }
+
+        $datos  = $request->validate(['email' => ['required', 'email']]);
+        $correo = mb_strtolower(trim($datos['email']));
+
+        $companion = User::whereRaw('LOWER(email) = ?', [$correo])->first();
+
+        // La regla del acompañante «con correo activo».
+        if (! $companion || ! $companion->hasVerifiedEmail() || $companion->estado === EstadoCuenta::Suspendida) {
+            throw ValidationException::withMessages([
+                'email' => 'No puede asignarse el Match: no hay una cuenta activa con ese correo. '
+                    . 'Pídele a esa persona que se registre en Nódico y verifique su correo primero.',
+            ]);
+        }
+
+        if ($companion->id === $usuario->id) {
+            throw ValidationException::withMessages([
+                'email' => 'No puedes asignarte a ti mismo como acompañante.',
+            ]);
+        }
+
+        // Nadie acompaña dos Match a la vez: la bolsa es compartida y el aforo real.
+        $yaEsAcompanante = Suscripcion::where('companion_user_id', $companion->id)
+            ->where('estatus', 'Activa')
+            ->whereDate('fecha_fin', '>=', now()->toDateString())
+            ->whereKeyNot($suscripcion->id)
+            ->exists();
+
+        if ($yaEsAcompanante) {
+            throw ValidationException::withMessages([
+                'email' => 'Esa persona ya es acompañante de otra membresía Match activa.',
+            ]);
+        }
+
+        // Cambiar de acompañante reinicia el Face ID: el nuevo tiene que registrarlo.
+        $suscripcion->update([
+            'companion_user_id'    => $companion->id,
+            'companion_face_id_ok' => false,
+        ]);
+
+        return back()->with(
+            'success',
+            "Listo: {$companion->name} quedó como tu acompañante. Falta que pase por recepción a registrar su Face ID.",
+        );
+    }
+
+    /** Nodo Match — quitar al acompañante. */
+    public function quitarAcompanante(Request $request): RedirectResponse
+    {
+        $usuario     = $request->user();
+        $suscripcion = $this->membresiaVigente($usuario);
+
+        if (! $suscripcion || ($suscripcion->plan?->personas ?? 1) <= 1) {
+            return back()->with('error', 'Tu plan no admite acompañante.');
+        }
+
+        $suscripcion->update(['companion_user_id' => null, 'companion_face_id_ok' => false]);
+
+        return back()->with('info', 'Quitamos al acompañante de tu membresía.');
     }
 
     /**
