@@ -97,10 +97,9 @@ const fecha = (iso: string) =>
           </div>
         </dl>
 
-        <!-- 4.A — el cobro ocurre dentro de Nódico si está configurado; si no,
-             cae al enlace de pago de respaldo (stripe_url). -->
+        <!-- 4.A — el cobro ocurre siempre dentro de Nódico. Sin claves de Stripe,
+             la pantalla se muestra en vista previa (no sale a buy.stripe.com). -->
         <Link
-          v-if="facturacion.cobro_en_linea"
           :href="route('portal.contratar', { plan: suscripcion.plan.id })"
           class="mt-6 inline-flex min-h-[48px] items-center gap-2 border-2 border-nodo-400 bg-nodo-400
                  px-5 font-display text-sm font-bold text-dark transition-all duration-200 ease-salida
@@ -109,17 +108,6 @@ const fecha = (iso: string) =>
         >
           Renovar mi membresía
         </Link>
-        <a
-          v-else-if="suscripcion.plan.stripe_url"
-          :href="suscripcion.plan.stripe_url"
-          target="_blank" rel="noopener noreferrer"
-          class="mt-6 inline-flex min-h-[48px] items-center gap-2 border-2 border-nodo-400 bg-nodo-400
-                 px-5 font-display text-sm font-bold text-dark transition-all duration-200 ease-salida
-                 hover:-translate-y-0.5 focus-visible:outline focus-visible:outline-2
-                 focus-visible:outline-offset-2 focus-visible:outline-nodo-400"
-        >
-          Renovar mi membresía <ExternalLink :size="16" aria-hidden="true" />
-        </a>
 
         <!-- 4.A — método de pago y renovación automática. -->
         <div v-if="facturacion.metodo_pago || facturacion.tiene_recurrente" class="mt-6 border-t-2 border-white/10 pt-5">
@@ -229,7 +217,6 @@ const fecha = (iso: string) =>
             </ul>
 
             <Link
-              v-if="facturacion.cobro_en_linea"
               :href="route('portal.contratar', { plan: plan.id })"
               class="mt-5 inline-flex min-h-[44px] items-center justify-center gap-2 border-2
                      border-dark bg-nodo-400 px-4 font-display text-sm font-bold text-dark
@@ -238,16 +225,6 @@ const fecha = (iso: string) =>
             >
               Cambiarme
             </Link>
-            <a
-              v-else-if="plan.stripe_url"
-              :href="plan.stripe_url" target="_blank" rel="noopener noreferrer"
-              class="mt-5 inline-flex min-h-[44px] items-center justify-center gap-2 border-2
-                     border-dark bg-nodo-400 px-4 font-display text-sm font-bold text-dark
-                     transition-colors hover:bg-nodo-500 focus-visible:outline focus-visible:outline-2
-                     focus-visible:outline-offset-2 focus-visible:outline-dark"
-            >
-              Cambiarme <ExternalLink :size="15" aria-hidden="true" />
-            </a>
           </article>
         </div>
 

@@ -2,6 +2,7 @@
 import { ChevronLeft, ChevronRight, Check, Star } from 'lucide-vue-next'
 import type { Plan } from '@/tipos'
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { usePage } from '@inertiajs/vue3'
 
 const props = withDefaults(defineProps<{
   planes: Plan[]
@@ -10,6 +11,20 @@ const props = withDefaults(defineProps<{
 }>(), {
   detallado: false,
 })
+
+const page = usePage()
+const usuario = computed(() => (page.props.auth as any)?.user ?? null)
+
+/**
+ * 4.A — Contratar lleva **dentro de Nódico**: un miembro va a la pantalla de
+ * pago del portal; quien no ha entrado, primero se registra. Ya no se sale a
+ * buy.stripe.com.
+ */
+function destinoContratar(plan: any): string {
+  return usuario.value?.rol === 'miembro'
+    ? route('portal.contratar', { plan: plan.id })
+    : route('register')
+}
 
 const pista = ref<HTMLElement | null>(null)
 const tarjetas = ref<HTMLElement[]>([])
@@ -292,10 +307,7 @@ onBeforeUnmount(() => {
           </ul>
 
           <a
-            v-if="plan.stripe_url"
-            :href="plan.stripe_url"
-            target="_blank"
-            rel="noopener noreferrer"
+            :href="destinoContratar(plan)"
             class="group mt-7 inline-flex min-h-[48px] w-full items-center justify-center gap-2 rounded-xl
                    px-6 py-3 font-display text-sm font-bold transition-all duration-300 ease-salida
                    hover:-translate-y-0.5 hover:shadow-sombra"

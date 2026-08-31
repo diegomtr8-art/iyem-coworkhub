@@ -31,7 +31,30 @@ class CheckoutController extends Controller
     /** Prepara el pago del plan elegido y muestra el formulario de tarjeta. */
     public function mostrar(Request $request, Plane $plan): Response
     {
-        $this->verificarConfigurado($plan);
+        $modo = $plan->cobro_recurrente ? 'suscripcion' : 'pago_unico';
+        $datosPlan = [
+            'id'            => $plan->id,
+            'nombre'        => $plan->nombre,
+            'precio'        => (float) $plan->precio,
+            'periodo_label' => $plan->periodo_label,
+            'recurrente'    => $plan->cobro_recurrente,
+            'color'         => $plan->color,
+        ];
+
+        // Sin claves de Stripe todavía, la pantalla se muestra en **vista previa**:
+        // se ve el flujo completo dentro de Nódico, pero no se crea intent ni se
+        // llama a Stripe. El campo de tarjeta y el cobro se activan solos en cuanto
+        // se configuren las claves. Así ya no se sale del sitio a buy.stripe.com.
+        if (! $this->hayClavesDeStripe()) {
+            return Inertia::render('Portal/Pago', [
+                'plan'         => $datosPlan,
+                'modo'         => $modo,
+                'vistaPrevia'  => true,
+                'clientSecret' => null,
+                'stripeKey'    => null,
+                'volverA'      => route('portal.suscripcion'),
+            ]);
+        }
 
         $usuario = $request->user();
         $usuario->createOrGetStripeCustomer();
@@ -40,7 +63,6 @@ class CheckoutController extends Controller
             // Suscripción: se guarda el método con un SetupIntent y luego se crea
             // la suscripción en el servidor (procesarSuscripcion).
             $intent = $usuario->createSetupIntent();
-            $modo = 'suscripcion';
         } else {
             // Pago único: un PaymentIntent por el importe, con la metadata que el
             // webhook usará para saber a quién y qué plan activar.
@@ -55,19 +77,12 @@ class CheckoutController extends Controller
                     'tipo'    => 'pago_unico_nodico',
                 ],
             ]);
-            $modo = 'pago_unico';
         }
 
         return Inertia::render('Portal/Pago', [
-            'plan' => [
-                'id'            => $plan->id,
-                'nombre'        => $plan->nombre,
-                'precio'        => (float) $plan->precio,
-                'periodo_label' => $plan->periodo_label,
-                'recurrente'    => $plan->cobro_recurrente,
-                'color'         => $plan->color,
-            ],
+            'plan'           => $datosPlan,
             'modo'           => $modo,
+            'vistaPrevia'    => false,
             'clientSecret'   => $intent->client_secret,
             'stripeKey'      => config('cashier.key'),
             'volverA'        => route('portal.suscripcion'),
@@ -132,11 +147,17 @@ class CheckoutController extends Controller
     {
         $faltaPrecio = $plan->cobro_recurrente && ! $plan->stripe_price_id;
 
-        if ($faltaPrecio || ! config('cashier.key')) {
+        if ($faltaPrecio || ! $this->hayClavesDeStripe()) {
             throw ValidationException::withMessages([
                 'plan' => 'El cobro en línea todavía no está disponible para este plan. '
                     . 'Escríbenos y lo activamos.',
             ]);
         }
+    }
+
+    /** Hay claves de Stripe si están tanto la publishable como la secreta. */
+    private function hayClavesDeStripe(): bool
+    {
+        return (bool) config('cashier.key') && (bool) config('cashier.secret');
     }
 }

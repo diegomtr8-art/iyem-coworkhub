@@ -6,13 +6,18 @@ import PortalLayout from '@/Layouts/PortalLayout.vue'
 import EncabezadoPortal from '@/Components/Portal/EncabezadoPortal.vue'
 import TarjetaPortal from '@/Components/Portal/TarjetaPortal.vue'
 
-const props = defineProps<{
+const props = withDefaults(defineProps<{
   plan: { id: number; nombre: string; precio: number; periodo_label: string; recurrente: boolean; color: string }
   modo: 'suscripcion' | 'pago_unico'
-  clientSecret: string
-  stripeKey: string
+  clientSecret: string | null
+  stripeKey: string | null
   volverA: string
-}>()
+  /** Sin claves de Stripe: se ve el flujo, pero el campo de tarjeta y el cobro
+   *  están inactivos hasta conectar Stripe. */
+  vistaPrevia?: boolean
+}>(), {
+  vistaPrevia: false,
+})
 
 const cargando = ref(true)
 const procesando = ref(false)
@@ -34,6 +39,11 @@ function cargarStripeJs(): Promise<any> {
 }
 
 onMounted(async () => {
+  // En vista previa no se toca Stripe: solo se muestra la pantalla.
+  if (props.vistaPrevia) {
+    cargando.value = false
+    return
+  }
   try {
     const Stripe = await cargarStripeJs()
     stripe = Stripe(props.stripeKey)
@@ -117,22 +127,55 @@ async function pagar() {
           {{ error }}
         </div>
 
-        <p v-if="cargando" class="py-8 text-center font-body text-sm text-dark/50">Cargando el pago seguro…</p>
+        <!-- ── Vista previa: sin claves de Stripe todavía ── -->
+        <template v-if="vistaPrevia">
+          <div class="mb-2 flex items-center gap-2 border-2 border-amber-300 bg-amber-50 px-4 py-3 font-body text-sm text-amber-900">
+            <span class="text-lg">👁️</span>
+            <span>Vista previa. Así se verá el pago dentro de Nódico; el campo de tarjeta se activa en cuanto se conecte Stripe.</span>
+          </div>
 
-        <!-- Aquí Stripe monta su iframe con el campo de tarjeta. -->
-        <div id="tarjeta-stripe" :class="cargando ? 'hidden' : ''"></div>
+          <label class="mb-1.5 mt-4 block font-display text-sm font-bold text-dark">Datos de la tarjeta</label>
+          <!-- Maqueta del campo de tarjeta (el real lo pone Stripe Elements). -->
+          <div class="space-y-3 rounded-md border-2 border-dashed border-dark/25 bg-cream-50 p-4 opacity-70">
+            <div class="flex items-center justify-between rounded border border-dark/15 bg-white px-3 py-2.5">
+              <span class="font-mono text-sm text-dark/40">1234 1234 1234 1234</span>
+              <span class="flex gap-1"><span class="h-4 w-6 rounded bg-dark/10"></span><span class="h-4 w-6 rounded bg-dark/10"></span></span>
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+              <div class="rounded border border-dark/15 bg-white px-3 py-2.5 font-mono text-sm text-dark/40">MM / AA</div>
+              <div class="rounded border border-dark/15 bg-white px-3 py-2.5 font-mono text-sm text-dark/40">CVC</div>
+            </div>
+          </div>
 
-        <button
-          v-if="!cargando && !error"
-          type="button"
-          @click="pagar"
-          :disabled="procesando"
-          class="mt-6 flex min-h-[48px] w-full items-center justify-center gap-2 bg-dark px-6
-                 font-display text-base font-bold text-white transition hover:bg-dark/90 disabled:opacity-50"
-        >
-          <Lock :size="18" aria-hidden="true" />
-          {{ procesando ? 'Procesando…' : (plan.recurrente ? 'Suscribirme' : 'Pagar ' + precio(plan.precio)) }}
-        </button>
+          <button
+            type="button" disabled
+            class="mt-6 flex min-h-[48px] w-full cursor-not-allowed items-center justify-center gap-2 bg-dark/40 px-6
+                   font-display text-base font-bold text-white"
+          >
+            <Lock :size="18" aria-hidden="true" />
+            {{ plan.recurrente ? 'Suscribirme' : 'Pagar ' + precio(plan.precio) }}
+          </button>
+        </template>
+
+        <!-- ── Pago real (con claves de Stripe) ── -->
+        <template v-else>
+          <p v-if="cargando" class="py-8 text-center font-body text-sm text-dark/50">Cargando el pago seguro…</p>
+
+          <!-- Aquí Stripe monta su iframe con el campo de tarjeta. -->
+          <div id="tarjeta-stripe" :class="cargando ? 'hidden' : ''"></div>
+
+          <button
+            v-if="!cargando && !error"
+            type="button"
+            @click="pagar"
+            :disabled="procesando"
+            class="mt-6 flex min-h-[48px] w-full items-center justify-center gap-2 bg-dark px-6
+                   font-display text-base font-bold text-white transition hover:bg-dark/90 disabled:opacity-50"
+          >
+            <Lock :size="18" aria-hidden="true" />
+            {{ procesando ? 'Procesando…' : (plan.recurrente ? 'Suscribirme' : 'Pagar ' + precio(plan.precio)) }}
+          </button>
+        </template>
 
         <p class="mt-4 flex items-center justify-center gap-2 font-body text-xs text-dark/50">
           <ShieldCheck :size="14" aria-hidden="true" />
