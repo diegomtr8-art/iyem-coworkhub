@@ -4,6 +4,7 @@ import PortalLayout from '@/Layouts/PortalLayout.vue'
 import { Head, Link, router, useForm, usePage } from '@inertiajs/vue3'
 import { Monitor, ShieldCheck, ShieldAlert, LogOut, Link2, KeyRound, Smartphone, Mail, Clock } from 'lucide-vue-next'
 import { computed, ref } from 'vue'
+import ListaResponsiva, { type Columna } from '@/Components/Panel/ListaResponsiva.vue'
 
 interface Sesion {
   /** Referencia opaca; el identificador de sesion nunca sale del servidor. */
@@ -115,6 +116,17 @@ function apagarDosFactores() {
 function olvidarDispositivo(id: number) {
   router.delete(route('seguridad.olvidar-dispositivo', { dispositivo: id }), { preserveScroll: true })
 }
+
+/**
+ * Bitácora propia: en pantalla ancha, tabla; en móvil, tarjetas apiladas (nada
+ * de scroll horizontal). «Qué pasó» encabeza; «Cuándo» se ve siempre; la IP
+ * («Desde») queda tras «Ver detalle».
+ */
+const columnasBitacora: Columna[] = [
+  { clave: 'que', etiqueta: 'Qué pasó', rol: 'identidad' },
+  { clave: 'cuando', etiqueta: 'Cuándo', rol: 'resumen' },
+  { clave: 'ip', etiqueta: 'Desde', rol: 'detalle' },
+]
 </script>
 
 <template>
@@ -455,37 +467,20 @@ function olvidarDispositivo(id: number) {
           <h2 class="font-semibold text-gray-900">Actividad de tu cuenta</h2>
         </header>
 
-        <div class="overflow-x-auto">
-          <table class="w-full text-left text-sm">
-            <thead class="bg-gray-50 text-xs uppercase tracking-wide text-gray-500">
-              <tr>
-                <th scope="col" class="px-5 py-3 font-semibold">Qué pasó</th>
-                <th scope="col" class="px-5 py-3 font-semibold">Cuándo</th>
-                <th scope="col" class="px-5 py-3 font-semibold">Desde</th>
-              </tr>
-            </thead>
-            <tbody class="divide-y divide-gray-100">
-              <tr v-for="evento in eventos" :key="evento.id">
-                <td class="px-5 py-3">
-                  <span class="flex items-center gap-2 font-medium text-gray-900">
-                    <ShieldAlert
-                      v-if="evento.delicado"
-                      class="h-4 w-4 shrink-0 text-amber-500"
-                      aria-hidden="true"
-                    />
-                    {{ evento.etiqueta }}
-                  </span>
-                </td>
-                <td class="whitespace-nowrap px-5 py-3 text-gray-500">{{ evento.cuando }}</td>
-                <td class="px-5 py-3 text-gray-500">{{ evento.ip || '—' }}</td>
-              </tr>
-
-              <tr v-if="!eventos.length">
-                <td colspan="3" class="px-5 py-6 text-gray-500">Todavía no hay actividad registrada.</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
+        <ListaResponsiva
+          :columnas="columnasBitacora"
+          :filas="eventos"
+          vacio="Todavía no hay actividad registrada."
+        >
+          <template #que="{ fila: e }">
+            <span class="flex items-center gap-2 font-medium text-gray-900">
+              <ShieldAlert v-if="e.delicado" class="h-4 w-4 shrink-0 text-amber-500" aria-hidden="true" />
+              {{ e.etiqueta }}
+            </span>
+          </template>
+          <template #cuando="{ fila: e }"><span class="whitespace-nowrap text-gray-500">{{ e.cuando }}</span></template>
+          <template #ip="{ fila: e }"><span class="text-gray-500">{{ e.ip || '—' }}</span></template>
+        </ListaResponsiva>
       </section>
     </div>
   </component>

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import { Head, Link, router, useForm } from '@inertiajs/vue3'
 import { ChevronLeft, ChevronRight, Plus, Ban, X, AlertTriangle } from 'lucide-vue-next'
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue'
@@ -84,6 +84,22 @@ function abrirBloqueo(espacioId: number | null = null, fecha: string | null = nu
 
 const irA = (fecha: string) =>
   router.get(route('agenda.index'), { semana: fecha }, { preserveState: true })
+
+/**
+ * Vista de un día para móvil. La retícula semanal no cabe en un iPhone sin
+ * volverse ilegible (960 px de ancho mínimo), así que por debajo de `lg` se
+ * muestra un solo día, agrupado por espacio. Los datos salen de la misma semana
+ * que ya trae el servidor —no se pide nada nuevo—: solo se elige el día.
+ */
+const diaSelIdx = ref(Math.max(0, props.dias.findIndex((d: any) => d.es_hoy)))
+const diaSel = computed(() => props.dias[diaSelIdx.value] ?? props.dias[0])
+
+const espaciosDelDia = computed(() =>
+  props.espacios.map((e: any) => {
+    const col = diaSel.value?.columnas?.find((c: any) => c.espacio_id === e.id) ?? null
+    return { ...e, abierto: !!col?.abierto, eventos: col?.eventos ?? [] }
+  }),
+)
 </script>
 
 <template>
@@ -130,8 +146,9 @@ const irA = (fecha: string) =>
         ><ChevronRight :size="15" /></button>
       </div>
 
-      <!-- La rejilla desborda dentro de su caja, nunca en el documento. -->
-      <div class="overflow-x-auto">
+      <!-- ≥ lg: la retícula semanal completa, que ahí sí funciona. Desborda dentro
+           de su caja, nunca en el documento. -->
+      <div class="hidden overflow-x-auto lg:block">
         <table class="w-full min-w-[60rem] border-collapse text-sm">
           <thead>
             <tr class="border-b border-dark/15 bg-cream-50">
@@ -197,6 +214,64 @@ const irA = (fecha: string) =>
             </tr>
           </tbody>
         </table>
+      </div>
+
+      <!-- < lg: vista de un día, agrupada por espacio. Misma semana, mismos datos,
+           mismo modal de detalle: solo cambia la forma de mostrarla. -->
+      <div class="lg:hidden">
+        <!-- Tira para elegir el día dentro de la semana. -->
+        <div class="flex gap-1.5 overflow-x-auto border-b border-dark/15 bg-cream-50 px-3 py-2.5">
+          <button
+            v-for="(d, i) in dias" :key="d.fecha" type="button"
+            class="flex min-h-[44px] min-w-[44px] shrink-0 flex-col items-center justify-center border px-2 py-1
+                   focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-dark"
+            :class="i === diaSelIdx ? 'border-dark bg-nodo-400 text-dark' : 'border-dark/20 text-dark/70 hover:border-dark'"
+            :aria-pressed="i === diaSelIdx"
+            @click="diaSelIdx = i"
+          >
+            <span class="font-mono text-[0.625rem] uppercase tracking-[0.08em]">{{ d.nombre.slice(0, 3) }}</span>
+            <span class="font-display text-sm font-bold leading-none">{{ d.numero }}</span>
+          </button>
+        </div>
+
+        <!-- Cada espacio del día, con sus reservas por hora. -->
+        <ul class="divide-y divide-dark/10">
+          <li v-for="espacio in espaciosDelDia" :key="espacio.id" class="px-4 py-3">
+            <div class="flex items-start justify-between gap-3">
+              <div class="min-w-0">
+                <p class="font-display text-sm font-bold text-dark">{{ espacio.nombre }}</p>
+                <p class="text-[0.6875rem] text-dark/50">{{ espacio.tipo }}</p>
+              </div>
+              <button
+                v-if="espacio.abierto" type="button"
+                class="flex min-h-[36px] shrink-0 items-center gap-1 border border-dark bg-nodo-400 px-2.5
+                       font-display text-xs font-bold text-dark hover:bg-nodo-500
+                       focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-dark"
+                :aria-label="`Reservar ${espacio.nombre} el ${diaSel.fecha}`"
+                @click="abrirReserva(espacio.id, diaSel.fecha)"
+              ><Plus :size="13" aria-hidden="true" /> Reservar</button>
+            </div>
+
+            <ul v-if="espacio.abierto" class="mt-2 space-y-1.5">
+              <li v-for="evento in espacio.eventos" :key="evento.tipo + evento.id">
+                <button
+                  type="button"
+                  class="flex w-full items-center gap-2.5 border-l-2 px-2.5 py-2 text-left transition-colors
+                         focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-dark"
+                  :class="evento.tipo === 'bloqueo'
+                    ? 'border-l-red-600 bg-red-50 hover:bg-red-100'
+                    : 'border-l-dark bg-nodo-400/60 hover:bg-nodo-400'"
+                  @click="detalle = { ...evento, espacio: espacio.nombre, fecha: diaSel.fecha }"
+                >
+                  <span class="shrink-0 font-mono text-xs text-dark">{{ evento.inicio }}–{{ evento.fin }}</span>
+                  <span class="truncate text-sm text-dark">{{ evento.titulo }}</span>
+                </button>
+              </li>
+              <li v-if="!espacio.eventos.length" class="py-1 text-xs text-dark/45">Libre todo el día.</li>
+            </ul>
+            <p v-else class="mt-1.5 text-xs text-dark/40">Cerrado este día.</p>
+          </li>
+        </ul>
       </div>
     </Panel>
 

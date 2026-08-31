@@ -5,6 +5,7 @@ import { Plus, Calculator, AlertTriangle, Inbox, Wallet } from 'lucide-vue-next'
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue'
 import Panel from '@/Components/Panel/Panel.vue'
 import Estado from '@/Components/Panel/Estado.vue'
+import ListaResponsiva, { type Columna } from '@/Components/Panel/ListaResponsiva.vue'
 
 /**
  * Salones Yucatán Emprende (Fase 3.5).
@@ -141,6 +142,21 @@ function guardar() {
 
 const filtrar = (estado: string) =>
   router.get(route('salones.index'), { estado: estado || undefined }, { preserveState: true, replace: true })
+
+/**
+ * De un evento, lo que se consulta de pie es el salón y la fecha, el total y en
+ * qué estado va (cotización o confirmado). El montaje y el anticipo son detalle.
+ * El orden es el de la tabla ancha, que no cambia. Tocar la fila abre el mismo
+ * cotizador de siempre (por eso `seleccionable`, no navega a otra página).
+ */
+const columnas: Columna[] = [
+  { clave: 'cliente', etiqueta: 'Cliente', rol: 'identidad', clase: 'px-4' },
+  { clave: 'salonfecha', etiqueta: 'Salón y fecha', rol: 'resumen' },
+  { clave: 'montaje', etiqueta: 'Montaje', rol: 'detalle' },
+  { clave: 'total', etiqueta: 'Total', rol: 'resumen', clase: 'text-right' },
+  { clave: 'anticipo', etiqueta: 'Anticipo', rol: 'detalle', clase: 'text-right' },
+  { clave: 'estado', etiqueta: 'Estado', rol: 'resumen', sinEtiqueta: true },
+]
 </script>
 
 <template>
@@ -175,55 +191,53 @@ const filtrar = (estado: string) =>
             </div>
           </template>
 
-          <p v-if="!rentas.data.length" class="px-4 py-10 text-center text-sm text-dark/50">
-            Sin cotizaciones ni eventos.
-          </p>
+          <ListaResponsiva
+            :columnas="columnas"
+            :filas="rentas.data"
+            seleccionable
+            etiqueta-abrir="Ver detalle"
+            vacio="Sin cotizaciones ni eventos."
+            @seleccionar="abrir"
+          >
+            <template #cliente="{ fila: r }">
+              <button
+                type="button"
+                class="text-left font-display font-bold text-dark
+                       focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-dark"
+                @click.stop="abrir(r)"
+              >{{ r.cliente }}</button>
+              <span class="block text-xs font-normal text-dark/55">
+                {{ r.empresa }}<template v-if="r.evento"> · {{ r.evento }}</template>
+              </span>
+            </template>
 
-          <div v-else class="overflow-x-auto">
-            <table class="w-full min-w-[52rem] text-sm">
-              <thead class="border-b border-dark/15 bg-cream-50">
-                <tr class="text-left font-mono text-[0.625rem] uppercase tracking-[0.1em] text-dark/50">
-                  <th scope="col" class="px-4 py-2 font-normal">Cliente</th>
-                  <th scope="col" class="px-3 py-2 font-normal">Salón y fecha</th>
-                  <th scope="col" class="px-3 py-2 font-normal">Montaje</th>
-                  <th scope="col" class="px-3 py-2 text-right font-normal">Total</th>
-                  <th scope="col" class="px-3 py-2 text-right font-normal">Anticipo</th>
-                  <th scope="col" class="px-3 py-2 font-normal">Estado</th>
-                </tr>
-              </thead>
+            <template #salonfecha="{ fila: r }">
+              <span class="block text-dark">{{ r.salon }}</span>
+              <span class="block font-mono text-dark/55">
+                {{ fecha(r.fecha) }}<template v-if="r.inicio"> · {{ r.inicio }}–{{ r.fin }}</template>
+              </span>
+            </template>
 
-              <tbody class="divide-y divide-dark/10">
-                <tr v-for="r in rentas.data" :key="r.id" class="cursor-pointer hover:bg-cream-50" @click="abrir(r)">
-                  <td class="px-4 py-2.5">
-                    <span class="block font-display font-bold text-dark">{{ r.cliente }}</span>
-                    <span class="block text-xs text-dark/55">
-                      {{ r.empresa }}<template v-if="r.evento"> · {{ r.evento }}</template>
-                    </span>
-                  </td>
-                  <td class="px-3 py-2.5 text-xs">
-                    <span class="block text-dark">{{ r.salon }}</span>
-                    <span class="block font-mono text-dark/55">
-                      {{ fecha(r.fecha) }}<template v-if="r.inicio"> · {{ r.inicio }}–{{ r.fin }}</template>
-                    </span>
-                  </td>
-                  <td class="px-3 py-2.5 text-xs text-dark/70">
-                    {{ r.montaje ?? '—' }}
-                    <span v-if="r.personas" class="block font-mono text-[0.6875rem] text-dark/50">{{ r.personas }} pax</span>
-                  </td>
-                  <td class="px-3 py-2.5 text-right font-display text-sm font-bold text-dark">{{ precio(r.total) }}</td>
-                  <td class="px-3 py-2.5 text-right text-xs">
-                    <span :class="r.anticipo_pagado ? 'text-emerald-700' : 'text-dark/55'">{{ precio(r.anticipo) }}</span>
-                    <button
-                      type="button"
-                      class="mt-1 block w-full text-right font-mono text-[0.625rem] text-dark/45 underline hover:text-dark"
-                      @click.stop="cobrando = r; anticipoForm.anticipo = r.anticipo"
-                    >registrar</button>
-                  </td>
-                  <td class="px-3 py-2.5"><Estado :tono="r.tono" :texto="r.estado_etiqueta" /></td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
+            <template #montaje="{ fila: r }">
+              {{ r.montaje ?? '—' }}
+              <span v-if="r.personas" class="block font-mono text-[0.6875rem] text-dark/50">{{ r.personas }} pax</span>
+            </template>
+
+            <template #total="{ fila: r }">
+              <span class="font-display font-bold text-dark">{{ precio(r.total) }}</span>
+            </template>
+
+            <template #anticipo="{ fila: r }">
+              <span :class="r.anticipo_pagado ? 'text-emerald-700' : 'text-dark/55'">{{ precio(r.anticipo) }}</span>
+              <button
+                type="button"
+                class="mt-1 block font-mono text-[0.625rem] text-dark/45 underline hover:text-dark"
+                @click.stop="cobrando = r; anticipoForm.anticipo = r.anticipo"
+              >registrar</button>
+            </template>
+
+            <template #estado="{ fila: r }"><Estado :tono="r.tono" :texto="r.estado_etiqueta" /></template>
+          </ListaResponsiva>
         </Panel>
       </div>
 

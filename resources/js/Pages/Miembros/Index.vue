@@ -1,10 +1,12 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue'
 import { Head, Link, router } from '@inertiajs/vue3'
-import { Search, ScanFace, ChevronRight } from 'lucide-vue-next'
+import { Search, ScanFace } from 'lucide-vue-next'
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue'
 import Panel from '@/Components/Panel/Panel.vue'
 import Estado from '@/Components/Panel/Estado.vue'
+import ListaResponsiva, { type Columna } from '@/Components/Panel/ListaResponsiva.vue'
+import Paginacion from '@/Components/Panel/Paginacion.vue'
 
 /** Listado de miembros con filtros (Fase 3.2). */
 const props = defineProps<{
@@ -55,6 +57,20 @@ const filtrosEstado = [
   { valor: 'suspendida', etiqueta: 'Cuenta suspendida' },
   { valor: 'sin_faceid', etiqueta: 'Sin Face ID' },
 ]
+
+/**
+ * En el mostrador, recepción necesita ver de un vistazo quién es y en qué estado
+ * está; el correo, el teléfono y la fecha de vencimiento se consultan menos, así
+ * que en móvil van tras «Ver ficha». El orden aquí es el de la tabla en pantalla
+ * ancha, que queda igual que antes.
+ */
+const columnas: Columna[] = [
+  { clave: 'miembro', etiqueta: 'Miembro', rol: 'identidad', clase: 'px-4' },
+  { clave: 'contacto', etiqueta: 'Contacto', rol: 'detalle' },
+  { clave: 'plan', etiqueta: 'Plan', rol: 'resumen' },
+  { clave: 'vence', etiqueta: 'Vence', rol: 'detalle' },
+  { clave: 'estado', etiqueta: 'Estado', rol: 'resumen', sinEtiqueta: true },
+]
 </script>
 
 <template>
@@ -92,73 +108,42 @@ const filtrosEstado = [
         </div>
       </div>
 
-      <p v-if="!miembros.data.length" class="px-4 py-10 text-center text-sm text-dark/50">
-        Nadie con esos filtros.
-      </p>
-
-      <div v-else class="overflow-x-auto">
-        <table class="w-full min-w-[44rem] text-sm">
-          <thead class="border-b border-dark/15 bg-cream-50">
-            <tr class="text-left font-mono text-[0.625rem] uppercase tracking-[0.1em] text-dark/50">
-              <th scope="col" class="px-4 py-2 font-normal">Miembro</th>
-              <th scope="col" class="px-3 py-2 font-normal">Contacto</th>
-              <th scope="col" class="px-3 py-2 font-normal">Plan</th>
-              <th scope="col" class="px-3 py-2 font-normal">Vence</th>
-              <th scope="col" class="px-3 py-2 font-normal">Estado</th>
-              <th scope="col" class="w-8 px-3 py-2"><span class="sr-only">Abrir</span></th>
-            </tr>
-          </thead>
-
-          <tbody class="divide-y divide-dark/10">
-            <tr
-              v-for="m in miembros.data" :key="m.id"
-              class="cursor-pointer transition-colors hover:bg-cream-50"
-              @click="router.visit(route('miembros.show', m.id))"
-            >
-              <td class="px-4 py-2.5">
-                <Link
-                  :href="route('miembros.show', m.id)"
-                  class="flex items-center gap-2 font-display font-bold text-dark
-                         focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2
-                         focus-visible:outline-dark"
-                  @click.stop
-                >
-                  {{ m.nombre }}
-                  <ScanFace v-if="!m.face_id_ok" :size="14" class="shrink-0 text-amber-600" aria-label="Sin Face ID" />
-                </Link>
-                <span v-if="m.empresa" class="text-xs text-dark/55">{{ m.empresa }}</span>
-              </td>
-
-              <td class="px-3 py-2.5 text-xs text-dark/70">
-                <span class="block truncate">{{ m.email }}</span>
-                <span v-if="m.telefono" class="block font-mono text-[0.6875rem] text-dark/50">{{ m.telefono }}</span>
-              </td>
-
-              <td class="px-3 py-2.5 text-xs text-dark">{{ m.plan ?? '—' }}</td>
-              <td class="px-3 py-2.5 font-mono text-xs text-dark/70">{{ fecha(m.vence) }}</td>
-              <td class="px-3 py-2.5"><Estado v-bind="tono(m)" /></td>
-              <td class="px-3 py-2.5 text-dark/30"><ChevronRight :size="15" aria-hidden="true" /></td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-
-      <nav
-        v-if="miembros.last_page > 1"
-        class="flex flex-wrap items-center justify-center gap-1 border-t border-dark/15 bg-cream-50 px-4 py-3"
-        aria-label="Paginación"
+      <ListaResponsiva
+        :columnas="columnas"
+        :filas="miembros.data"
+        :href="(m) => route('miembros.show', m.id)"
+        etiqueta-abrir="Ver ficha"
+        vacio="Nadie con esos filtros."
       >
-        <Link
-          v-for="enlace in miembros.links" :key="enlace.label"
-          :href="enlace.url ?? ''"
-          :disabled="!enlace.url"
-          class="min-h-[32px] min-w-[32px] border px-2 py-1 text-center font-mono text-xs transition-colors"
-          :class="enlace.active
-            ? 'border-dark bg-dark text-white'
-            : enlace.url ? 'border-dark/20 text-dark hover:border-dark' : 'border-transparent text-dark/25'"
-          v-html="enlace.label"
-        />
-      </nav>
+        <template #miembro="{ fila: m }">
+          <Link
+            :href="route('miembros.show', m.id)"
+            class="flex items-center gap-2 font-display font-bold text-dark
+                   focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2
+                   focus-visible:outline-dark"
+            @click.stop
+          >
+            {{ m.nombre }}
+            <ScanFace v-if="!m.face_id_ok" :size="14" class="shrink-0 text-amber-600" aria-label="Sin Face ID" />
+          </Link>
+          <span v-if="m.empresa" class="block text-xs font-normal text-dark/55">{{ m.empresa }}</span>
+        </template>
+
+        <template #contacto="{ fila: m }">
+          <span class="block truncate">{{ m.email }}</span>
+          <span v-if="m.telefono" class="block font-mono text-[0.6875rem] text-dark/50">{{ m.telefono }}</span>
+        </template>
+
+        <template #plan="{ fila: m }">{{ m.plan ?? '—' }}</template>
+
+        <template #vence="{ fila: m }">
+          <span class="font-mono">{{ fecha(m.vence) }}</span>
+        </template>
+
+        <template #estado="{ fila: m }"><Estado v-bind="tono(m)" /></template>
+      </ListaResponsiva>
+
+      <Paginacion v-if="miembros.last_page > 1" :links="miembros.links" />
     </Panel>
   </AuthenticatedLayout>
 </template>

@@ -183,7 +183,7 @@ onBeforeUnmount(() => {
         title="Video institucional de Nódico"
         tabindex="-1"
         allow="autoplay; encrypted-media"
-        class="pointer-events-none absolute left-1/2 top-1/2 h-[100svh] w-[177.78svh] min-h-[56.25vw] min-w-[100vw]
+        class="pointer-events-none absolute left-1/2 top-1/2 h-[100svh] w-[177.78svh] min-h-[56.25svw] min-w-[100svw]
                -translate-x-1/2 -translate-y-1/2 scale-[1.12] border-0 transition-opacity duration-700 ease-suave"
         :class="videoVisible ? 'opacity-100' : 'opacity-0'"
         @load="alCargarVideo"

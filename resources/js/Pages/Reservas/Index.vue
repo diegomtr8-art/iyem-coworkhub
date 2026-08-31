@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue'
-import { Head, Link, router, useForm } from '@inertiajs/vue3'
-import { CalendarDays, Filter, MoreHorizontal } from 'lucide-vue-next'
-import { ref, reactive, watch } from 'vue'
+import { Head, router, useForm } from '@inertiajs/vue3'
+import { reactive, watch } from 'vue'
 import debounce from 'lodash/debounce'
+import ListaResponsiva, { type Columna } from '@/Components/Panel/ListaResponsiva.vue'
+import Paginacion from '@/Components/Panel/Paginacion.vue'
 
 defineProps<{
   reservas: any
@@ -34,6 +35,23 @@ const estatusBadge: Record<string, string> = {
   Completada: 'bg-blue-50 text-blue-700',
   No_Show: 'bg-gray-100 text-gray-600',
 }
+
+const fecha = (iso: string) => new Date(iso).toLocaleDateString('es-MX')
+
+/**
+ * En el mostrador, de una reserva se mira: quién, qué espacio, cuándo y en qué
+ * estado. Por eso espacio, fecha, horario y estatus van siempre visibles en la
+ * tarjeta —el horario y el estado, en particular, sin abrir nada—. El orden es
+ * el de la tabla en escritorio, que queda igual.
+ */
+const columnas: Columna[] = [
+  { clave: 'miembro', etiqueta: 'Miembro', rol: 'identidad', clase: 'px-5' },
+  { clave: 'espacio', etiqueta: 'Espacio', rol: 'resumen' },
+  { clave: 'fecha', etiqueta: 'Fecha', rol: 'resumen' },
+  { clave: 'horario', etiqueta: 'Horario', rol: 'resumen' },
+  { clave: 'estatus', etiqueta: 'Estatus', rol: 'resumen', sinEtiqueta: true },
+  { clave: 'acciones', etiqueta: 'Acción', rol: 'resumen', clase: 'text-right' },
+]
 </script>
 
 <template>
@@ -74,58 +92,45 @@ const estatusBadge: Record<string, string> = {
         </div>
       </div>
 
-      <!-- Table -->
+      <!-- Lista: tabla en escritorio, tarjetas apiladas por debajo de lg. -->
       <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-        <div class="overflow-x-auto">
-        <table class="w-full text-sm min-w-[700px]">
-          <thead class="bg-gray-50 border-b border-gray-100">
-            <tr>
-              <th class="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Miembro</th>
-              <th class="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Espacio</th>
-              <th class="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Fecha</th>
-              <th class="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Horario</th>
-              <th class="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Estatus</th>
-              <th class="px-5 py-3" />
-            </tr>
-          </thead>
-          <tbody class="divide-y divide-gray-50">
-            <tr v-if="!reservas.data?.length">
-              <td colspan="6" class="py-8 text-center text-gray-400">Sin reservas encontradas</td>
-            </tr>
-            <tr v-for="r in reservas.data" :key="r.id" class="hover:bg-gray-50">
-              <td class="px-5 py-3">
-                <div class="font-medium text-gray-900">{{ r.user?.name }}</div>
-                <div class="text-xs text-gray-400">{{ r.user?.email }}</div>
-              </td>
-              <td class="px-5 py-3 text-gray-600">{{ r.espacio?.nombre }}</td>
-              <td class="px-5 py-3 text-gray-600">{{ new Date(r.fecha).toLocaleDateString('es-MX') }}</td>
-              <td class="px-5 py-3 text-gray-600">{{ r.hora_inicio?.slice(0,5) }} – {{ r.hora_fin?.slice(0,5) }}</td>
-              <td class="px-5 py-3">
-                <span :class="['px-2.5 py-1 rounded-full text-xs font-medium', estatusBadge[r.estatus] ?? 'bg-gray-100 text-gray-600']">{{ r.estatus }}</span>
-              </td>
-              <td class="px-5 py-3 text-right">
-                <select @change="updateEstatus(r, ($event.target as HTMLSelectElement).value)"
-                  :value="r.estatus"
-                  class="text-xs border border-gray-200 rounded-lg px-2 py-1 focus:ring-1 focus:ring-violet-500 outline-none">
-                  <option>Confirmada</option>
-                  <option>Cancelada</option>
-                  <option>Completada</option>
-                  <option>No_Show</option>
-                </select>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-        </div>
-
-        <div v-if="reservas.links?.length > 3" class="px-5 py-3 border-t border-gray-100 flex justify-end gap-1">
-          <template v-for="link in reservas.links" :key="link.label">
-            <Link v-if="link.url" :href="link.url"
-              :class="['px-3 py-1.5 text-xs rounded-lg', link.active ? 'bg-nodo-400 text-dark font-bold' : 'text-gray-600 hover:bg-gray-100']"
-              v-html="link.label" />
-            <span v-else class="px-3 py-1.5 text-xs text-gray-300" v-html="link.label" />
+        <ListaResponsiva
+          :columnas="columnas"
+          :filas="reservas.data ?? []"
+          vacio="Sin reservas encontradas"
+        >
+          <template #miembro="{ fila: r }">
+            <span class="font-medium text-gray-900">{{ r.user?.name }}</span>
+            <span class="block text-xs font-normal text-gray-400">{{ r.user?.email }}</span>
           </template>
-        </div>
+
+          <template #espacio="{ fila: r }">{{ r.espacio?.nombre }}</template>
+
+          <template #fecha="{ fila: r }">{{ fecha(r.fecha) }}</template>
+
+          <template #horario="{ fila: r }">{{ r.hora_inicio?.slice(0,5) }} – {{ r.hora_fin?.slice(0,5) }}</template>
+
+          <template #estatus="{ fila: r }">
+            <span :class="['inline-block px-2.5 py-1 rounded-full text-xs font-medium', estatusBadge[r.estatus] ?? 'bg-gray-100 text-gray-600']">{{ r.estatus }}</span>
+          </template>
+
+          <template #acciones="{ fila: r }">
+            <select
+              :value="r.estatus"
+              aria-label="Cambiar estatus de la reserva"
+              class="text-xs border border-gray-200 rounded-lg px-2 py-1.5 focus:ring-1 focus:ring-violet-500 outline-none"
+              @click.stop
+              @change="updateEstatus(r, ($event.target as HTMLSelectElement).value)"
+            >
+              <option>Confirmada</option>
+              <option>Cancelada</option>
+              <option>Completada</option>
+              <option>No_Show</option>
+            </select>
+          </template>
+        </ListaResponsiva>
+
+        <Paginacion v-if="reservas.links?.length > 3" :links="reservas.links" />
       </div>
     </div>
   </AuthenticatedLayout>

@@ -159,16 +159,19 @@ const tarjetas = [
           >Ver la semana</Link>
         </template>
 
-        <!-- La tabla desborda dentro de su caja, nunca en el documento. -->
-        <div class="overflow-x-auto">
-          <ul class="min-w-[42rem] divide-y divide-dark/10">
-            <li v-for="fila in lineaDelDia" :key="fila.espacio_id" class="flex items-center gap-3 px-4 py-2.5">
+        <!-- En lg+ la fila es de tres columnas (nombre · barra · estado) y la barra
+             puede desbordar dentro de su caja. Por debajo de lg la fila se reacomoda:
+             nombre y estado arriba, la barra de ocupación a ancho completo debajo —
+             legible sin scroll horizontal. -->
+        <div class="lg:overflow-x-auto">
+          <ul class="divide-y divide-dark/10 lg:min-w-[42rem]">
+            <li v-for="fila in lineaDelDia" :key="fila.espacio_id" class="flex flex-wrap items-center gap-x-3 gap-y-2 px-4 py-2.5 lg:flex-nowrap">
               <div class="w-40 shrink-0">
                 <p class="truncate font-display text-sm font-bold text-dark">{{ fila.nombre }}</p>
                 <p class="truncate text-[0.6875rem] text-dark/50">{{ fila.tipo }}</p>
               </div>
 
-              <div class="relative h-9 flex-1 border border-dark/15 bg-cream-50">
+              <div class="relative order-last h-9 w-full border border-dark/15 bg-cream-50 lg:order-none lg:w-auto lg:flex-1">
                 <template v-if="fila.abierto">
                   <div
                     v-for="tramo in fila.tramos" :key="tramo.id"
@@ -196,7 +199,7 @@ const tarjetas = [
                 </p>
               </div>
 
-              <div class="w-32 shrink-0 text-right">
+              <div class="ml-auto w-32 shrink-0 text-right lg:ml-0">
                 <Estado
                   v-if="fila.ocupado_ahora"
                   tono="problema"

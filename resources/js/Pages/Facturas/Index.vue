@@ -5,6 +5,8 @@ import { Download, Search, AlertTriangle, Check } from 'lucide-vue-next'
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue'
 import Panel from '@/Components/Panel/Panel.vue'
 import Estado from '@/Components/Panel/Estado.vue'
+import ListaResponsiva, { type Columna } from '@/Components/Panel/ListaResponsiva.vue'
+import Paginacion from '@/Components/Panel/Paginacion.vue'
 
 /**
  * Facturación (Fase 3.9).
@@ -59,6 +61,21 @@ function exportar() {
   if (estatus.value) url.searchParams.set('estatus', estatus.value)
   window.location.href = url.toString()
 }
+
+/**
+ * En el mostrador, de un pago importa el concepto, el importe, el estatus y poder
+ * cobrarlo; el miembro se consulta a menudo. Los datos fiscales son cosa de
+ * preparar la exportación, así que en móvil van tras «Ver detalle». El orden es
+ * el de la tabla ancha, que no cambia.
+ */
+const columnas: Columna[] = [
+  { clave: 'folio', etiqueta: 'Folio y concepto', rol: 'identidad', clase: 'px-4' },
+  { clave: 'miembro', etiqueta: 'Miembro', rol: 'resumen' },
+  { clave: 'fiscales', etiqueta: 'Datos fiscales', rol: 'detalle' },
+  { clave: 'total', etiqueta: 'Total', rol: 'resumen', clase: 'text-right' },
+  { clave: 'estatus', etiqueta: 'Estatus', rol: 'resumen', sinEtiqueta: true },
+  { clave: 'acciones', etiqueta: '', rol: 'resumen', sinEtiqueta: true },
+]
 </script>
 
 <template>
@@ -112,75 +129,53 @@ function exportar() {
           </label>
         </div>
 
-        <p v-if="!facturas.data.length" class="px-4 py-10 text-center text-sm text-dark/50">
-          Sin pagos con esos filtros.
-        </p>
+        <ListaResponsiva
+          :columnas="columnas"
+          :filas="facturas.data"
+          vacio="Sin pagos con esos filtros."
+        >
+          <template #folio="{ fila: f }">
+            <span class="block font-mono text-xs text-dark/60">{{ f.folio }}</span>
+            <span class="block text-dark">{{ f.concepto }}</span>
+            <span class="block font-mono text-[0.6875rem] text-dark/50">{{ fecha(f.fecha) }}</span>
+          </template>
 
-        <div v-else class="overflow-x-auto">
-          <table class="w-full min-w-[52rem] text-sm">
-            <thead class="border-b border-dark/15 bg-cream-50">
-              <tr class="text-left font-mono text-[0.625rem] uppercase tracking-[0.1em] text-dark/50">
-                <th scope="col" class="px-4 py-2 font-normal">Folio y concepto</th>
-                <th scope="col" class="px-3 py-2 font-normal">Miembro</th>
-                <th scope="col" class="px-3 py-2 font-normal">Datos fiscales</th>
-                <th scope="col" class="px-3 py-2 text-right font-normal">Total</th>
-                <th scope="col" class="px-3 py-2 font-normal">Estatus</th>
-                <th scope="col" class="px-3 py-2 font-normal"><span class="sr-only">Acciones</span></th>
-              </tr>
-            </thead>
+          <template #miembro="{ fila: f }">
+            <Link v-if="f.miembro.url" :href="f.miembro.url" class="text-dark underline decoration-dark/25 underline-offset-2 hover:decoration-dark">
+              {{ f.miembro.nombre }}
+            </Link>
+            <span v-else class="text-dark/60">—</span>
+          </template>
 
-            <tbody class="divide-y divide-dark/10">
-              <tr v-for="f in facturas.data" :key="f.id" class="hover:bg-cream-50">
-                <td class="px-4 py-2.5">
-                  <span class="block font-mono text-xs text-dark/60">{{ f.folio }}</span>
-                  <span class="block text-dark">{{ f.concepto }}</span>
-                  <span class="block font-mono text-[0.6875rem] text-dark/50">{{ fecha(f.fecha) }}</span>
-                </td>
+          <template #fiscales="{ fila: f }">
+            <Estado
+              :tono="f.fiscales_completos ? 'bien' : 'atencion'"
+              :texto="f.fiscales_completos ? f.rfc : 'faltan'"
+              :punto="false"
+            />
+          </template>
 
-                <td class="px-3 py-2.5 text-xs">
-                  <Link v-if="f.miembro.url" :href="f.miembro.url" class="text-dark underline decoration-dark/25 underline-offset-2 hover:decoration-dark">
-                    {{ f.miembro.nombre }}
-                  </Link>
-                  <span v-else class="text-dark/60">—</span>
-                </td>
+          <template #total="{ fila: f }">
+            <span class="font-display font-bold text-dark">{{ precio(f.total) }}</span>
+          </template>
 
-                <td class="px-3 py-2.5">
-                  <Estado
-                    :tono="f.fiscales_completos ? 'bien' : 'atencion'"
-                    :texto="f.fiscales_completos ? f.rfc : 'faltan'"
-                    :punto="false"
-                  />
-                </td>
+          <template #estatus="{ fila: f }">
+            <Estado :tono="tonosPago[f.estatus] ?? 'neutro'" :texto="f.estatus" />
+            <span v-if="f.metodo_pago" class="mt-1 block font-mono text-[0.625rem] text-dark/50">{{ f.metodo_pago }}</span>
+          </template>
 
-                <td class="px-3 py-2.5 text-right font-display font-bold text-dark">{{ precio(f.total) }}</td>
+          <template #acciones="{ fila: f }">
+            <button
+              v-if="f.estatus === 'Pendiente'"
+              type="button"
+              class="flex min-h-[32px] items-center gap-1.5 border border-dark/25 px-2.5
+                     font-display text-xs font-bold text-dark transition-colors hover:border-dark"
+              @click.stop="cobrando = f"
+            ><Check :size="12" aria-hidden="true" /> Cobrar</button>
+          </template>
+        </ListaResponsiva>
 
-                <td class="px-3 py-2.5">
-                  <Estado :tono="tonosPago[f.estatus] ?? 'neutro'" :texto="f.estatus" />
-                  <span v-if="f.metodo_pago" class="mt-1 block font-mono text-[0.625rem] text-dark/50">{{ f.metodo_pago }}</span>
-                </td>
-
-                <td class="px-3 py-2.5">
-                  <button
-                    v-if="f.estatus === 'Pendiente'"
-                    type="button"
-                    class="flex min-h-[32px] items-center gap-1.5 border border-dark/25 px-2.5
-                           font-display text-xs font-bold text-dark transition-colors hover:border-dark"
-                    @click="cobrando = f"
-                  ><Check :size="12" aria-hidden="true" /> Cobrar</button>
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-
-        <nav v-if="facturas.last_page > 1" class="flex flex-wrap justify-center gap-1 border-t border-dark/15 bg-cream-50 px-4 py-3" aria-label="Paginación">
-          <Link
-            v-for="enlace in facturas.links" :key="enlace.label" :href="enlace.url ?? ''"
-            class="min-h-[32px] min-w-[32px] border px-2 py-1 text-center font-mono text-xs"
-            :class="enlace.active ? 'border-dark bg-dark text-white' : enlace.url ? 'border-dark/20 text-dark hover:border-dark' : 'border-transparent text-dark/25'"
-            v-html="enlace.label"
-          />
-        </nav>
+        <Paginacion v-if="facturas.last_page > 1" :links="facturas.links" />
       </Panel>
     </div>
 

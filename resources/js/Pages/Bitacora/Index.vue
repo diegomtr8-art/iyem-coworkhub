@@ -5,6 +5,8 @@ import { Search, Lock, ShieldAlert } from 'lucide-vue-next'
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue'
 import Panel from '@/Components/Panel/Panel.vue'
 import Estado from '@/Components/Panel/Estado.vue'
+import ListaResponsiva, { type Columna } from '@/Components/Panel/ListaResponsiva.vue'
+import Paginacion from '@/Components/Panel/Paginacion.vue'
 
 /**
  * Bitácora, en dos registros (Fases B y 3.11).
@@ -59,6 +61,20 @@ const fechaHora = (iso: string | null) =>
   iso ? new Date(iso).toLocaleString('es-MX', {
     day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit',
   }) : '—'
+
+/**
+ * Registro de acceso: qué pasó (identidad), en qué cuenta y cuándo (lo que se
+ * consulta al revisar), y la IP como detalle. El orden es el de la tabla ancha.
+ */
+const columnasAcceso: Columna[] = [
+  { clave: 'evento', etiqueta: 'Evento', rol: 'identidad', clase: 'px-4' },
+  { clave: 'cuenta', etiqueta: 'Cuenta', rol: 'resumen' },
+  { clave: 'ip', etiqueta: 'IP', rol: 'detalle' },
+  { clave: 'cuando', etiqueta: 'Cuándo', rol: 'resumen', sinEtiqueta: true },
+]
+
+/** Resalta en rojo los ingresos delicados o fallidos, igual que en la tabla. */
+const claseAcceso = (e: any) => (e.delicado || !e.exito ? 'bg-red-50/40' : undefined)
 </script>
 
 <template>
@@ -141,14 +157,7 @@ const fechaHora = (iso: string | null) =>
           </li>
         </ul>
 
-        <nav v-if="operacion.last_page > 1" class="flex flex-wrap justify-center gap-1 border-t border-dark/15 bg-cream-50 px-4 py-3" aria-label="Paginación">
-          <Link
-            v-for="enlace in operacion.links" :key="enlace.label" :href="enlace.url ?? ''"
-            class="min-h-[32px] min-w-[32px] border px-2 py-1 text-center font-mono text-xs"
-            :class="enlace.active ? 'border-dark bg-dark text-white' : enlace.url ? 'border-dark/20 text-dark hover:border-dark' : 'border-transparent text-dark/25'"
-            v-html="enlace.label"
-          />
-        </nav>
+        <Paginacion v-if="operacion.last_page > 1" :links="operacion.links" />
       </template>
 
       <!-- ── Acceso ─────────────────────────────────────────────────────── -->
@@ -168,49 +177,35 @@ const fechaHora = (iso: string | null) =>
           </label>
         </div>
 
-        <p v-if="!acceso.data.length" class="px-4 py-10 text-center text-sm text-dark/50">
-          Nada registrado con esos filtros.
-        </p>
+        <ListaResponsiva
+          :columnas="columnasAcceso"
+          :filas="acceso.data"
+          :fila-clase="claseAcceso"
+          vacio="Nada registrado con esos filtros."
+        >
+          <template #evento="{ fila: e }">
+            <span class="flex items-center gap-2">
+              <ShieldAlert v-if="e.delicado" :size="13" class="shrink-0 text-red-700" aria-hidden="true" />
+              <span class="text-dark">{{ e.etiqueta }}</span>
+              <Estado v-if="!e.exito" tono="problema" texto="falló" :punto="false" />
+            </span>
+          </template>
 
-        <div v-else class="overflow-x-auto">
-          <table class="w-full min-w-[46rem] text-sm">
-            <thead class="border-b border-dark/15 bg-cream-50">
-              <tr class="text-left font-mono text-[0.625rem] uppercase tracking-[0.1em] text-dark/50">
-                <th scope="col" class="px-4 py-2 font-normal">Evento</th>
-                <th scope="col" class="px-3 py-2 font-normal">Cuenta</th>
-                <th scope="col" class="px-3 py-2 font-normal">IP</th>
-                <th scope="col" class="px-3 py-2 font-normal">Cuándo</th>
-              </tr>
-            </thead>
+          <template #cuenta="{ fila: e }">
+            <span class="block text-dark">{{ e.usuario?.name ?? '—' }}</span>
+            <span class="block truncate text-dark/55">{{ e.correo }}</span>
+          </template>
 
-            <tbody class="divide-y divide-dark/10">
-              <tr v-for="e in acceso.data" :key="e.id" :class="e.delicado || !e.exito ? 'bg-red-50/40' : ''">
-                <td class="px-4 py-2.5">
-                  <span class="flex items-center gap-2">
-                    <ShieldAlert v-if="e.delicado" :size="13" class="shrink-0 text-red-700" aria-hidden="true" />
-                    <span class="text-dark">{{ e.etiqueta }}</span>
-                    <Estado v-if="!e.exito" tono="problema" texto="falló" :punto="false" />
-                  </span>
-                </td>
-                <td class="px-3 py-2.5 text-xs">
-                  <span class="block text-dark">{{ e.usuario?.name ?? '—' }}</span>
-                  <span class="block truncate text-dark/55">{{ e.correo }}</span>
-                </td>
-                <td class="px-3 py-2.5 font-mono text-[0.6875rem] text-dark/60">{{ e.ip }}</td>
-                <td class="px-3 py-2.5 font-mono text-[0.6875rem] text-dark/60">{{ fechaHora(e.cuando) }}</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
+          <template #ip="{ fila: e }">
+            <span class="font-mono text-[0.6875rem] text-dark/60">{{ e.ip }}</span>
+          </template>
 
-        <nav v-if="acceso.last_page > 1" class="flex flex-wrap justify-center gap-1 border-t border-dark/15 bg-cream-50 px-4 py-3" aria-label="Paginación">
-          <Link
-            v-for="enlace in acceso.links" :key="enlace.label" :href="enlace.url ?? ''"
-            class="min-h-[32px] min-w-[32px] border px-2 py-1 text-center font-mono text-xs"
-            :class="enlace.active ? 'border-dark bg-dark text-white' : enlace.url ? 'border-dark/20 text-dark hover:border-dark' : 'border-transparent text-dark/25'"
-            v-html="enlace.label"
-          />
-        </nav>
+          <template #cuando="{ fila: e }">
+            <span class="font-mono text-[0.6875rem] text-dark/60">{{ fechaHora(e.cuando) }}</span>
+          </template>
+        </ListaResponsiva>
+
+        <Paginacion v-if="acceso.last_page > 1" :links="acceso.links" />
       </template>
     </Panel>
   </AuthenticatedLayout>

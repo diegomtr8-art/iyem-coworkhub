@@ -2,8 +2,17 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue'
 import { Head, Link, useForm } from '@inertiajs/vue3'
 import { Plus, Pencil, Trash2, CalendarDays, Users, Eye, EyeOff } from 'lucide-vue-next'
+import ListaResponsiva, { type Columna } from '@/Components/Panel/ListaResponsiva.vue'
 
 defineProps<{ proximos: any[]; pasados: any[] }>()
+
+/** Los eventos pasados solo se consultan y, a veces, se borran. */
+const columnasPasados: Columna[] = [
+  { clave: 'evento', etiqueta: 'Evento', rol: 'identidad', clase: 'px-5' },
+  { clave: 'fecha', etiqueta: 'Fecha', rol: 'resumen' },
+  { clave: 'precio', etiqueta: 'Precio', rol: 'resumen' },
+  { clave: 'acciones', etiqueta: 'Acción', rol: 'resumen', clase: 'text-right' },
+]
 
 const destroy = (id: number) => {
   if (confirm('¿Eliminar este evento?')) {
@@ -80,28 +89,18 @@ function formatFecha(d: string) {
       <div v-if="pasados.length">
         <h2 class="font-bold text-dark text-sm uppercase tracking-wide text-gray-500 mb-3">Eventos pasados</h2>
         <div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-          <table class="w-full text-sm">
-            <thead class="bg-gray-50 border-b border-gray-100">
-              <tr>
-                <th class="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Evento</th>
-                <th class="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Fecha</th>
-                <th class="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Precio</th>
-                <th class="px-5 py-3" />
-              </tr>
-            </thead>
-            <tbody class="divide-y divide-gray-50">
-              <tr v-for="e in pasados" :key="e.id" class="opacity-70 hover:opacity-100 transition-opacity">
-                <td class="px-5 py-3 font-medium text-dark">{{ e.titulo }}</td>
-                <td class="px-5 py-3 text-gray-500">{{ formatFecha(e.fecha) }}</td>
-                <td class="px-5 py-3 text-gray-500">{{ e.precio > 0 ? '$' + Number(e.precio).toLocaleString('es-MX') : 'Gratis' }}</td>
-                <td class="px-5 py-3 text-right">
-                  <button @click="destroy(e.id)" class="text-xs text-red-400 hover:text-red-600">
-                    <Trash2 :size="13" />
-                  </button>
-                </td>
-              </tr>
-            </tbody>
-          </table>
+          <ListaResponsiva :columnas="columnasPasados" :filas="pasados" vacio="Sin eventos pasados.">
+            <template #evento="{ fila: e }"><span class="font-medium text-dark">{{ e.titulo }}</span></template>
+            <template #fecha="{ fila: e }"><span class="text-gray-500">{{ formatFecha(e.fecha) }}</span></template>
+            <template #precio="{ fila: e }">
+              <span class="text-gray-500">{{ e.precio > 0 ? '$' + Number(e.precio).toLocaleString('es-MX') : 'Gratis' }}</span>
+            </template>
+            <template #acciones="{ fila: e }">
+              <button aria-label="Eliminar evento" class="inline-flex min-h-[44px] min-w-[44px] items-center justify-center text-red-400 hover:text-red-600" @click.stop="destroy(e.id)">
+                <Trash2 :size="15" />
+              </button>
+            </template>
+          </ListaResponsiva>
         </div>
       </div>
     </div>

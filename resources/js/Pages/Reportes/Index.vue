@@ -5,6 +5,7 @@ import { Download, TrendingDown, Users, Building2 } from 'lucide-vue-next'
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue'
 import Panel from '@/Components/Panel/Panel.vue'
 import Estado from '@/Components/Panel/Estado.vue'
+import ListaResponsiva, { type Columna } from '@/Components/Panel/ListaResponsiva.vue'
 
 /**
  * Reportes (Fase 3.10). Solo administración.
@@ -46,6 +47,19 @@ function tonoAprovechamiento(pct: number): 'bien' | 'atencion' | 'problema' {
   if (pct > 95) return 'problema'
   return 'atencion'
 }
+
+/**
+ * Este informe existe para actuar: ver quién está en riesgo y llamarle. Por eso
+ * en móvil se ve el nombre, cuánto lleva sin venir y el teléfono; el plan y el
+ * vencimiento —secundarios— van tras «Ver detalle». Orden = tabla de escritorio.
+ */
+const columnasRiesgo: Columna[] = [
+  { clave: 'miembro', etiqueta: 'Miembro', rol: 'identidad', clase: 'px-4' },
+  { clave: 'plan', etiqueta: 'Plan', rol: 'detalle' },
+  { clave: 'ultimo', etiqueta: 'Último acceso', rol: 'resumen' },
+  { clave: 'vence', etiqueta: 'Vence', rol: 'detalle' },
+  { clave: 'contacto', etiqueta: 'Contacto', rol: 'resumen' },
+]
 </script>
 
 <template>
@@ -215,41 +229,27 @@ function tonoAprovechamiento(pct: number): 'bien' | 'atencion' | 'problema' {
           Nadie en riesgo. Todos los activos han venido en las últimas tres semanas.
         </p>
 
-        <div v-else class="overflow-x-auto">
-          <table class="w-full min-w-[40rem] text-sm">
-            <thead class="border-b border-dark/15 bg-cream-50">
-              <tr class="text-left font-mono text-[0.625rem] uppercase tracking-[0.1em] text-dark/50">
-                <th scope="col" class="px-4 py-2 font-normal">Miembro</th>
-                <th scope="col" class="px-3 py-2 font-normal">Plan</th>
-                <th scope="col" class="px-3 py-2 font-normal">Último acceso</th>
-                <th scope="col" class="px-3 py-2 font-normal">Vence</th>
-                <th scope="col" class="px-3 py-2 font-normal">Contacto</th>
-              </tr>
-            </thead>
+        <ListaResponsiva v-else :columnas="columnasRiesgo" :filas="enRiesgo" clave-fila="email">
+          <template #miembro="{ fila: m }">
+            <Link :href="m.url" class="font-display font-bold text-dark underline decoration-dark/25 underline-offset-2 hover:decoration-dark" @click.stop>
+              {{ m.miembro }}
+            </Link>
+          </template>
 
-            <tbody class="divide-y divide-dark/10">
-              <tr v-for="m in enRiesgo" :key="m.email" class="hover:bg-cream-50">
-                <td class="px-4 py-2.5">
-                  <Link :href="m.url" class="font-display font-bold text-dark underline decoration-dark/25 underline-offset-2 hover:decoration-dark">
-                    {{ m.miembro }}
-                  </Link>
-                </td>
-                <td class="px-3 py-2.5 text-xs text-dark/70">{{ m.plan }}</td>
-                <td class="px-3 py-2.5 text-xs">
-                  <span v-if="m.dias_sin_venir !== null" class="text-dark">
-                    hace {{ m.dias_sin_venir }} días
-                  </span>
-                  <span v-else class="text-red-700">nunca ha venido</span>
-                </td>
-                <td class="px-3 py-2.5 font-mono text-xs text-dark/60">{{ m.vence }}</td>
-                <td class="px-3 py-2.5 text-xs">
-                  <a v-if="m.telefono" :href="`tel:${m.telefono}`" class="block text-dark underline decoration-dark/25 underline-offset-2">{{ m.telefono }}</a>
-                  <a :href="`mailto:${m.email}`" class="block truncate text-dark/60">{{ m.email }}</a>
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
+          <template #plan="{ fila: m }"><span class="text-dark/70">{{ m.plan }}</span></template>
+
+          <template #ultimo="{ fila: m }">
+            <span v-if="m.dias_sin_venir !== null" class="text-dark">hace {{ m.dias_sin_venir }} días</span>
+            <span v-else class="text-red-700">nunca ha venido</span>
+          </template>
+
+          <template #vence="{ fila: m }"><span class="font-mono text-dark/60">{{ m.vence }}</span></template>
+
+          <template #contacto="{ fila: m }">
+            <a v-if="m.telefono" :href="`tel:${m.telefono}`" class="block text-dark underline decoration-dark/25 underline-offset-2" @click.stop>{{ m.telefono }}</a>
+            <a :href="`mailto:${m.email}`" class="block truncate text-dark/60" @click.stop>{{ m.email }}</a>
+          </template>
+        </ListaResponsiva>
       </Panel>
 
       <!-- No-show por miembro -->

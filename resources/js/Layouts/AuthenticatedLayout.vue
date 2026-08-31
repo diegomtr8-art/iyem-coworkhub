@@ -156,7 +156,7 @@ const avisos = computed<Record<string, number>>(
     <div v-if="sidebarOpen" @click="sidebarOpen = false" class="fixed inset-0 bg-black/60 z-20 lg:hidden" />
 
     <!-- Mobile sidebar -->
-    <aside :class="['fixed inset-y-0 left-0 z-30 w-64 bg-dark text-white transition-transform lg:hidden', sidebarOpen ? 'translate-x-0' : '-translate-x-full']">
+    <aside :class="['fixed inset-y-0 left-0 z-30 w-64 bg-tinta text-white transition-transform lg:hidden', sidebarOpen ? 'translate-x-0' : '-translate-x-full']">
       <div class="flex items-center justify-between px-6 py-5 border-b border-white/10">
         <span class="font-display text-lg font-extrabold text-white">NÓDICO</span>
         <button @click="sidebarOpen = false"><X :size="20" class="text-gray-400" /></button>
@@ -214,7 +214,7 @@ const avisos = computed<Record<string, number>>(
         </div>
       </header>
 
-      <main class="flex-1 bg-cream p-4 lg:p-6">
+      <main class="flex-1 bg-cream px-4 pt-4 pb-segura lg:px-6 lg:pt-6">
         <!--
           G — El segundo factor es opcional, asi que no se impone: se recomienda
           donde se nota. Este es el panel que maneja miembros, cobros y datos de

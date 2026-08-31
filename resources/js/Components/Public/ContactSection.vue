@@ -127,8 +127,9 @@ const telefonoHref = computed(
         </p>
       </div>
 
-      <!-- 1 · Franja de datos: cuatro columnas iguales, 2x2 en iPhone -->
-      <dl class="mt-12 grid grid-cols-2 gap-px overflow-hidden rounded-3xl bg-dark/10 lg:grid-cols-4">
+      <!-- 1 · Franja de datos: una columna en iPhone (la dirección es larga y a
+           dos columnas se aprieta), 2 en sm, 4 en escritorio. -->
+      <dl class="mt-12 grid grid-cols-1 gap-px overflow-hidden rounded-3xl bg-dark/10 sm:grid-cols-2 lg:grid-cols-4">
         <div v-if="nodico.email" class="flex flex-col gap-2 bg-cream p-6">
           <dt class="etiqueta-tecnica flex items-center gap-2 text-dark/70">
             <Mail class="h-4 w-4" aria-hidden="true" /> Correo
