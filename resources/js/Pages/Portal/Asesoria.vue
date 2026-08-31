@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { Head, Link, router, useForm } from '@inertiajs/vue3'
-import { Lightbulb, Clock, User as UserIcon, X, ExternalLink } from 'lucide-vue-next'
+import { Lightbulb, Clock, User as UserIcon, X } from 'lucide-vue-next'
 import PortalLayout from '@/Layouts/PortalLayout.vue'
 import EncabezadoPortal from '@/Components/Portal/EncabezadoPortal.vue'
 import TarjetaPortal from '@/Components/Portal/TarjetaPortal.vue'
@@ -99,16 +99,15 @@ const tonos: Record<string, string> = {
             </p>
 
             <div class="mt-5 flex flex-wrap gap-3">
-              <a
-                v-if="planQueLaIncluye.stripe_url"
-                :href="planQueLaIncluye.stripe_url" target="_blank" rel="noopener noreferrer"
+              <Link
+                :href="route('portal.contratar', { plan: planQueLaIncluye.id })"
                 class="inline-flex min-h-[48px] items-center gap-2 border-2 border-dark bg-nodo-400 px-5
                        font-display text-sm font-bold text-dark transition-all duration-200 ease-salida
                        hover:-translate-y-0.5 hover:shadow-dura-sm focus-visible:outline
                        focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-dark"
               >
-                Cambiarme a {{ planQueLaIncluye.nombre }} <ExternalLink :size="15" aria-hidden="true" />
-              </a>
+                Cambiarme a {{ planQueLaIncluye.nombre }}
+              </Link>
               <Link
                 :href="route('portal.suscripcion')"
                 class="inline-flex min-h-[48px] items-center border-2 border-dark/30 px-5
