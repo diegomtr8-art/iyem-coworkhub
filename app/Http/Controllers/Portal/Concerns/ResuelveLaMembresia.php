@@ -62,7 +62,11 @@ trait ResuelveLaMembresia
                 'titulo'      => 'Tu membresía venció',
                 'detalle'     => 'Terminó el ' . $fin->translatedFormat('j \d\e F') . '. Renuévala para seguir reservando.',
                 'accion'      => 'Renovar',
-                'accion_href' => $suscripcion->plan?->stripe_url ?: route('membresias'),
+                // El cobro ocurre dentro de Nódico (Fase 4.A): al checkout interno,
+                // no al enlace externo de Stripe. Sin plan, a la lista de planes.
+                'accion_href' => $suscripcion->plan
+                    ? route('portal.contratar', ['plan' => $suscripcion->plan->id])
+                    : route('membresias'),
             ];
         }
 
@@ -75,7 +79,11 @@ trait ResuelveLaMembresia
                     : 'Tu membresía termina en ' . $restantes . ' día' . ($restantes === 1 ? '' : 's'),
                 'detalle'     => 'Vence el ' . $fin->translatedFormat('j \d\e F') . '.',
                 'accion'      => 'Renovar',
-                'accion_href' => $suscripcion->plan?->stripe_url ?: route('membresias'),
+                // El cobro ocurre dentro de Nódico (Fase 4.A): al checkout interno,
+                // no al enlace externo de Stripe. Sin plan, a la lista de planes.
+                'accion_href' => $suscripcion->plan
+                    ? route('portal.contratar', ['plan' => $suscripcion->plan->id])
+                    : route('membresias'),
             ];
         }
 
