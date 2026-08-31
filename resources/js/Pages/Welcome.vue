@@ -19,7 +19,7 @@ import { computed, ref } from 'vue'
 const props = defineProps<{
   planes?: Plan[]
   salon?: Salon | null
-  instagramPosts?: string[]
+  instagram?: any
 }>()
 
 const page = usePage()
@@ -332,8 +332,9 @@ const fichaSalon = computed(() => {
       </div>
     </section>
 
-    <!-- ═══ SALONES — aprobado, no se modifica ═══ -->
-    <section class="relative isolate overflow-hidden bg-tinta">
+    <!-- ═══ SALONES — Fase 4.G.5: más altura y aire para que la foto respire
+         en 1366 y 1920 px (antes quedaba aplastada) ═══ -->
+    <section class="relative isolate flex min-h-[560px] items-center overflow-hidden bg-tinta lg:min-h-[680px]">
       <img
         src="/img/nodico/salon-yucatan-emprende-2.webp"
         srcset="/img/nodico/salon-yucatan-emprende-2-640.webp 640w, /img/nodico/salon-yucatan-emprende-2-1280.webp 1280w, /img/nodico/salon-yucatan-emprende-2.webp 1920w"
@@ -347,7 +348,7 @@ const fichaSalon = computed(() => {
       />
       <div class="absolute inset-0 -z-10 bg-gradient-to-r from-tinta via-tinta/[.92] to-tinta/60" aria-hidden="true" />
 
-      <div class="mx-auto max-w-7xl px-5 py-20 sm:px-8 lg:py-28">
+      <div class="mx-auto w-full max-w-7xl px-5 py-28 sm:px-8 lg:py-40">
         <ScrollReveal class="max-w-2xl">
           <SectionHeading
             etiqueta="Salones"
@@ -382,7 +383,7 @@ const fichaSalon = computed(() => {
     </section>
 
     <!-- Instagram -->
-    <InstagramSection :handle="nodico.instagram" :publicaciones="instagramPosts" />
+    <InstagramSection :handle="nodico.instagram" :feed="instagram" />
 
     <ContactSection />
   </PublicLayout>

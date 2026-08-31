@@ -72,3 +72,13 @@ Schedule::command('nodico:rotar-emprendedor')
     ->withoutOverlapping()
     ->onOneServer()
     ->appendOutputTo($bitacoraDeTareas);
+
+// Fase 4.G.3 — el token de Instagram caduca a los ~60 días. Se renueva cada
+// semana, mucho antes, para que nunca se acerque al límite. Si falla, el propio
+// comando avisa por correo.
+Schedule::command('nodico:renovar-token-instagram')
+    ->weeklyOn(1, '05:30')
+    ->timezone('America/Merida')
+    ->withoutOverlapping()
+    ->onOneServer()
+    ->appendOutputTo($bitacoraDeTareas);

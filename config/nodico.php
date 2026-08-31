@@ -24,7 +24,7 @@ return [
     'telefono'          => env('NODICO_TELEFONO', '999 461 5676'),
     'telefono_e164'     => env('NODICO_TELEFONO_E164', '+529994615676'),
     'direccion'         => env('NODICO_DIRECCION', 'Avenida Principal, Industrias No Contaminantes 13613, Hacienda Sodzil Nte., 97110 Mérida, Yuc.'),
-    'direccion_corta'   => env('NODICO_DIRECCION_CORTA', 'Hacienda Sodzil Nte., Mérida, Yucatán'),
+    'direccion_corta'   => env('NODICO_DIRECCION_CORTA', 'Instituto Yucateco de Emprendedores'),
     'maps_url'          => env('NODICO_MAPS_URL', 'https://maps.app.goo.gl/zRrEqEoMLohqnwEx5'),
     // Embed sin clave de API, con las coordenadas de la ficha del lugar.
     'maps_embed'        => env('NODICO_MAPS_EMBED', 'https://maps.google.com/maps?q=21.0527159,-89.6413298&hl=es&z=16&output=embed'),

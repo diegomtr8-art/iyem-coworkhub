@@ -16,7 +16,7 @@ const props = defineProps<{
   pasados?: Evento[]
   salon?: Salon | null
   lumaEmbed?: string
-  instagramPosts?: string[]
+  instagram?: any
   /** CNT-02: ambos vienen de la tabla directorio_emprendedores. */
   directorio?: Emprendedor[]
   destacado?: Emprendedor | null
@@ -84,61 +84,6 @@ const fechaLarga = (valor: string) =>
           Talleres, encuentros y una red de emprendedores que ya forman parte de los programas de
           incubación del Instituto Yucateco de Emprendedores.
         </p>
-      </div>
-    </section>
-
-    <!-- Contenido reciente -->
-    <section class="bg-cream py-20 lg:py-24">
-      <div class="mx-auto max-w-7xl px-5 sm:px-8">
-        <ScrollReveal>
-          <SectionHeading etiqueta="Agenda" titulo="Nuestro contenido más reciente" tamano="lg" />
-        </ScrollReveal>
-
-        <!-- CNT-01: sin eventos cargados la sección ya no desaparece; remite
-             al calendario, que es la fuente viva. -->
-        <ScrollReveal v-if="!eventos.length" class="mt-12">
-          <div class="rounded-3xl bg-white p-10 text-center shadow-sombra-sm ring-1 ring-dark/[.07]">
-            <p class="font-body text-cuerpo-lg text-dark/70">
-              Todavía no hay actividades cargadas en la agenda.
-            </p>
-            <p class="mt-3 font-body text-cuerpo text-dark/70">
-              Los talleres del mes están siempre al día en el calendario, aquí abajo.
-            </p>
-            <Boton href="#talleres" variante="oscuro" class="mt-8" flecha>
-              Ver los talleres del mes
-            </Boton>
-          </div>
-        </ScrollReveal>
-
-        <ScrollReveal v-else :stagger="70" class="mt-12 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          <article
-            v-for="evento in eventos"
-            :key="evento.id"
-            class="flex h-full flex-col overflow-hidden rounded-3xl bg-white shadow-sombra-sm ring-1 ring-dark/[.07]
-                   transition-all duration-300 ease-salida hover:-translate-y-1 hover:shadow-sombra"
-          >
-            <img
-              v-if="evento.imagen"
-              :src="evento.imagen"
-              :alt="evento.titulo"
-              width="600"
-              height="400"
-              loading="lazy"
-              decoding="async"
-              class="aspect-[3/2] w-full object-cover"
-            />
-            <div class="flex flex-1 flex-col p-6">
-              <time v-if="evento.fecha" :datetime="evento.fecha" class="etiqueta-tecnica text-dark/70">
-                {{ fechaLarga(evento.fecha) }}
-              </time>
-              <h3 class="mt-3 font-display text-lg font-bold leading-snug text-dark">{{ evento.titulo }}</h3>
-              <p v-if="evento.descripcion" class="mt-3 flex-1 font-body text-sm leading-relaxed text-dark/70">
-                {{ evento.descripcion }}
-              </p>
-              <p v-if="evento.lugar" class="mt-4 font-body text-sm text-dark/70">{{ evento.lugar }}</p>
-            </div>
-          </article>
-        </ScrollReveal>
       </div>
     </section>
 
@@ -253,7 +198,7 @@ const fechaLarga = (valor: string) =>
     </section>
 
     <!-- Instagram -->
-    <InstagramSection :handle="nodico.instagram" :publicaciones="instagramPosts" tono="oscuro" />
+    <InstagramSection :handle="nodico.instagram" :feed="instagram" tono="oscuro" />
 
     <!-- Teaser de salones -->
     <section class="bg-nodo-400 py-16 lg:py-20">

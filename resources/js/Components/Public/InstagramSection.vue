@@ -4,7 +4,12 @@ import { computed, reactive } from 'vue'
 
 const props = withDefaults(defineProps<{
   handle?: string
-  /** Permalinks de publicaciones; vienen de la tabla `ajustes`. */
+  /**
+   * Feed de Instagram (Fase 4.G.3): { perfil, publicaciones }. Viene de la Graph
+   * API con caché, o de la reja curada como respaldo. `publicaciones` (array de
+   * permalinks) se mantiene por compatibilidad.
+   */
+  feed?: { perfil: any; publicaciones: any[]; fuente?: string } | null
   publicaciones?: string[]
   tono?: 'claro' | 'oscuro'
 }>(), {
@@ -12,7 +17,18 @@ const props = withDefaults(defineProps<{
   tono: 'claro',
 })
 
-const perfilUrl = computed(() => `https://www.instagram.com/${props.handle}`)
+const perfil = computed(() => props.feed?.perfil ?? null)
+const perfilUrl = computed(() => `https://www.instagram.com/${perfil.value?.usuario ?? props.handle}`)
+
+// Los permalinks salen del feed nuevo si viene; si no, del array antiguo.
+const permalinks = computed<string[]>(() =>
+  props.feed
+    ? props.feed.publicaciones.map((p: any) => p.permalink).filter(Boolean)
+    : (props.publicaciones ?? []),
+)
+
+const numero = (n: number | null) =>
+  n === null || n === undefined ? null : new Intl.NumberFormat('es-MX').format(n)
 
 /**
  * `instagram.com/{cuenta}/embed` no está documentado por Meta y devuelve muro
@@ -24,7 +40,7 @@ function shortcode(permalink: string): string | null {
 }
 
 const publicacionesValidas = computed(() =>
-  (props.publicaciones ?? [])
+  permalinks.value
     .map((url) => ({ url, code: shortcode(url) }))
     .filter((p): p is { url: string; code: string } => p.code !== null),
 )
@@ -100,6 +116,26 @@ function vigilar(el: Element | null, code: string) {
         >
           Lo que pasa en Nódico
         </h2>
+
+        <!-- G.3 — cabecera de perfil, cuando el feed real de la Graph API la trae. -->
+        <a
+          v-if="perfil"
+          :href="perfilUrl" target="_blank" rel="noopener noreferrer"
+          class="mt-6 inline-flex items-center gap-3"
+        >
+          <img
+            v-if="perfil.foto" :src="perfil.foto" :alt="`@${perfil.usuario}`"
+            width="48" height="48" loading="lazy"
+            class="h-12 w-12 rounded-full object-cover ring-2 ring-nodo-400"
+          />
+          <span class="text-left">
+            <span class="block font-display text-base font-bold" :class="tono === 'oscuro' ? 'text-white' : 'text-dark'">@{{ perfil.usuario }}</span>
+            <span class="block text-sm" :class="tono === 'oscuro' ? 'text-white/60' : 'text-dark/60'">
+              <template v-if="numero(perfil.seguidores)">{{ numero(perfil.seguidores) }} seguidores</template>
+              <template v-if="numero(perfil.publicaciones)"> · {{ numero(perfil.publicaciones) }} publicaciones</template>
+            </span>
+          </span>
+        </a>
       </div>
 
       <!-- Reja: 1 columna en iPhone, 2 en iPad, 4 en desktop -->

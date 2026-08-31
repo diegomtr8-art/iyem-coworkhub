@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { useForm, usePage } from '@inertiajs/vue3'
 import { Clock, Loader2, Mail, MapPin, Phone } from 'lucide-vue-next'
-import { computed, reactive, ref, watch } from 'vue'
+import { computed, reactive, ref, watch, onMounted, onBeforeUnmount } from 'vue'
 
 const page = usePage()
 const nodico = computed(() => (page.props.nodico ?? {}) as any)
@@ -25,9 +25,31 @@ const campos = [
   { name: 'asunto',   label: 'Asunto',     type: 'text',  autocomplete: 'off',          inputmode: 'text',  requerido: false },
 ] as const
 
-// PERF-03: el iframe de Google no se monta hasta que la persona lo pide, para
-// no cargar la cookie de Google en cada visita a las cinco páginas.
+// G.1 — el iframe de Google se monta cuando la sección de contacto **se acerca**
+// a la pantalla (IntersectionObserver), no en el primer pintado: como esta
+// sección va al final de cada página, en la práctica el mapa se ve siempre que
+// alguien llega aquí, pero nunca compite con la carga inicial. La altura queda
+// reservada abajo para que el layout no salte al montarlo.
 const mapaActivo = ref(false)
+const mapaRef = ref<HTMLElement | null>(null)
+let observador: IntersectionObserver | null = null
+
+onMounted(() => {
+  if (!mapaRef.value) return
+  if (typeof IntersectionObserver === 'undefined') {
+    mapaActivo.value = true // navegador viejo: se carga sin más
+    return
+  }
+  observador = new IntersectionObserver((entradas) => {
+    if (entradas.some((e) => e.isIntersecting)) {
+      mapaActivo.value = true
+      observador?.disconnect()
+    }
+  }, { rootMargin: '300px' }) // se adelanta para que ya esté al llegar
+  observador.observe(mapaRef.value)
+})
+
+onBeforeUnmount(() => observador?.disconnect())
 
 const tocado = reactive<Record<string, boolean>>({})
 const enviado = ref(false)
@@ -253,9 +275,11 @@ const telefonoHref = computed(
           </form>
         </div>
 
-        <!-- Mapa como fachada (PERF-03), a la misma altura que el formulario -->
+        <!-- G.1 — el mapa se carga solo al acercarse (ver el observer arriba). La
+             altura queda reservada para que no salte el layout. -->
         <div
           v-if="nodico.mapsEmbed"
+          ref="mapaRef"
           class="min-h-[320px] overflow-hidden rounded-3xl shadow-sombra ring-1 ring-dark/[.07]"
         >
           <iframe
@@ -267,24 +291,17 @@ const telefonoHref = computed(
             class="h-full min-h-[320px] w-full border-0"
           />
 
-          <button
+          <!-- Marcador de posición mientras el mapa entra en pantalla. -->
+          <div
             v-else
-            type="button"
-            class="group flex h-full min-h-[320px] w-full flex-col items-center justify-center gap-4
-                   bg-cream-200 transition hover:bg-cream-dark"
-            @click="mapaActivo = true"
+            class="flex h-full min-h-[320px] w-full flex-col items-center justify-center gap-3 bg-cream-200"
+            aria-hidden="true"
           >
-            <span
-              class="flex h-14 w-14 items-center justify-center rounded-full bg-nodo-400
-                     transition duration-300 ease-salida group-hover:scale-110"
-            >
-              <MapPin class="h-6 w-6 text-dark" aria-hidden="true" />
+            <span class="flex h-14 w-14 items-center justify-center rounded-full bg-nodo-400">
+              <MapPin class="h-6 w-6 text-dark" />
             </span>
-            <span class="font-display text-base font-bold text-dark">Ver el mapa</span>
-            <span class="max-w-xs px-6 text-center font-body text-sm text-dark/70">
-              Se carga desde Google Maps al pulsar
-            </span>
-          </button>
+            <span class="font-body text-sm text-dark/60">Cargando el mapa…</span>
+          </div>
         </div>
       </div>
     </div>

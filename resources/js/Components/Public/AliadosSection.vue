@@ -16,7 +16,7 @@ const aliados = [
   {
     nombre: 'Herencia Viva',
     logo: '/img/nodico/logo-herencia-viva.png',
-    href: 'https://herenciaviva.com',
+    href: 'https://www.herenciaviva.com',
     ancho: 418,
     alto: 63,
     clase: 'h-9 sm:h-11',

@@ -35,4 +35,13 @@ class Ajuste extends Model
             return $porDefecto;
         }
     }
+
+    /** Guarda (o actualiza) un ajuste por su clave. */
+    public static function guardar(string $clave, mixed $valor, ?string $descripcion = null): void
+    {
+        static::updateOrCreate(
+            ['clave' => $clave],
+            array_filter(['valor' => $valor, 'descripcion' => $descripcion], fn ($v) => $v !== null),
+        );
+    }
 }
