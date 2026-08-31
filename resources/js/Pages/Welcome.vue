@@ -19,7 +19,6 @@ import { computed, ref } from 'vue'
 const props = defineProps<{
   planes?: Plan[]
   salon?: Salon | null
-  instagram?: any
 }>()
 
 const page = usePage()
@@ -383,7 +382,7 @@ const fichaSalon = computed(() => {
     </section>
 
     <!-- Instagram -->
-    <InstagramSection :handle="nodico.instagram" :feed="instagram" />
+    <InstagramSection :handle="nodico.instagram" />
 
     <ContactSection />
   </PublicLayout>

@@ -53,22 +53,5 @@ return [
         'redirect'      => env('GOOGLE_REDIRECT_URI'),
     ],
 
-    /*
-    | Fase 4.G.3 — Instagram Graph API (cuenta de empresa @nodicomx vinculada a
-    | una página de Facebook). El token de larga duración caduca a los 60 días;
-    | se renueva con `nodico:renovar-token-instagram` (cron). Sin token, el feed
-    | cae a la reja curada de la tabla `ajustes`. Ver docs/INSTAGRAM.md.
-    */
-    'instagram' => [
-        // El token vigente vive en la tabla `ajustes` (clave `instagram_token`)
-        // para que el comando de renovación pueda actualizarlo sin tocar el .env;
-        // este env es solo el valor de arranque. Lo resuelve FeedDeInstagram.
-        'token'        => env('INSTAGRAM_TOKEN'),
-        'user_id'      => env('INSTAGRAM_USER_ID'),
-        'app_id'       => env('INSTAGRAM_APP_ID'),
-        'app_secret'   => env('INSTAGRAM_APP_SECRET'),
-        'cache_min'    => (int) env('INSTAGRAM_CACHE_MIN', 60),
-        'avisar_a'     => env('INSTAGRAM_AVISAR_A', env('MAIL_FROM_ADDRESS')),
-    ],
 
 ];

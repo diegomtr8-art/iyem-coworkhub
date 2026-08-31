@@ -16,7 +16,6 @@ const props = defineProps<{
   pasados?: Evento[]
   salon?: Salon | null
   lumaEmbed?: string
-  instagram?: any
   /** CNT-02: ambos vienen de la tabla directorio_emprendedores. */
   directorio?: Emprendedor[]
   destacado?: Emprendedor | null
@@ -198,7 +197,7 @@ const fechaLarga = (valor: string) =>
     </section>
 
     <!-- Instagram -->
-    <InstagramSection :handle="nodico.instagram" :feed="instagram" tono="oscuro" />
+    <InstagramSection :handle="nodico.instagram" tono="oscuro" />
 
     <!-- Teaser de salones -->
     <section class="bg-nodo-400 py-16 lg:py-20">

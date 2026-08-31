@@ -21,7 +21,6 @@ class WelcomeController extends Controller
             ...$this->authProps(),
             'planes'         => Plane::publicos()->get(),
             'salon'          => Espacio::salonesPublicados()->first(),
-            'instagram'      => app(\App\Servicios\Instagram\FeedDeInstagram::class)->obtener(),
         ]);
     }
 
@@ -56,7 +55,6 @@ class WelcomeController extends Controller
             'pasados'        => Evento::activos()->pasados()->limit(6)->get(),
             'salon'          => Espacio::salonesPublicados()->first(),
             'lumaEmbed'      => config('nodico.luma_embed'),
-            'instagram'      => app(\App\Servicios\Instagram\FeedDeInstagram::class)->obtener(),
             // CNT-02: directorio y destacado salen de la BD, no del componente.
             'directorio'     => DirectorioEmprendedor::publicos()->where('destacado_semana', false)->get(),
             'destacado'      => DirectorioEmprendedor::deLaSemana()->first(),

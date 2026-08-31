@@ -1,97 +1,48 @@
 <script setup lang="ts">
 import { Instagram } from 'lucide-vue-next'
-import { computed, reactive } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 
+/**
+ * Feed de Instagram como el de Herencia Viva / Odoo: un solo **embed del perfil**
+ * (`instagram.com/{cuenta}/embed`), que Instagram sirve con la cuadrícula de las
+ * últimas publicaciones. Decisión de Nódico (2026-08-31): se prefiere este embed
+ * al muro de publicaciones sueltas.
+ *
+ * Se carga de forma diferida (IntersectionObserver): la sección va al final de
+ * cada página, así que el embed —~1 MB de terceros— no compite con la carga
+ * inicial y solo se pide cuando alguien se acerca. La altura queda reservada.
+ */
 const props = withDefaults(defineProps<{
   handle?: string
-  /**
-   * Feed de Instagram (Fase 4.G.3): { perfil, publicaciones }. Viene de la Graph
-   * API con caché, o de la reja curada como respaldo. `publicaciones` (array de
-   * permalinks) se mantiene por compatibilidad.
-   */
-  feed?: { perfil: any; publicaciones: any[]; fuente?: string } | null
-  publicaciones?: string[]
   tono?: 'claro' | 'oscuro'
 }>(), {
   handle: 'nodicomx',
   tono: 'claro',
 })
 
-const perfil = computed(() => props.feed?.perfil ?? null)
-const perfilUrl = computed(() => `https://www.instagram.com/${perfil.value?.usuario ?? props.handle}`)
+const perfilUrl = computed(() => `https://www.instagram.com/${props.handle}`)
+const embedUrl = computed(() => `https://www.instagram.com/${props.handle}/embed`)
 
-// Los permalinks salen del feed nuevo si viene; si no, del array antiguo.
-const permalinks = computed<string[]>(() =>
-  props.feed
-    ? props.feed.publicaciones.map((p: any) => p.permalink).filter(Boolean)
-    : (props.publicaciones ?? []),
-)
+const cerca = ref(false)
+const marco = ref<HTMLElement | null>(null)
+let observador: IntersectionObserver | null = null
 
-const numero = (n: number | null) =>
-  n === null || n === undefined ? null : new Intl.NumberFormat('es-MX').format(n)
-
-/**
- * `instagram.com/{cuenta}/embed` no está documentado por Meta y devuelve muro
- * de inicio de sesión a los visitantes sin sesión (FE-01). El endpoint público
- * soportado es el de publicación suelta, así que se embebe una por celda.
- */
-function shortcode(permalink: string): string | null {
-  return permalink.match(/instagram\.com\/(?:p|reel|tv)\/([A-Za-z0-9_-]+)/)?.[1] ?? null
-}
-
-const publicacionesValidas = computed(() =>
-  permalinks.value
-    .map((url) => ({ url, code: shortcode(url) }))
-    .filter((p): p is { url: string; code: string } => p.code !== null),
-)
-
-/** Celdas cuyo iframe no llegó a cargar: muestran tarjeta de respaldo propia. */
-const fallidas = reactive<Record<string, boolean>>({})
-const cargadas = reactive<Record<string, boolean>>({})
-/** Celdas que ya se acercaron a pantalla: solo entonces se crea su iframe. */
-const cercanas = reactive<Record<string, boolean>>({})
-
-function alCargar(code: string) {
-  cargadas[code] = true
-}
-
-function alFallar(code: string) {
-  fallidas[code] = true
-}
-
-/**
- * Instagram cuesta ~1.2 MB de terceros por los cuatro embeds, y la sección va
- * muy por debajo del pliegue. `loading="lazy"` no bastaba: el iframe existe
- * desde el primer render y el navegador lo pide igual en cuanto puede, así que
- * quien nunca baja hasta aquí pagaba el peso completo.
- *
- * Ahora el iframe no se crea hasta que la celda se acerca a pantalla. El
- * vigilante del respaldo arranca en ese mismo momento, no al montar: antes
- * expiraba el plazo sin que el iframe hubiera empezado siquiera a cargar y
- * tres de cuatro caían al respaldo sin motivo.
- */
-function vigilar(el: Element | null, code: string) {
-  if (! el) return
-
-  // Sin IntersectionObserver no hay carga diferida posible: se muestra directo.
+onMounted(() => {
+  if (!marco.value) return
   if (typeof IntersectionObserver === 'undefined') {
-    cercanas[code] = true
+    cerca.value = true
     return
   }
-
-  const observador = new IntersectionObserver((entradas) => {
-    entradas.forEach((entrada) => {
-      if (! entrada.isIntersecting) return
-      observador.disconnect()
-      cercanas[code] = true
-      window.setTimeout(() => {
-        if (! cargadas[code]) fallidas[code] = true
-      }, 10000)
-    })
+  observador = new IntersectionObserver((entradas) => {
+    if (entradas.some((e) => e.isIntersecting)) {
+      cerca.value = true
+      observador?.disconnect()
+    }
   }, { rootMargin: '400px' })
+  observador.observe(marco.value)
+})
 
-  observador.observe(el)
-}
+onBeforeUnmount(() => observador?.disconnect())
 </script>
 
 <template>
@@ -99,9 +50,9 @@ function vigilar(el: Element | null, code: string) {
     class="py-20 lg:py-28"
     :class="tono === 'oscuro' ? 'bg-tinta' : 'bg-cream'"
   >
-    <div class="mx-auto max-w-6xl px-5 sm:px-8">
+    <div class="mx-auto max-w-3xl px-5 sm:px-8">
       <!-- Cabecera -->
-      <div class="mb-12 text-center">
+      <div class="mb-10 text-center">
         <p
           class="etiqueta-tecnica mb-5 flex items-center justify-center gap-3"
           :class="tono === 'oscuro' ? 'text-nodo-400' : 'text-dark/70'"
@@ -117,99 +68,41 @@ function vigilar(el: Element | null, code: string) {
           Lo que pasa en Nódico
         </h2>
 
-        <!-- G.3 — cabecera de perfil, cuando el feed real de la Graph API la trae. -->
         <a
-          v-if="perfil"
           :href="perfilUrl" target="_blank" rel="noopener noreferrer"
-          class="mt-6 inline-flex items-center gap-3"
+          class="mt-4 inline-flex items-center gap-2 font-display text-sm font-bold"
+          :class="tono === 'oscuro' ? 'text-nodo-400' : 'text-dark'"
         >
-          <img
-            v-if="perfil.foto" :src="perfil.foto" :alt="`@${perfil.usuario}`"
-            width="48" height="48" loading="lazy"
-            class="h-12 w-12 rounded-full object-cover ring-2 ring-nodo-400"
-          />
-          <span class="text-left">
-            <span class="block font-display text-base font-bold" :class="tono === 'oscuro' ? 'text-white' : 'text-dark'">@{{ perfil.usuario }}</span>
-            <span class="block text-sm" :class="tono === 'oscuro' ? 'text-white/60' : 'text-dark/60'">
-              <template v-if="numero(perfil.seguidores)">{{ numero(perfil.seguidores) }} seguidores</template>
-              <template v-if="numero(perfil.publicaciones)"> · {{ numero(perfil.publicaciones) }} publicaciones</template>
-            </span>
-          </span>
+          <Instagram class="h-4 w-4" aria-hidden="true" /> @{{ handle }}
         </a>
       </div>
 
-      <!-- Reja: 1 columna en iPhone, 2 en iPad, 4 en desktop -->
-      <ul
-        v-if="publicacionesValidas.length"
-        class="grid gap-5 sm:grid-cols-2 lg:grid-cols-4"
-      >
-        <li
-          v-for="post in publicacionesValidas"
-          :key="post.code"
-          class="overflow-hidden rounded-2xl bg-white shadow-sombra-sm ring-1 ring-dark/[.07]"
-          @vue:mounted="(n: any) => vigilar(n.el, post.code)"
-        >
-          <iframe
-            v-if="cercanas[post.code] && !fallidas[post.code]"
-            :src="`https://www.instagram.com/p/${post.code}/embed/`"
-            :title="`Publicación de @${handle} en Instagram`"
-            scrolling="no"
-            loading="lazy"
-            class="h-[420px] w-full border-0"
-            @load="alCargar(post.code)"
-            @error="alFallar(post.code)"
-          />
-
-          <!-- Respaldo por celda: nunca un hueco en blanco -->
-          <a
-            v-else-if="fallidas[post.code]"
-            :href="post.url"
-            target="_blank"
-            rel="noopener noreferrer"
-            class="flex h-[420px] flex-col items-center justify-center gap-5 bg-tinta p-6 text-center
-                   transition hover:bg-dark"
-          >
-            <img
-              src="/img/nodico/logo-nodico-blanco.png"
-              alt=""
-              aria-hidden="true"
-              width="480"
-              height="159"
-              loading="lazy"
-              class="h-8 w-auto"
-            />
-            <p class="font-body text-sm text-white/70">
-              No pudimos cargar esta publicación.
-            </p>
-            <span class="inline-flex items-center gap-2 font-display text-sm font-bold text-nodo-400">
-              <Instagram class="h-4 w-4" aria-hidden="true" />
-              Verla en Instagram
-            </span>
-          </a>
-
-          <!-- Aún lejos de pantalla: se reserva el alto para no mover la reja -->
-          <div v-else class="h-[420px] w-full bg-cream-50" aria-hidden="true" />
-        </li>
-      </ul>
-
-      <!-- Sin permalinks configurados -->
+      <!-- Embed del perfil, diferido. La altura queda reservada. -->
       <div
-        v-else
-        class="rounded-3xl p-10 text-center"
-        :class="tono === 'oscuro' ? 'bg-white/[.05] ring-1 ring-white/10' : 'bg-white shadow-sombra ring-1 ring-dark/[.07]'"
+        ref="marco"
+        class="mx-auto overflow-hidden rounded-2xl bg-white shadow-sombra-sm ring-1 ring-dark/[.07]"
       >
-        <p class="font-body" :class="tono === 'oscuro' ? 'text-white/70' : 'text-dark/70'">
-          Todavía no hay publicaciones configuradas.
-        </p>
+        <iframe
+          v-if="cerca"
+          :src="embedUrl"
+          :title="`Publicaciones de @${handle} en Instagram`"
+          scrolling="no"
+          loading="lazy"
+          class="h-[720px] w-full border-0"
+        />
+        <div v-else class="h-[720px] w-full" aria-hidden="true" />
+      </div>
+
+      <div class="mt-8 text-center">
         <a
           :href="perfilUrl"
           target="_blank"
           rel="noopener noreferrer"
-          class="mt-6 inline-flex min-h-[48px] items-center gap-2.5 rounded-xl bg-nodo-400 px-6 py-3
+          class="inline-flex min-h-[48px] items-center gap-2.5 rounded-xl bg-nodo-400 px-6 py-3
                  font-display text-sm font-bold text-dark transition hover:-translate-y-0.5 hover:shadow-sombra"
         >
           <Instagram class="h-4 w-4" aria-hidden="true" />
-          Ver el perfil
+          Síguenos en Instagram
         </a>
       </div>
     </div>
