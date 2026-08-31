@@ -126,6 +126,48 @@ y 36 de miembros. (La API equivalente, por si se necesita, es
 `/admin/person/blacklists` · `/admin/devices[/config|/remote/restart]` ·
 `/devices/remote/opendoor|reset|restart|set_time` · `/access_auth`, `/access/rule` (reglas de acceso).
 
+## Condiciones para cerrar la Fase 2 (Diego, 2026-08-31)
+
+1. **Contradicción 297 vs 372 + ¿purga?** — **Resuelto.** El «297» (y luego «301») es la
+   *estimación imprecisa de InnoDB* de `information_schema.table_rows`, no un conteo. El
+   `COUNT(*)` real es **408** = 372 extraños (`person_type=-1`) + 36 miembros (`=1`).
+   Rango de id 1–438 con **0 borrados lógicos** → ~30 ids ausentes por gaps de
+   auto_increment (rollbacks) o borrados manuales puntuales. **No hay purga automática:**
+   sin eventos programados en MySQL, sin política de retención en la config, sin tareas de
+   borrado. *Implicación de diseño:* el agente **no asume continuidad de ids** (puede haber
+   huecos), usa el id de origen como clave de idempotencia **y** como cursor, y **Nódico
+   conserva todo lo recibido** aunque Smart Pass llegara a borrarlo.
+
+2. **Zona horaria** — `create_time` es un `datetime` **naive en hora local de Mérida**
+   (`America/Merida`, UTC−6, sin horario de verano). Laravel/Nódico opera en **UTC**
+   (`config/app.php` → `'UTC'`). **Regla:** el agente interpreta `create_time` como
+   `America/Merida` y lo envía en **ISO 8601 con offset `-06:00`** (o ya convertido a UTC);
+   Laravel almacena en UTC y el portal lo muestra de nuevo en Mérida. **Nunca** se envía una
+   fecha naive: sería la causa clásica de eventos con 6 horas de corrimiento.
+
+3. **Antirrebote (reconocimientos repetidos)** — el terminal puede emitir varios eventos de
+   la misma cara en pocos segundos (la persona parada frente al lector). Regla, configurable,
+   **default 90 s**: un reconocimiento (`person_type=1`) **siempre se guarda** como evento de
+   acceso (auditoría), pero **no genera un check-in nuevo** si el mismo `person_id` ya tuvo un
+   reconocimiento en la misma `direction` dentro de la ventana. Es independiente del
+   incremento de `dias_usados` (que ocurre una sola vez por día natural). Valor ajustable en
+   la config de Nódico; queda como decisión propuesta, revisable.
+
+4. **Id que retrocede** — el agente guarda el último id procesado (cursor). Si en una lectura
+   el `MAX(id)` de Smart Pass es **menor** que el cursor, el auto_increment se reinició
+   (reinstalación o reset de `tdx_face_owl`). El agente **no avanza a ciegas**: registra el
+   incidente, lo refleja en su endpoint de salud, **avisa a Laravel** y **se detiene** hasta
+   intervención humana (no re-procesa desde 1 ni salta eventos).
+
+## Estado del apagado de Druid (condición «ahora»)
+
+- **Config cambiada en disco** (`application.properties`): `stat-view-servlet.enabled=false`
+  y `allow=127.0.0.1`. Backup guardado junto al archivo.
+- **Pendiente de aplicar:** requiere **reiniciar Tomcat**, que hoy corre como proceso
+  **elevado (administrador)**; el shell del agente de Claude no tiene ese privilegio, así que
+  no pudo reiniciarlo. Se aplica al reiniciar Smart Pass como administrador, o al dejar
+  Tomcat como servicio de Windows en la Fase 1 (que arrancará con la config nueva).
+
 ## Hallazgos de seguridad (para la Fase 6)
 
 1. **Consola Druid expuesta:** `spring.datasource.druid.stat-view-servlet.enabled=true`
