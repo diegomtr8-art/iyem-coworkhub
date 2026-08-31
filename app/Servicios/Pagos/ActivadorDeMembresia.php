@@ -36,12 +36,18 @@ class ActivadorDeMembresia
     public function activar(User $miembro, Plane $plan, ?float $precioPagado = null): ?Suscripcion
     {
         return DB::transaction(function () use ($miembro, $plan, $precioPagado) {
+            // Solo cuenta una membresía **vigente**. Una con estatus «Activa» pero
+            // ya vencida por fecha (la persona no renovó a tiempo) no debe hacer
+            // que un pago nuevo del mismo plan se tome por un reintento y no
+            // renueve nada: eso dejaba «confirmando el pago» colgado para siempre.
+            // Si no hay vigente, se hace alta() —que además cierra la anterior—.
             $activa = $miembro->suscripciones()
                 ->where('estatus', 'Activa')
+                ->whereDate('fecha_fin', '>=', now()->toDateString())
                 ->latest('fecha_inicio')
                 ->first();
 
-            // Ya tiene justo este plan activo: el evento es un reintento o un
+            // Ya tiene justo este plan vigente: el evento es un reintento o un
             // cruce; no se abre otro ciclo.
             if ($activa && $activa->plan_id === $plan->id) {
                 return $activa;
