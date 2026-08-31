@@ -175,9 +175,10 @@ class PantallasDelPortalTest extends TestCase
         $this->assertSame('09:00', $datos['apertura']);
         $this->assertSame('19:00', $datos['cierre']);
 
+        // Bloques de una hora: la reserva de 10:00–11:00 ocupa solo el bloque 10:00.
         $ocupados = collect($datos['bloques'])->where('libre', false)->pluck('hora');
         $this->assertContains('10:00', $ocupados);
-        $this->assertContains('10:30', $ocupados);
+        $this->assertNotContains('09:00', $ocupados, 'La hora anterior queda libre.');
         $this->assertNotContains('11:00', $ocupados, 'El fin es exclusivo: las 11:00 quedan libres.');
 
         // Y los datos que hacen posible la validación en vivo.

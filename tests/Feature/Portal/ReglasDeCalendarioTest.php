@@ -70,8 +70,8 @@ class ReglasDeCalendarioTest extends TestCase
     {
         [$user, , $sala] = $this->miembroConNodoPro();
 
-        // Cierra a las 19:00; de 18:30 a 19:30 se queda alguien dentro.
-        $this->reservar($user, $sala, $this->lunes(), '18:30', '19:30')
+        // Cierra a las 19:00; de 18:00 a 20:00 se queda alguien dentro.
+        $this->reservar($user, $sala, $this->lunes(), '18:00', '20:00')
             ->assertSessionHasErrors('hora_fin');
 
         $this->assertSame(0, Reserva::count());

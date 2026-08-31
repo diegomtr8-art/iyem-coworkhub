@@ -17,6 +17,17 @@ use Tests\TestCase;
  */
 class CalculoDeHorasTest extends TestCase
 {
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        // Estos tests prueban el algoritmo de mapeo hora→bloque con una
+        // granularidad de referencia conocida (30 min), no la regla de negocio
+        // (hoy 60 min): así siguen verificando el índice único y el traslape a
+        // media hora sin depender del default de la configuración.
+        config(['nodico.operacion.granularidad_minutos' => 30]);
+    }
+
     public static function duraciones(): array
     {
         return [
