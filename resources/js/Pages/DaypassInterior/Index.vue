@@ -136,26 +136,40 @@ function exportar() {
         </label>
       </div>
 
-      <div class="overflow-x-auto">
-        <table class="w-full text-sm">
-          <thead class="border-b border-dark/15 bg-cream-50 text-left text-xs uppercase text-dark/60">
-            <tr>
-              <th class="px-4 py-2">Fecha</th><th class="px-4 py-2">Nombre</th>
-              <th class="px-4 py-2">Teléfono</th><th class="px-4 py-2">Municipio</th><th class="px-4 py-2">Giro</th>
-            </tr>
-          </thead>
-          <tbody class="divide-y divide-dark/10">
-            <tr v-for="v in visitas.data" :key="v.id">
-              <td class="px-4 py-2 font-mono text-xs">{{ v.fecha }}</td>
-              <td class="px-4 py-2 font-medium text-dark">{{ v.nombre }}</td>
-              <td class="px-4 py-2 text-dark/70">{{ v.telefono }}</td>
-              <td class="px-4 py-2 text-dark/70">{{ v.municipio }}</td>
-              <td class="px-4 py-2 text-dark/70">{{ v.giro }}</td>
-            </tr>
-            <tr v-if="!visitas.data.length"><td colspan="5" class="px-4 py-8 text-center text-dark/40">Sin visitas registradas.</td></tr>
-          </tbody>
-        </table>
-      </div>
+      <!-- En pantallas anchas, tabla. En movil, tarjetas apiladas (nada de scroll
+           horizontal en una tabla densa que no se puede leer). -->
+      <table class="hidden w-full text-sm sm:table">
+        <thead class="border-b border-dark/15 bg-cream-50 text-left text-xs uppercase text-dark/60">
+          <tr>
+            <th class="px-4 py-2">Fecha</th><th class="px-4 py-2">Nombre</th>
+            <th class="px-4 py-2">Teléfono</th><th class="px-4 py-2">Municipio</th><th class="px-4 py-2">Giro</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-dark/10">
+          <tr v-for="v in visitas.data" :key="v.id">
+            <td class="px-4 py-2 font-mono text-xs">{{ v.fecha }}</td>
+            <td class="px-4 py-2 font-medium text-dark">{{ v.nombre }}</td>
+            <td class="px-4 py-2 text-dark/70">{{ v.telefono }}</td>
+            <td class="px-4 py-2 text-dark/70">{{ v.municipio }}</td>
+            <td class="px-4 py-2 text-dark/70">{{ v.giro }}</td>
+          </tr>
+          <tr v-if="!visitas.data.length"><td colspan="5" class="px-4 py-8 text-center text-dark/40">Sin visitas registradas.</td></tr>
+        </tbody>
+      </table>
+
+      <ul class="divide-y divide-dark/10 sm:hidden">
+        <li v-for="v in visitas.data" :key="v.id" class="px-4 py-3">
+          <div class="flex items-baseline justify-between gap-2">
+            <p class="font-medium text-dark">{{ v.nombre }}</p>
+            <p class="font-mono text-xs text-dark/50">{{ v.fecha }}</p>
+          </div>
+          <p class="mt-0.5 text-sm text-dark/70">
+            {{ v.municipio }}<template v-if="v.giro"> · {{ v.giro }}</template>
+          </p>
+          <p v-if="v.telefono" class="text-sm text-dark/60">{{ v.telefono }}</p>
+        </li>
+        <li v-if="!visitas.data.length" class="px-4 py-8 text-center text-dark/40">Sin visitas registradas.</li>
+      </ul>
     </Panel>
 
     <!-- Alta rápida de mostrador. -->
