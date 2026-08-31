@@ -119,7 +119,7 @@ class ValidadorDeReserva
         foreach (['hora_inicio' => $horaInicio, 'hora_fin' => $horaFin] as $campo => $hora) {
             if (Reserva::aMinutos($hora) % $granularidad !== 0) {
                 throw ValidationException::withMessages([
-                    $campo => "Las reservas van en bloques de {$granularidad} minutos: elige una hora en punto o y media.",
+                    $campo => "Las reservas van en bloques de una hora: elige una hora en punto.",
                 ]);
             }
         }

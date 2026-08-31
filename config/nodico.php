@@ -189,8 +189,10 @@ return [
         'apertura'              => env('NODICO_APERTURA', '09:00'),
         'cierre'                => env('NODICO_CIERRE', '19:00'),
 
-        // Bloques de media hora, mínimo una hora por reserva.
-        'granularidad_minutos'  => 30,
+        // Bloques de una hora, mínimo una hora por reserva. La reserva mínima es
+        // de 1 h, así que los bloques van también de 1 h: mostrar medias horas que
+        // luego no se pueden reservar solas confunde (decisión de Diego 31/08/2026).
+        'granularidad_minutos'  => 60,
         'duracion_minima_horas' => 1,
 
         // No se reserva para dentro de 10 minutos ni con tres meses de antelación.
