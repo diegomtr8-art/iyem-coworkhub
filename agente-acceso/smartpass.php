@@ -46,6 +46,11 @@ $TIMEOUT = max(5, (int) ($cfg['HTTP_TIMEOUT'] ?? 15));
 
 $COOKIE = tempnam(sys_get_temp_dir(), 'sp_ck_');
 
+// Smart Pass registra el User-Agent de cada petición (LogResponseBodyAdvice →
+// UserAgentUtils.getBrowserInfo) y revienta con NullPointerException si no lo
+// reconoce. Por eso nos presentamos como un navegador real.
+const SP_USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
+
 // ─── Utilidades ──────────────────────────────────────────────────────────────
 
 function cargarEnv(string $ruta): array
@@ -108,6 +113,7 @@ function iniciarSesion(): array
         CURLOPT_TIMEOUT        => $TIMEOUT,
         CURLOPT_COOKIEJAR      => $COOKIE,
         CURLOPT_COOKIEFILE     => $COOKIE,
+        CURLOPT_USERAGENT      => SP_USER_AGENT,
         CURLOPT_HTTPHEADER     => [
             'Content-Type: application/x-www-form-urlencoded',
             'Accept: application/json',
@@ -157,13 +163,13 @@ function cabecerasAuth(array $sesion, string $contentType = 'application/json'):
     return $h;
 }
 
-/** Abre la puerta de uno o varios dispositivos. PUT /devices/remote/opendoor {ids:[...]}. */
+/** Abre la puerta de uno o varios dispositivos. PUT /admin/devices/remote/opendoor {ids:[...]}. */
 function abrirPuerta(array $sesion, array $ids): array
 {
     global $SP_URL, $TIMEOUT, $COOKIE;
 
     $cuerpo = json_encode(['ids' => array_values(array_map('intval', $ids))]);
-    $ch = curl_init($SP_URL . '/devices/remote/opendoor');
+    $ch = curl_init($SP_URL . '/admin/devices/remote/opendoor');
     curl_setopt_array($ch, [
         CURLOPT_CUSTOMREQUEST  => 'PUT',
         CURLOPT_POSTFIELDS     => $cuerpo,
@@ -171,6 +177,7 @@ function abrirPuerta(array $sesion, array $ids): array
         CURLOPT_TIMEOUT        => $TIMEOUT,
         CURLOPT_COOKIEJAR      => $COOKIE,
         CURLOPT_COOKIEFILE     => $COOKIE,
+        CURLOPT_USERAGENT      => SP_USER_AGENT,
         CURLOPT_HTTPHEADER     => cabecerasAuth($sesion),
     ]);
     $resp = curl_exec($ch);
