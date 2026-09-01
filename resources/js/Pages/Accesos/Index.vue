@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, watch, computed } from 'vue'
+import { ref, watch, computed, onMounted, onUnmounted } from 'vue'
 import { Head, router, useForm } from '@inertiajs/vue3'
 import { Search, Download, Link2, X, Wifi, WifiOff, Clock, UserCheck, DoorOpen, Users, CheckCircle2, AlertCircle, Loader2 } from 'lucide-vue-next'
 import { Link } from '@inertiajs/vue3'
@@ -26,6 +26,16 @@ const puerta = useForm({ device_id: props.dispositivos[0]?.id ?? null })
 function abrirPuerta() {
   puerta.post(route('accesos.abrir'), { preserveScroll: true })
 }
+// Auto-actualización: refresca estado de órdenes, agente y quién está dentro cada
+// pocos segundos, sin tocar el registro (para no romper filtros/paginación).
+let poll: number | undefined
+onMounted(() => {
+  poll = window.setInterval(() => {
+    router.reload({ only: ['comandos', 'estadoAgente', 'dentroAhora'] })
+  }, 5000)
+})
+onUnmounted(() => { if (poll) clearInterval(poll) })
+
 const estadoComando: Record<string, { txt: string; icono: any; clase: string }> = {
   pendiente: { txt: 'En cola', icono: Loader2, clase: 'text-amber-700' },
   enviado:   { txt: 'Enviada al agente', icono: Loader2, clase: 'text-amber-700' },
