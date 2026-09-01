@@ -204,10 +204,39 @@ function crearPersona(array $sesion, string $nombre, string $personNo, ?array $f
         $cuerpo['personPhotoUrl1'] = $foto['url'];
     }
     [$http, $j] = llamarSp($sesion, 'POST', '/admin/person/employees', $cuerpo);
-    if (($j['code'] ?? null) !== 200 || empty($j['data']['id'])) {
-        throw new RuntimeException('No se pudo crear la persona: ' . ($j['message'] ?? "http $http"));
+
+    $id = (int) ($j['data']['id'] ?? 0);
+    if ($id > 0) {
+        return $id;
     }
-    return (int) $j['data']['id'];
+
+    // Con un rostro real, Smart Pass a veces responde «Operación exitosa» SIN el
+    // id en el cuerpo (y si la persona ya existía, tampoco lo devuelve). Se
+    // resuelve leyendo el person_id por su person_no en la base.
+    $id = personIdPorNo($personNo);
+    if ($id > 0) {
+        return $id;
+    }
+
+    throw new RuntimeException('No se pudo crear la persona: ' . ($j['message'] ?? "http $http"));
+}
+
+/** Busca el person_id (tdx_person.id) más reciente para un person_no. 0 si no hay. */
+function personIdPorNo(string $personNo): int
+{
+    global $cfg;
+    try {
+        $dsn = sprintf('mysql:host=%s;port=%s;dbname=%s;charset=utf8mb4',
+            $cfg['SMARTPASS_DB_HOST'] ?? '127.0.0.1', $cfg['SMARTPASS_DB_PORT'] ?? '3307',
+            $cfg['SMARTPASS_DB_NAME'] ?? 'tdx_face_owl');
+        $pdo = new PDO($dsn, $cfg['SMARTPASS_DB_USER'] ?? '', $cfg['SMARTPASS_DB_PASS'] ?? '',
+            [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
+        $st = $pdo->prepare('SELECT id FROM tdx_person WHERE person_no = ? ORDER BY id DESC LIMIT 1');
+        $st->execute([$personNo]);
+        return (int) ($st->fetchColumn() ?: 0);
+    } catch (Throwable $e) {
+        return 0;
+    }
 }
 
 /** Pide al terminal que tome la foto de una persona (modo FR07). Best-effort. */
