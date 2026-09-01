@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Servicios\Accesos\IngestaDeEventos;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 
 /**
@@ -17,8 +18,25 @@ use Illuminate\Support\Facades\Log;
  */
 class AccesoController extends Controller
 {
+    /** Clave del último contacto del agente, para el estado del sistema (Fase 5). */
+    public const AGENTE_VISTO = 'acceso.agente_visto_en';
+
     public function __construct(private readonly IngestaDeEventos $ingesta)
     {
+    }
+
+    /** Cualquier contacto del agente (eventos, alerta o latido) actualiza su «visto». */
+    private function marcarVisto(): void
+    {
+        Cache::put(self::AGENTE_VISTO, now()->toIso8601String(), now()->addDay());
+    }
+
+    /** Latido: el agente lo manda aunque no haya eventos, para que Nódico sepa que vive. */
+    public function latido(Request $request): JsonResponse
+    {
+        $this->marcarVisto();
+
+        return response()->json(['ok' => true]);
     }
 
     /**
@@ -48,6 +66,8 @@ class AccesoController extends Controller
             $resumen[$resultado] = ($resumen[$resultado] ?? 0) + 1;
         }
 
+        $this->marcarVisto();
+
         return response()->json([
             'ok'         => true,
             'recibidos'  => count($datos['eventos']),
@@ -66,6 +86,8 @@ class AccesoController extends Controller
             'detalle' => ['required', 'string', 'max:2000'],
             'cuando'  => ['nullable', 'string', 'max:60'],
         ]);
+
+        $this->marcarVisto();
 
         // El agente se detiene solo ante un id retrocedido; esto es la campana que
         // avisa al operativo de que Smart Pass necesita intervención humana.

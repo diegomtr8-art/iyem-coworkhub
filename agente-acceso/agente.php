@@ -204,6 +204,26 @@ function alertarANodico(string $tipo, string $detalle): void
     curl_close($ch);
 }
 
+/** Latido: le dice a Nódico «sigo vivo» aunque no haya eventos. Best-effort. */
+function latidoANodico(): void
+{
+    global $NODICO_URL, $SECRETO, $HTTP_TIMEOUT;
+    $cuerpo = json_encode(['visto' => gmdate('c')]);
+    $ts = (string) time();
+    $ch = curl_init($NODICO_URL . '/api/acceso/latido');
+    curl_setopt_array($ch, [
+        CURLOPT_POST => true, CURLOPT_POSTFIELDS => $cuerpo, CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_TIMEOUT => $HTTP_TIMEOUT,
+        CURLOPT_HTTPHEADER => [
+            'Content-Type: application/json',
+            'X-Agente-Timestamp: ' . $ts,
+            'X-Agente-Firma: ' . hash_hmac('sha256', $ts . '.' . $cuerpo, $SECRETO),
+        ],
+    ]);
+    @curl_exec($ch);
+    curl_close($ch);
+}
+
 // ─── Endpoint de salud (solo 127.0.0.1) ──────────────────────────────────────
 
 function abrirSalud(int $puerto)
@@ -250,9 +270,18 @@ $SALUD['cursor'] = $cursor;
 bitacora('INFO', "Cursor inicial: $cursor. Sondeo cada {$SONDEO}s. Salud en 127.0.0.1:$SALUD_PUERTO.");
 
 $ultimoSondeo = 0;
+$ultimoLatido = 0;
+$LATIDO_SEGUNDOS = 60;   // «sigo vivo» a Nódico, aunque no haya eventos
 
 while (true) {
     atenderSalud($salud, 0.5);
+
+    // Latido periódico: Nódico marca al agente como caído si deja de llegar.
+    if (time() - $ultimoLatido >= $LATIDO_SEGUNDOS) {
+        latidoANodico();
+        $ultimoLatido = time();
+    }
+
     if (time() - $ultimoSondeo < $SONDEO) {
         continue;
     }

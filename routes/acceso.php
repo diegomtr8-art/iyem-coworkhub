@@ -15,3 +15,4 @@ use Illuminate\Support\Facades\Route;
 
 Route::post('/eventos', [AccesoController::class, 'eventos'])->name('eventos');
 Route::post('/alerta', [AccesoController::class, 'alerta'])->name('alerta');
+Route::post('/latido', [AccesoController::class, 'latido'])->name('latido');

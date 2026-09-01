@@ -43,6 +43,9 @@ enum AccionOperativa: string
     case SolicitudFactura = 'solicitud_factura';
     case ExportacionFiscal = 'exportacion_fiscal';
 
+    // Control de acceso.
+    case VinculacionRostro = 'vinculacion_rostro';
+
     public function etiqueta(): string
     {
         return match ($this) {
@@ -62,6 +65,7 @@ enum AccionOperativa: string
             self::RechazoAsesoria       => 'Asesoría rechazada',
             self::SolicitudFactura      => 'Solicitud de factura',
             self::ExportacionFiscal     => 'Exportación de datos fiscales',
+            self::VinculacionRostro     => 'Vinculación de rostro con miembro',
         };
     }
 
