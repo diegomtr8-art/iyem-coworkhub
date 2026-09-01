@@ -141,6 +141,34 @@ class OrdenPagoController extends Controller
         return Inertia::render('Portal/MisPagos', ['ordenes' => $ordenes]);
     }
 
+    /**
+     * «Mis facturas»: solo las que contabilidad ya emitió (con su PDF/XML), para
+     * que el miembro las descargue sin buscarlas entre todos sus pagos.
+     */
+    public function misFacturas(Request $request): Response
+    {
+        $facturas = $request->user()->ordenesPago()
+            ->whereIn('estado_factura', [EstadoFacturaOrden::Emitida->value, EstadoFacturaOrden::Enviada->value])
+            ->whereNotNull('factura_pdf')
+            ->with('plan:id,nombre')
+            ->orderByDesc('factura_emitida_en')
+            ->get()
+            ->map(fn (OrdenPago $o) => [
+                'id'             => $o->id,
+                'referencia'     => $o->referencia,
+                'plan'           => $o->plan?->nombre,
+                'monto'          => (float) $o->monto,
+                'folio_fiscal'   => $o->folio_fiscal,
+                'estado_factura' => $o->estado_factura->value,
+                'estado_factura_label' => $o->estado_factura->etiqueta(),
+                'emitida_en'     => $o->factura_emitida_en?->toIso8601String(),
+                'enviada_en'     => $o->factura_enviada_en?->toIso8601String(),
+                'tiene_xml'      => (bool) $o->factura_xml,
+            ]);
+
+        return Inertia::render('Portal/MisFacturas', ['facturas' => $facturas]);
+    }
+
     public function descargarPdf(Request $request, OrdenPago $orden): StreamedResponse
     {
         return $this->descargarFactura($request, $orden, 'factura_pdf', 'pdf');

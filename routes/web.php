@@ -315,6 +315,7 @@ Route::middleware(['auth', 'verified', 'portal:miembro', 'no.suspendida', 'conse
     Route::get('referencia/{orden}', [OrdenPagoController::class, 'mostrar'])->name('referencia.mostrar');
     Route::post('referencia/{orden}/ya-pague', [OrdenPagoController::class, 'yaPague'])->name('referencia.ya-pague');
     Route::get('mis-pagos', [OrdenPagoController::class, 'misPagos'])->name('pagos');
+    Route::get('mis-facturas', [OrdenPagoController::class, 'misFacturas'])->name('facturas');
     Route::get('mis-pagos/{orden}/pdf', [OrdenPagoController::class, 'descargarPdf'])->name('pagos.pdf');
     Route::get('mis-pagos/{orden}/xml', [OrdenPagoController::class, 'descargarXml'])->name('pagos.xml');
     Route::post('membresia/cancelar-renovacion', [SuscripcionController::class, 'cancelarRenovacion'])->name('membresia.cancelar');

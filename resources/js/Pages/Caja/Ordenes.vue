@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
 import { Head, Link, router, useForm } from '@inertiajs/vue3'
-import { Search, X, CheckCircle2, Ban, RefreshCw, AlertTriangle } from 'lucide-vue-next'
+import { Search, X, CheckCircle2, Ban, RefreshCw, AlertTriangle, Receipt } from 'lucide-vue-next'
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue'
 import Panel from '@/Components/Panel/Panel.vue'
 import Estado from '@/Components/Panel/Estado.vue'
@@ -89,8 +89,8 @@ const columnas: Columna[] = [
     <template #breadcrumb><span class="font-display font-bold text-dark">Caja · Órdenes</span></template>
 
     <div class="mb-4 flex justify-end">
-      <Link :href="route('caja.facturas')" class="inline-flex items-center gap-1.5 border-2 border-dark bg-white px-3 py-2 font-display text-xs font-bold text-dark hover:bg-dark hover:text-white">
-        Facturas por emitir →
+      <Link :href="route('caja.facturas')" class="inline-flex items-center gap-1.5 border-2 border-dark bg-nodo-400 px-3 py-2 font-display text-xs font-bold text-dark hover:bg-dark hover:text-white">
+        <Receipt :size="14" aria-hidden="true" /> Cargar y enviar facturas →
       </Link>
     </div>
 
