@@ -5,6 +5,7 @@ use App\Http\Controllers\AnunciosController;
 use App\Http\Controllers\AsesoriasAdminController;
 use App\Http\Controllers\SalonesController;
 use App\Http\Controllers\BitacoraController;
+use App\Http\Controllers\AccesosPanelController;
 use App\Http\Controllers\CheckinAdminController;
 use App\Http\Controllers\DaypassInteriorController;
 use App\Http\Controllers\ContactoController;
@@ -198,6 +199,11 @@ Route::middleware(['auth', 'verified', 'portal:operativo', 'no.suspendida', 'con
         Route::get('daypass-interior/buscar', [DaypassInteriorController::class, 'buscar'])->name('daypass.buscar');
         Route::post('daypass-interior', [DaypassInteriorController::class, 'registrar'])->name('daypass.registrar');
         Route::get('daypass-interior/exportar', [DaypassInteriorController::class, 'exportar'])->name('daypass.exportar');
+
+        // Control de acceso — la pantalla que sustituye a Smart Pass (Fase 5).
+        Route::get('accesos', [AccesosPanelController::class, 'index'])->name('accesos.index');
+        Route::get('accesos/exportar', [AccesosPanelController::class, 'exportar'])->name('accesos.exportar');
+        Route::post('accesos/vincular', [AccesosPanelController::class, 'vincular'])->name('accesos.vincular');
     });
 
     Route::middleware('can:gestionar-facturacion')->group(function () {

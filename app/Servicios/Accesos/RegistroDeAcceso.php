@@ -38,11 +38,18 @@ class RegistroDeAcceso
     /**
      * Registra la entrada de un miembro y consume día si su plan va por días.
      *
+     * `$momento` es el instante real de la entrada. Por defecto es *ahora* (el
+     * caso del mostrador y del portal), pero la ingesta de eventos de acceso pasa
+     * la hora del evento —que puede ser vieja— para que el check-in entre con SU
+     * hora y el día se consuma en el día natural del evento, no en el de recepción.
+     *
      * @throws ValidationException si no tiene membresía activa o se quedó sin días.
      */
-    public function entrada(User $usuario, ?Espacio $espacio = null): Checkin
+    public function entrada(User $usuario, ?Espacio $espacio = null, ?CarbonImmutable $momento = null): Checkin
     {
-        return DB::transaction(function () use ($usuario, $espacio) {
+        $momento ??= CarbonImmutable::now();
+
+        return DB::transaction(function () use ($usuario, $espacio, $momento) {
             $suscripcion = $usuario->suscripciones()
                 ->with('plan')
                 ->where('estatus', 'Activa')
@@ -56,16 +63,21 @@ class RegistroDeAcceso
                 ]);
             }
 
-            $hoy = CarbonImmutable::today();
+            // El día natural del coworking se cuenta en la hora local de Nódico
+            // (Mérida), no en UTC: quien entra a las 22:00 consume el día de hoy,
+            // no el de mañana. `hora_entrada` se sigue guardando en UTC (el instante
+            // real ocurrido); solo la ATRIBUCIÓN al día es local.
+            $zona     = config('nodico.zona_horaria', 'America/Merida');
+            $diaLocal = $momento->setTimezone($zona)->startOfDay();
 
-            if ($hoy->gt(CarbonImmutable::parse($suscripcion->fecha_fin))) {
+            if ($diaLocal->toDateString() > CarbonImmutable::parse($suscripcion->fecha_fin)->toDateString()) {
                 throw ValidationException::withMessages([
                     'general' => 'Tu membresía venció el '
                         . CarbonImmutable::parse($suscripcion->fecha_fin)->translatedFormat('j \d\e F') . '.',
                 ]);
             }
 
-            $consumeDia = $this->debeConsumirDia($suscripcion, $hoy);
+            $consumeDia = $this->debeConsumirDia($suscripcion, $diaLocal);
 
             if ($consumeDia) {
                 $restantes = $this->libro->saldoDelCiclo($suscripcion, BolsaDeHoras::Dias);
@@ -78,7 +90,7 @@ class RegistroDeAcceso
                 }
             }
 
-            $this->cerrarAccesosAbiertos($usuario);
+            $this->cerrarAccesosAbiertos($usuario, $momento);
 
             $espacio ??= Espacio::where('tipo', \App\Enums\TipoEspacio::Coworking->value)
                 ->where('disponible', true)
@@ -88,7 +100,7 @@ class RegistroDeAcceso
                 'user_id'      => $usuario->id,
                 'espacio_id'   => $espacio?->id,
                 'reserva_id'   => $this->reservaDelMomento($usuario, $espacio)?->id,
-                'hora_entrada' => now(),
+                'hora_entrada' => $momento,
             ]);
 
             if ($consumeDia) {
@@ -101,8 +113,9 @@ class RegistroDeAcceso
                     cantidad: 1,
                     motivo: MotivoMovimiento::Acceso,
                     autor: $usuario,
-                    nota: 'Entrada del ' . $hoy->translatedFormat('j \d\e F \d\e Y') . '.',
-                    claveIdempotencia: "acceso:{$suscripcion->id}:{$hoy->toDateString()}",
+                    nota: 'Entrada del ' . $diaLocal->translatedFormat('j \d\e F \d\e Y') . '.',
+                    claveIdempotencia: "acceso:{$suscripcion->id}:{$diaLocal->toDateString()}",
+                    en: $momento,
                 );
             }
 
@@ -110,8 +123,13 @@ class RegistroDeAcceso
         });
     }
 
-    /** Cierra el acceso abierto del miembro. Devuelve `null` si no tenía ninguno. */
-    public function salida(User $usuario): ?Checkin
+    /**
+     * Cierra el acceso abierto del miembro. Devuelve `null` si no tenía ninguno.
+     *
+     * `$momento` es la hora real de la salida (por defecto, ahora). La ingesta de
+     * eventos pasa la del evento para que la duración se calcule con la hora real.
+     */
+    public function salida(User $usuario, ?CarbonImmutable $momento = null): ?Checkin
     {
         $acceso = $usuario->checkins()->whereNull('hora_salida')->latest('hora_entrada')->first();
 
@@ -119,7 +137,7 @@ class RegistroDeAcceso
             return null;
         }
 
-        $this->cerrar($acceso);
+        $this->cerrar($acceso, $momento);
 
         return $acceso->refresh();
     }
@@ -130,37 +148,46 @@ class RegistroDeAcceso
      * No consume cuando el plan es ilimitado (Nodo Pro, Nodo Match) ni cuando ya
      * hubo una entrada hoy con la misma suscripción.
      */
-    private function debeConsumirDia(Suscripcion $suscripcion, CarbonImmutable $dia): bool
+    private function debeConsumirDia(Suscripcion $suscripcion, CarbonImmutable $diaLocal): bool
     {
         if ($suscripcion->plan?->esIlimitado() ?? true) {
             return false;
         }
 
+        // «Ya entró hoy» = hubo una entrada dentro del día natural **local**. Como
+        // `hora_entrada` se guarda en UTC, se compara contra el rango del día local
+        // convertido a UTC —no `whereDate`, que compararía la fecha en UTC y
+        // descuadraría los accesos de la tarde-noche (que en UTC caen al día
+        // siguiente)—.
         $yaEntroHoy = Checkin::where('user_id', $suscripcion->user_id)
-            ->whereDate('hora_entrada', $dia->toDateString())
+            ->where('hora_entrada', '>=', $diaLocal->utc())
+            ->where('hora_entrada', '<', $diaLocal->addDay()->utc())
             ->exists();
 
         return ! $yaEntroHoy;
     }
 
-    private function cerrarAccesosAbiertos(User $usuario): void
+    private function cerrarAccesosAbiertos(User $usuario, ?CarbonImmutable $momento = null): void
     {
         $usuario->checkins()
             ->whereNull('hora_salida')
             ->get()
-            ->each(fn (Checkin $acceso) => $this->cerrar($acceso));
+            ->each(fn (Checkin $acceso) => $this->cerrar($acceso, $momento));
     }
 
     /**
-     * Cierra un acceso. El sentido de la resta importa: de entrada hacia ahora,
-     * que es positivo. Invertirlo es el BUG-01 en otra tabla.
+     * Cierra un acceso. El sentido de la resta importa: de entrada hacia la
+     * salida, que es positivo. Invertirlo es el BUG-01 en otra tabla.
+     *
+     * `$momento` es la hora de salida (por defecto, ahora).
      */
-    private function cerrar(Checkin $acceso): void
+    private function cerrar(Checkin $acceso, ?CarbonImmutable $momento = null): void
     {
-        $minutos = (int) CarbonImmutable::parse($acceso->hora_entrada)->diffInMinutes(now());
+        $momento ??= CarbonImmutable::now();
+        $minutos  = (int) CarbonImmutable::parse($acceso->hora_entrada)->diffInMinutes($momento);
 
         $acceso->update([
-            'hora_salida'      => now(),
+            'hora_salida'      => $momento,
             'duracion_minutos' => max(0, $minutos),
         ]);
     }

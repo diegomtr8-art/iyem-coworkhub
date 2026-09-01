@@ -4,6 +4,7 @@ use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -12,6 +13,16 @@ return Application::configure(basePath: dirname(__DIR__))
         web: __DIR__.'/../routes/web.php',
         commands: __DIR__.'/../routes/console.php',
         health: '/up',
+        then: function (): void {
+            // Fase 2 — endpoints del agente de acceso. Van fuera del grupo `web`
+            // (sin sesión ni CSRF): son servicio-a-servicio y se autentican con la
+            // firma HMAC del agente, no con una cookie. El prefijo `api/acceso`
+            // reproduce la URL a la que el agente ya publica.
+            Route::middleware(\App\Http\Middleware\VerificaFirmaDelAgente::class)
+                ->prefix('api/acceso')
+                ->name('acceso.')
+                ->group(__DIR__.'/../routes/acceso.php');
+        },
     )
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->trustProxies(at: '*');
