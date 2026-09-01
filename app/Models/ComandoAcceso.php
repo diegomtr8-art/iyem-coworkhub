@@ -14,15 +14,19 @@ class ComandoAcceso extends Model
 {
     protected $table = 'comandos_acceso';
 
-    public const ABRIR_PUERTA = 'abrir_puerta';
+    public const ABRIR_PUERTA   = 'abrir_puerta';
+    public const ENROLAR_ROSTRO = 'enrolar_rostro';
+    public const BORRAR_ROSTRO  = 'borrar_rostro';
 
     protected $fillable = [
-        'tipo', 'device_id', 'estado', 'resultado',
+        'tipo', 'device_id', 'payload', 'person_id', 'estado', 'resultado',
         'solicitado_por_user_id', 'enviado_en', 'resuelto_en',
     ];
 
     protected $casts = [
         'device_id'   => 'integer',
+        'payload'     => 'array',
+        'person_id'   => 'integer',
         'enviado_en'  => 'datetime',
         'resuelto_en' => 'datetime',
     ];

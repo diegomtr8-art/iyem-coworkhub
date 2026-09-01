@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\ComandoAcceso;
 use App\Servicios\Accesos\IngestaDeEventos;
+use App\Servicios\Accesos\VinculadorDeRostros;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
@@ -22,8 +23,10 @@ class AccesoController extends Controller
     /** Clave del último contacto del agente, para el estado del sistema (Fase 5). */
     public const AGENTE_VISTO = 'acceso.agente_visto_en';
 
-    public function __construct(private readonly IngestaDeEventos $ingesta)
-    {
+    public function __construct(
+        private readonly IngestaDeEventos $ingesta,
+        private readonly VinculadorDeRostros $vinculador,
+    ) {
     }
 
     /** Cualquier contacto del agente (eventos, alerta o latido) actualiza su «visto». */
@@ -99,6 +102,8 @@ class AccesoController extends Controller
                 'id'        => $c->id,
                 'tipo'      => $c->tipo,
                 'device_id' => $c->device_id,
+                'person_id' => $c->person_id,
+                'payload'   => $c->payload,   // datos de enrolado (nombre, foto, etc.)
             ])->values(),
         ]);
     }
@@ -113,8 +118,9 @@ class AccesoController extends Controller
     public function resultadoComando(Request $request, string $comando): JsonResponse
     {
         $datos = $request->validate([
-            'ok'      => ['required', 'boolean'],
-            'detalle' => ['nullable', 'string', 'max:2000'],
+            'ok'        => ['required', 'boolean'],
+            'detalle'   => ['nullable', 'string', 'max:2000'],
+            'person_id' => ['nullable', 'integer'],   // lo devuelve el enrolado
         ]);
 
         $this->marcarVisto();
@@ -123,8 +129,15 @@ class AccesoController extends Controller
         $orden->update([
             'estado'      => $datos['ok'] ? 'ejecutado' : 'fallido',
             'resultado'   => $datos['detalle'] ?? null,
+            'person_id'   => $datos['person_id'] ?? $orden->person_id,
             'resuelto_en' => now(),
         ]);
+
+        // Si fue un enrolado que salió bien, amarra el rostro recién creado al
+        // perfil de Nódico que lo pidió (miembro o ficha de persona).
+        if ($datos['ok'] && $orden->tipo === ComandoAcceso::ENROLAR_ROSTRO && ! empty($datos['person_id'])) {
+            $this->vinculador->vincularDesdeEnrolado($orden, (int) $datos['person_id']);
+        }
 
         return response()->json(['ok' => true]);
     }

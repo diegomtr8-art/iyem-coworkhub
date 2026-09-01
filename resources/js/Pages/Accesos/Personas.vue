@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, onUnmounted } from 'vue'
 import { Head, router, useForm } from '@inertiajs/vue3'
-import { Search, Plus, Pencil, Trash2, Link2, Unlink, X, ScanFace } from 'lucide-vue-next'
+import { Search, Plus, Pencil, Trash2, Link2, Unlink, X, ScanFace, Camera, Upload, Monitor } from 'lucide-vue-next'
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue'
 import Panel from '@/Components/Panel/Panel.vue'
 import Paginacion from '@/Components/Panel/Paginacion.vue'
@@ -13,6 +13,7 @@ const props = defineProps<{
   buscar: string
   empleados: any[]
   servicioSocial: any[]
+  dispositivos: { id: number; clave: string }[]
 }>()
 
 type Tab = 'miembros' | 'empleado' | 'servicio_social'
@@ -79,6 +80,71 @@ function desvincular(tipo: 'miembro' | 'persona', id: number) {
   if (!confirm('¿Quitar el rostro vinculado?')) return
   router.post(route('personas.desvincular'), { tipo, id }, { preserveScroll: true })
 }
+
+// ── Enrolar rostro: crear en Smart Pass y vincular al perfil ─────────────────
+const enrolAbierto = ref(false)
+const enrolSujeto = ref<{ tipo: 'miembro' | 'persona'; id: number; nombre: string } | null>(null)
+const captura = ref<'archivo' | 'camara' | 'dispositivo'>('archivo')
+const fotoBase64 = ref('')            // dataURL: sirve de vista previa y de envío
+const deviceId = ref<number | null>(props.dispositivos[0]?.id ?? null)
+const enviando = ref(false)
+const errorEnrol = ref('')
+const camaraOn = ref(false)
+let stream: MediaStream | null = null
+const video = ref<HTMLVideoElement | null>(null)
+
+function abrirEnrolar(tipo: 'miembro' | 'persona', id: number, nombre: string) {
+  enrolSujeto.value = { tipo, id, nombre }
+  captura.value = 'archivo'; fotoBase64.value = ''; errorEnrol.value = ''
+  deviceId.value = props.dispositivos[0]?.id ?? null
+  enrolAbierto.value = true
+}
+function cerrarEnrolar() { detenerCamara(); enrolAbierto.value = false }
+
+function onArchivo(e: Event) {
+  const f = (e.target as HTMLInputElement).files?.[0]
+  if (!f) return
+  if (f.size > 900_000) { errorEnrol.value = 'La imagen pesa demasiado (máx ~900 KB).'; return }
+  const r = new FileReader()
+  r.onload = () => { fotoBase64.value = String(r.result); errorEnrol.value = '' }
+  r.readAsDataURL(f)
+}
+
+async function iniciarCamara() {
+  errorEnrol.value = ''; fotoBase64.value = ''
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({ video: { width: 480, height: 640 } })
+    camaraOn.value = true
+    await new Promise(r => setTimeout(r, 60))
+    if (video.value) { video.value.srcObject = stream; await video.value.play() }
+  } catch { errorEnrol.value = 'No se pudo abrir la cámara (permiso denegado o sin cámara).' }
+}
+function capturar() {
+  if (!video.value) return
+  const c = document.createElement('canvas')
+  c.width = video.value.videoWidth || 480; c.height = video.value.videoHeight || 640
+  c.getContext('2d')!.drawImage(video.value, 0, 0, c.width, c.height)
+  fotoBase64.value = c.toDataURL('image/jpeg', 0.85)
+  detenerCamara()
+}
+function detenerCamara() { stream?.getTracks().forEach(t => t.stop()); stream = null; camaraOn.value = false }
+onUnmounted(detenerCamara)
+
+function enviarEnrolar() {
+  if (!enrolSujeto.value) return
+  const modo = captura.value === 'dispositivo' ? 'dispositivo' : 'foto'
+  if (modo === 'foto' && !fotoBase64.value) { errorEnrol.value = 'Toma o sube una foto primero.'; return }
+  enviando.value = true
+  router.post(route('personas.enrolar'), {
+    tipo: enrolSujeto.value.tipo, id: enrolSujeto.value.id, modo,
+    foto_base64: modo === 'foto' ? fotoBase64.value : null,
+    device_id: modo === 'dispositivo' ? deviceId.value : null,
+  }, { preserveScroll: true, onFinish: () => { enviando.value = false }, onSuccess: cerrarEnrolar })
+}
+
+function elegirCaptura(c: 'archivo' | 'camara' | 'dispositivo') {
+  detenerCamara(); fotoBase64.value = ''; errorEnrol.value = ''; captura.value = c
+}
 </script>
 
 <template>
@@ -118,7 +184,10 @@ function desvincular(tipo: 'miembro' | 'persona', id: number) {
                 <span v-else class="text-dark/40">sin vincular</span>
               </td>
               <td class="px-4 py-2 text-right">
-                <button v-if="!m.person_id" type="button" @click="abrirFace('miembro', m.id, m.nombre)" class="inline-flex items-center gap-1 text-xs font-bold text-dark hover:underline"><Link2 :size="14" /> Vincular</button>
+                <template v-if="!m.person_id">
+                  <button type="button" @click="abrirEnrolar('miembro', m.id, m.nombre)" class="mr-3 inline-flex items-center gap-1 text-xs font-bold text-dark hover:underline"><Camera :size="14" /> Registrar rostro</button>
+                  <button type="button" @click="abrirFace('miembro', m.id, m.nombre)" class="inline-flex items-center gap-1 text-xs text-dark/60 hover:text-dark" title="Vincular un rostro que ya existe en Smart Pass"><Link2 :size="14" /> Vincular</button>
+                </template>
                 <button v-else type="button" @click="desvincular('miembro', m.id)" class="inline-flex items-center gap-1 text-xs text-dark/60 hover:text-red-700"><Unlink :size="14" /> Quitar</button>
               </td>
             </tr>
@@ -162,7 +231,8 @@ function desvincular(tipo: 'miembro' | 'persona', id: number) {
               </td>
               <td class="px-4 py-2">
                 <div class="flex items-center justify-end gap-2">
-                  <button v-if="!p.person_id" type="button" @click="abrirFace('persona', p.id, p.nombre)" aria-label="Vincular rostro" class="text-dark/60 hover:text-dark"><ScanFace :size="16" /></button>
+                  <button v-if="!p.person_id" type="button" @click="abrirEnrolar('persona', p.id, p.nombre)" aria-label="Registrar rostro" title="Registrar rostro (crea en Smart Pass)" class="text-dark hover:text-nodo-600"><Camera :size="16" /></button>
+                  <button v-if="!p.person_id" type="button" @click="abrirFace('persona', p.id, p.nombre)" aria-label="Vincular rostro existente" title="Vincular un rostro que ya existe" class="text-dark/60 hover:text-dark"><ScanFace :size="16" /></button>
                   <button v-else type="button" @click="desvincular('persona', p.id)" aria-label="Quitar rostro" class="text-dark/60 hover:text-red-700"><Unlink :size="16" /></button>
                   <button type="button" @click="editar(p)" aria-label="Editar" class="text-dark/60 hover:text-dark"><Pencil :size="16" /></button>
                   <button type="button" @click="eliminar(p)" aria-label="Eliminar" class="text-dark/60 hover:text-red-700"><Trash2 :size="16" /></button>
@@ -243,6 +313,68 @@ function desvincular(tipo: 'miembro' | 'persona', id: number) {
             <button type="submit" :disabled="face.processing" class="flex min-h-[40px] items-center gap-1.5 border-2 border-dark bg-nodo-400 px-4 font-display text-xs font-bold text-dark disabled:opacity-50"><Link2 :size="14" /> Vincular</button>
           </div>
         </form>
+      </div>
+    </Teleport>
+    <!-- Modal ENROLAR rostro -->
+    <Teleport to="body">
+      <div v-if="enrolAbierto" class="fixed inset-0 z-50 flex items-end justify-center bg-tinta/60 p-0 sm:items-center sm:p-4" role="dialog" aria-modal="true" @click.self="cerrarEnrolar">
+        <div class="max-h-[94vh] w-full max-w-lg overflow-y-auto border-2 border-dark bg-white">
+          <div class="flex items-center justify-between border-b border-dark/15 bg-cream-50 px-4 py-3">
+            <h2 class="font-display text-sm font-bold text-dark">Registrar rostro · {{ enrolSujeto?.nombre }}</h2>
+            <button type="button" aria-label="Cerrar" class="text-dark/50 hover:text-dark" @click="cerrarEnrolar"><X :size="18" /></button>
+          </div>
+
+          <!-- Elegir modo de captura -->
+          <div class="grid grid-cols-3 gap-2 p-4 pb-0">
+            <button type="button" @click="elegirCaptura('archivo')" class="flex min-h-[60px] flex-col items-center justify-center gap-1 border-2 text-xs font-bold" :class="captura === 'archivo' ? 'border-dark bg-nodo-400' : 'border-dark/20 text-dark/70'"><Upload :size="18" /> Subir foto</button>
+            <button type="button" @click="elegirCaptura('camara')" class="flex min-h-[60px] flex-col items-center justify-center gap-1 border-2 text-xs font-bold" :class="captura === 'camara' ? 'border-dark bg-nodo-400' : 'border-dark/20 text-dark/70'"><Camera :size="18" /> Cámara web</button>
+            <button type="button" @click="elegirCaptura('dispositivo')" class="flex min-h-[60px] flex-col items-center justify-center gap-1 border-2 text-xs font-bold" :class="captura === 'dispositivo' ? 'border-dark bg-nodo-400' : 'border-dark/20 text-dark/70'"><Monitor :size="18" /> Desde el FR07</button>
+          </div>
+
+          <div class="p-4">
+            <!-- Vista previa de la foto -->
+            <div v-if="fotoBase64 && captura !== 'dispositivo'" class="mb-3 flex justify-center">
+              <img :src="fotoBase64" alt="Vista previa" class="max-h-56 border-2 border-dark object-cover" />
+            </div>
+
+            <!-- Modo archivo -->
+            <div v-if="captura === 'archivo'">
+              <label class="flex min-h-[44px] cursor-pointer items-center justify-center gap-2 border-2 border-dashed border-dark/40 px-4 font-display text-sm font-bold text-dark hover:border-dark">
+                <Upload :size="16" /> {{ fotoBase64 ? 'Cambiar imagen' : 'Elegir imagen (JPG/PNG)' }}
+                <input type="file" accept="image/jpeg,image/png" class="hidden" @change="onArchivo" />
+              </label>
+            </div>
+
+            <!-- Modo cámara -->
+            <div v-else-if="captura === 'camara'" class="text-center">
+              <div v-show="camaraOn" class="mb-3 flex justify-center">
+                <video ref="video" class="max-h-56 border-2 border-dark" playsinline muted></video>
+              </div>
+              <button v-if="!camaraOn && !fotoBase64" type="button" @click="iniciarCamara" class="min-h-[44px] border-2 border-dark bg-white px-4 font-display text-sm font-bold text-dark hover:bg-nodo-400">Encender cámara</button>
+              <button v-else-if="camaraOn" type="button" @click="capturar" class="min-h-[44px] border-2 border-dark bg-nodo-400 px-4 font-display text-sm font-bold text-dark">Capturar</button>
+              <button v-else type="button" @click="iniciarCamara" class="min-h-[44px] border border-dark/30 px-4 font-display text-sm font-bold text-dark">Tomar otra</button>
+            </div>
+
+            <!-- Modo dispositivo (FR07) -->
+            <div v-else class="space-y-2">
+              <p class="font-body text-xs text-dark/60">La persona se para frente al terminal y este toma la foto. Elige el dispositivo:</p>
+              <select v-model="deviceId" aria-label="Dispositivo" class="w-full border border-dark/25 bg-white px-2.5 py-2 text-sm focus:border-dark">
+                <option v-for="d in dispositivos" :key="d.id" :value="d.id">{{ d.clave || ('Dispositivo ' + d.id) }}</option>
+                <option v-if="!dispositivos.length" :value="null">— sin dispositivos vistos —</option>
+              </select>
+            </div>
+
+            <p v-if="errorEnrol" class="mt-3 text-xs text-red-700">{{ errorEnrol }}</p>
+            <p class="mt-3 font-body text-xs text-dark/50">Se crea la persona en Smart Pass y, al confirmarse, su rostro queda vinculado a este perfil automáticamente (unos segundos).</p>
+          </div>
+
+          <div class="flex justify-end gap-2 border-t border-dark/15 bg-cream-50 px-4 py-3">
+            <button type="button" class="min-h-[40px] border border-dark/25 px-4 font-display text-xs font-bold text-dark" @click="cerrarEnrolar">Cancelar</button>
+            <button type="button" :disabled="enviando" @click="enviarEnrolar" class="flex min-h-[40px] items-center gap-1.5 border-2 border-dark bg-nodo-400 px-4 font-display text-xs font-bold text-dark disabled:opacity-50">
+              <ScanFace :size="14" /> {{ enviando ? 'Enviando…' : 'Registrar' }}
+            </button>
+          </div>
+        </div>
       </div>
     </Teleport>
   </AuthenticatedLayout>

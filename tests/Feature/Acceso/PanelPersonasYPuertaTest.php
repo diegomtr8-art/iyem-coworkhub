@@ -148,6 +148,31 @@ class PanelPersonasYPuertaTest extends TestCase
         $this->postJson('/api/acceso/comandos', [])->assertStatus(401);
     }
 
+    public function test_enrolar_encola_y_al_reportar_el_person_id_queda_vinculado(): void
+    {
+        $staff = User::factory()->staff()->create();
+        $ficha = PersonaAcceso::create(['categoria' => 'empleado', 'nombre' => 'Carla', 'identificador' => 'EMP7']);
+
+        // El mostrador pide enrolar con una foto.
+        $this->actingAs($staff)->post(route('personas.enrolar'), [
+            'tipo' => 'persona', 'id' => $ficha->id, 'modo' => 'foto', 'foto_base64' => 'QUJD',
+        ])->assertRedirect()->assertSessionHas('success');
+
+        $comando = ComandoAcceso::where('tipo', 'enrolar_rostro')->firstOrFail();
+        $this->assertSame('persona', $comando->payload['perfil_tipo']);
+        $this->assertSame('EMP7', $comando->payload['person_no']);
+
+        // El agente lo recoge…
+        $this->firmado('/api/acceso/comandos', ['agente' => now()->toIso8601String()])->assertOk();
+
+        // …y reporta el person_id que Smart Pass devolvió → se vincula solo.
+        $this->firmado("/api/acceso/comandos/{$comando->id}/resultado", ['ok' => true, 'person_id' => 555])
+            ->assertOk();
+
+        $this->assertSame(555, $ficha->refresh()->smartpass_person_id);
+        $this->assertSame('ejecutado', $comando->refresh()->estado);
+    }
+
     /** Firma un cuerpo como lo haría el agente y lo envía. */
     private function firmado(string $uri, array $payload): TestResponse
     {

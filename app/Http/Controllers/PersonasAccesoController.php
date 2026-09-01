@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Enums\AccionOperativa;
 use App\Enums\CategoriaPersonaAcceso;
+use App\Models\ComandoAcceso;
 use App\Models\EntradaBitacora;
 use App\Models\PersonaAcceso;
 use App\Models\User;
@@ -47,6 +48,10 @@ class PersonasAccesoController extends Controller
             'buscar'         => $buscar,
             'empleados'      => $this->fichas(CategoriaPersonaAcceso::Empleado),
             'servicioSocial' => $this->fichas(CategoriaPersonaAcceso::ServicioSocial),
+            'dispositivos'   => \App\Models\EventoAcceso::query()
+                ->select('device_id', 'device_key')->whereNotNull('device_id')
+                ->groupBy('device_id', 'device_key')->orderBy('device_key')->get()
+                ->map(fn ($e) => ['id' => $e->device_id, 'clave' => $e->device_key]),
         ]);
     }
 
@@ -120,6 +125,59 @@ class PersonasAccesoController extends Controller
         return back()->with('success', "{$nombre} quedó vinculado al rostro {$personId}.");
     }
 
+    /**
+     * Enrola el rostro de un perfil en Smart Pass (Fase 3) y lo deja vinculado.
+     *
+     * No habla con Smart Pass directo (Nódico está en la nube): encola el trabajo
+     * y el agente lo ejecuta —sube la foto, crea la persona— y reporta el
+     * person_id, que al volver se amarra solo al perfil.
+     */
+    public function enrolar(Request $request): RedirectResponse
+    {
+        $datos = $request->validate([
+            'tipo'        => ['required', Rule::in(['miembro', 'persona'])],
+            'id'          => ['required', 'integer'],
+            'modo'        => ['required', Rule::in(['foto', 'dispositivo'])],
+            'foto_base64' => ['nullable', 'string'],
+            'device_id'   => ['nullable', 'integer'],
+        ]);
+
+        if ($datos['modo'] === 'foto' && empty($datos['foto_base64'])) {
+            return back()->with('error', 'Falta la foto del rostro.');
+        }
+
+        if ($datos['tipo'] === 'miembro') {
+            $perfil  = User::findOrFail($datos['id']);
+            $nombre  = $perfil->name;
+            $numero  = 'NDCM' . $perfil->id;
+        } else {
+            $perfil  = PersonaAcceso::findOrFail($datos['id']);
+            $nombre  = $perfil->nombre;
+            $numero  = $perfil->identificador ?: ('NDC' . mb_strtoupper(mb_substr($perfil->categoria->value, 0, 1)) . $perfil->id);
+        }
+
+        if ($perfil->smartpass_person_id) {
+            return back()->with('error', "{$nombre} ya tiene un rostro vinculado.");
+        }
+
+        ComandoAcceso::create([
+            'tipo'                   => ComandoAcceso::ENROLAR_ROSTRO,
+            'device_id'              => $datos['device_id'] ?? null,
+            'payload'                => [
+                'modo'        => $datos['modo'],
+                'nombre'      => $nombre,
+                'person_no'   => preg_replace('/[^A-Za-z0-9]/', '', (string) $numero),
+                'perfil_tipo' => $datos['tipo'],
+                'perfil_id'   => (int) $datos['id'],
+                'foto_base64' => $datos['modo'] === 'foto' ? $this->soloBase64($datos['foto_base64']) : null,
+            ],
+            'estado'                 => 'pendiente',
+            'solicitado_por_user_id' => $request->user()->id,
+        ]);
+
+        return back()->with('success', "Enrolando a {$nombre}… en unos segundos quedará su rostro vinculado.");
+    }
+
     public function desvincular(Request $request): RedirectResponse
     {
         $datos = $request->validate([
@@ -137,6 +195,12 @@ class PersonasAccesoController extends Controller
     }
 
     // ── Interno ──────────────────────────────────────────────────────────────
+
+    /** Deja solo el base64 crudo (Smart Pass no quiere el prefijo `data:image/...`). */
+    private function soloBase64(string $dato): string
+    {
+        return preg_replace('#^data:[^;]+;base64,#', '', trim($dato));
+    }
 
     /** @return array<int, array<string, mixed>> */
     private function fichas(CategoriaPersonaAcceso $categoria): array

@@ -251,10 +251,14 @@ function sondearComandos(): array
 }
 
 /** Reporta a Nódico si un comando se ejecutó o falló. Best-effort. */
-function reportarComando(int $id, bool $ok, string $detalle): void
+function reportarComando(int $id, bool $ok, string $detalle, ?int $personId = null): void
 {
     global $NODICO_URL, $SECRETO, $HTTP_TIMEOUT;
-    $cuerpo = json_encode(['ok' => $ok, 'detalle' => mb_substr($detalle, 0, 2000)]);
+    $datos = ['ok' => $ok, 'detalle' => mb_substr($detalle, 0, 2000)];
+    if ($personId !== null) {
+        $datos['person_id'] = $personId;
+    }
+    $cuerpo = json_encode($datos);
     $ts = (string) time();
     $ch = curl_init($NODICO_URL . '/api/acceso/comandos/' . $id . '/resultado');
     curl_setopt_array($ch, [
@@ -270,22 +274,51 @@ function reportarComando(int $id, bool $ok, string $detalle): void
     curl_close($ch);
 }
 
-/** Ejecuta un comando localmente. Hoy solo «abrir_puerta» (vía smartpass.php). */
+/**
+ * Ejecuta un comando localmente vía smartpass.php. Devuelve
+ * [ok(bool), detalle(string), person_id(int|null)].
+ */
 function ejecutarComando(array $c): array
 {
-    global $RAIZ;
-    if (($c['tipo'] ?? '') !== 'abrir_puerta') {
-        return [false, 'Comando desconocido: ' . ($c['tipo'] ?? '?')];
+    global $RAIZ, $ESTADO_DIR;
+    $php  = escapeshellarg(PHP_BINARY);
+    $cli  = escapeshellarg($RAIZ . '/smartpass.php');
+
+    switch ($c['tipo'] ?? '') {
+        case 'abrir_puerta':
+            $device = (int) ($c['device_id'] ?? 0);
+            if ($device <= 0) {
+                return [false, 'Sin dispositivo indicado.', null];
+            }
+            exec("$php $cli abrir $device 2>&1", $salida, $rc);
+            $texto = trim(implode(' ', $salida));
+            return [$rc === 0, $texto !== '' ? $texto : "código $rc", null];
+
+        case 'enrolar_rostro':
+            // El payload (con la foto en base64) va por archivo, no por argumento.
+            $tmp = tempnam($ESTADO_DIR, 'enrol_');
+            file_put_contents($tmp, json_encode($c['payload'] ?? [], JSON_UNESCAPED_UNICODE), LOCK_EX);
+            exec("$php $cli enrolar " . escapeshellarg($tmp) . ' 2>&1', $salida, $rc);
+            @unlink($tmp);
+            $texto = trim(implode(' ', $salida));
+            $personId = null;
+            if (preg_match('/PERSONID:(\d+)/', $texto, $m)) {
+                $personId = (int) $m[1];
+                $texto = 'Rostro enrolado (persona ' . $personId . ').';
+            }
+            return [$rc === 0 && $personId !== null, $texto !== '' ? $texto : "código $rc", $personId];
+
+        case 'borrar_rostro':
+            $pid = (int) ($c['person_id'] ?? 0);
+            if ($pid <= 0) {
+                return [false, 'Sin person_id que borrar.', null];
+            }
+            exec("$php $cli borrar $pid 2>&1", $salida, $rc);
+            return [$rc === 0, trim(implode(' ', $salida)) ?: "código $rc", null];
+
+        default:
+            return [false, 'Comando desconocido: ' . ($c['tipo'] ?? '?'), null];
     }
-    $device = (int) ($c['device_id'] ?? 0);
-    if ($device <= 0) {
-        return [false, 'Sin dispositivo indicado.'];
-    }
-    $cmd = escapeshellarg(PHP_BINARY) . ' ' . escapeshellarg($RAIZ . '/smartpass.php') . ' abrir ' . $device . ' 2>&1';
-    $salida = [];
-    exec($cmd, $salida, $rc);
-    $texto = trim(implode(' ', $salida));
-    return [$rc === 0, $texto !== '' ? $texto : "código $rc"];
 }
 
 // ─── Endpoint de salud (solo 127.0.0.1) ──────────────────────────────────────
@@ -434,8 +467,8 @@ while (true) {
         if ($id <= 0) {
             continue;
         }
-        [$ok, $detalle] = ejecutarComando($c);
-        reportarComando($id, $ok, $detalle);
+        [$ok, $detalle, $personId] = ejecutarComando($c);
+        reportarComando($id, $ok, $detalle, $personId);
         bitacora($ok ? 'INFO' : 'WARN', "Comando #$id ({$c['tipo']}): " . ($ok ? 'OK' : 'FALLÓ') . " — $detalle");
     }
 }

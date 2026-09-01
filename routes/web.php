@@ -214,6 +214,7 @@ Route::middleware(['auth', 'verified', 'portal:operativo', 'no.suspendida', 'con
         Route::delete('accesos/personas/{persona}', [PersonasAccesoController::class, 'destroy'])->name('personas.destroy');
         Route::post('accesos/personas/vincular', [PersonasAccesoController::class, 'vincular'])->name('personas.vincular');
         Route::post('accesos/personas/desvincular', [PersonasAccesoController::class, 'desvincular'])->name('personas.desvincular');
+        Route::post('accesos/personas/enrolar', [PersonasAccesoController::class, 'enrolar'])->name('personas.enrolar');
     });
 
     Route::middleware('can:gestionar-facturacion')->group(function () {

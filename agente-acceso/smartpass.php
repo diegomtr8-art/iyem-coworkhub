@@ -144,10 +144,82 @@ function iniciarSesion(): array
     }
 
     return [
-        'token'  => (string) ($j['data']['token'] ?? ''),
+        // El token viene como data['Owl-Auth-Token'] (no data.token); se reenvía
+        // en la cabecera Owl-Auth-Token en las llamadas que crean/borran.
+        'token'  => (string) ($j['data']['Owl-Auth-Token'] ?? $j['data']['token'] ?? ''),
         'siteId' => (string) ($j['data']['siteId'] ?? ($j['data']['site_id'] ?? '')),
         'data'   => $j['data'] ?? [],
     ];
+}
+
+/** Llamada JSON autenticada a Smart Pass. Devuelve [http, json|null, raw]. */
+function llamarSp(array $sesion, string $metodo, string $ruta, array $cuerpo): array
+{
+    global $SP_URL, $TIMEOUT, $COOKIE;
+    $ch = curl_init($SP_URL . $ruta);
+    curl_setopt_array($ch, [
+        CURLOPT_CUSTOMREQUEST  => $metodo,
+        CURLOPT_POSTFIELDS     => json_encode($cuerpo, JSON_UNESCAPED_UNICODE),
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_TIMEOUT        => max($TIMEOUT, 40),
+        CURLOPT_COOKIEJAR      => $COOKIE,
+        CURLOPT_COOKIEFILE     => $COOKIE,
+        CURLOPT_USERAGENT      => SP_USER_AGENT,
+        CURLOPT_HTTPHEADER     => cabecerasAuth($sesion),
+    ]);
+    $resp = curl_exec($ch);
+    $http = curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
+    curl_close($ch);
+    $j = json_decode((string) $resp, true);
+    return [$http, is_array($j) ? $j : null, (string) $resp];
+}
+
+/** Sube una foto en base64. Devuelve ['id'=>.., 'url'=>..] o lanza. */
+function subirFoto(array $sesion, string $base64): array
+{
+    [$http, $j] = llamarSp($sesion, 'POST', '/admin/person/base64_photo/upload', ['base64' => $base64]);
+    if (($j['code'] ?? null) !== 200 || empty($j['data']['id'])) {
+        throw new RuntimeException('No se pudo subir la foto: ' . ($j['message'] ?? "http $http"));
+    }
+    return ['id' => (int) $j['data']['id'], 'url' => (string) ($j['data']['url'] ?? $j['data']['fileUrl'] ?? '')];
+}
+
+/**
+ * Crea la persona en Smart Pass. `$foto` es ['id'=>.., 'url'=>..] o null.
+ * Devuelve el person_id (tdx_person.id).
+ */
+function crearPersona(array $sesion, string $nombre, string $personNo, ?array $foto): int
+{
+    $cuerpo = [
+        'name'             => $nombre,
+        'personNo'         => $personNo,
+        'gender'           => 1,
+        'attendanceFlag'   => false,
+        'temperatureAlarm' => false,
+        'vaccination'      => '-1',
+        'groupId'          => '',
+    ];
+    if ($foto) {
+        $cuerpo['personPhotoId1']  = $foto['id'];
+        $cuerpo['personPhotoUrl1'] = $foto['url'];
+    }
+    [$http, $j] = llamarSp($sesion, 'POST', '/admin/person/employees', $cuerpo);
+    if (($j['code'] ?? null) !== 200 || empty($j['data']['id'])) {
+        throw new RuntimeException('No se pudo crear la persona: ' . ($j['message'] ?? "http $http"));
+    }
+    return (int) $j['data']['id'];
+}
+
+/** Pide al terminal que tome la foto de una persona (modo FR07). Best-effort. */
+function tomarFoto(array $sesion, int $personId, int $deviceId): void
+{
+    llamarSp($sesion, 'POST', '/admin/person/employees/take_photo', ['id' => $personId, 'ids' => [$deviceId]]);
+}
+
+/** Borra una persona de Smart Pass. */
+function borrarPersona(array $sesion, int $personId): void
+{
+    llamarSp($sesion, 'DELETE', '/admin/person/employees', ['ids' => [$personId]]);
 }
 
 /** Cabeceras autenticadas para las llamadas posteriores al login. */
@@ -268,6 +340,50 @@ switch ($comando) {
         }
         break;
 
+    case 'enrolar':
+        // Lee un JSON {modo, nombre, person_no, foto_base64?, device_id?} de un
+        // archivo (el agente lo escribe, porque el base64 no cabe en un argumento).
+        $archivo = $argv[2] ?? '';
+        if ($archivo === '' || ! is_file($archivo)) {
+            fwrite(STDERR, "Uso: php smartpass.php enrolar <archivo.json>\n");
+            exit(1);
+        }
+        $d = json_decode((string) file_get_contents($archivo), true);
+        if (! is_array($d) || empty($d['nombre']) || empty($d['person_no'])) {
+            fwrite(STDERR, "El JSON de enrolado necesita al menos nombre y person_no.\n");
+            exit(1);
+        }
+        try {
+            $s = iniciarSesion();
+            $foto = null;
+            if (($d['modo'] ?? 'foto') === 'foto') {
+                if (empty($d['foto_base64'])) {
+                    throw new RuntimeException('Modo foto sin foto_base64.');
+                }
+                $foto = subirFoto($s, (string) $d['foto_base64']);
+            }
+            $personId = crearPersona($s, (string) $d['nombre'], (string) $d['person_no'], $foto);
+            if (($d['modo'] ?? '') === 'dispositivo' && ! empty($d['device_id'])) {
+                tomarFoto($s, $personId, (int) $d['device_id']);
+            }
+            echo "PERSONID:{$personId}\n";
+        } catch (Throwable $e) {
+            fwrite(STDERR, '✖ ' . $e->getMessage() . "\n");
+            @unlink($COOKIE);
+            exit(2);
+        }
+        break;
+
+    case 'borrar':
+        $id = $argv[2] ?? '';
+        if (! ctype_digit((string) $id)) {
+            fwrite(STDERR, "Uso: php smartpass.php borrar <person_id>\n");
+            exit(1);
+        }
+        borrarPersona(iniciarSesion(), (int) $id);
+        echo "Persona {$id} borrada.\n";
+        break;
+
     default:
         echo <<<AYUDA
         Cliente Smart Pass del agente de Nódico.
@@ -276,6 +392,8 @@ switch ($comando) {
           php smartpass.php dispositivos   lista los device_id de la instalación
           php smartpass.php probar         login + dispositivos, SIN tocar la puerta
           php smartpass.php abrir <id>     ABRE la puerta del dispositivo <id> (efecto físico)
+          php smartpass.php enrolar <json> crea la persona con su rostro (devuelve PERSONID:n)
+          php smartpass.php borrar <id>    borra a la persona <person_id> de Smart Pass
 
         Requiere en el .env: SMARTPASS_USER, SMARTPASS_PASS (del panel de Smart Pass),
         y las credenciales de la BD (SMARTPASS_DB_*). Nada de eso va al repositorio.
