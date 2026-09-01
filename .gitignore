@@ -36,3 +36,5 @@ Thumbs.db
 
 # Basura de los scripts de utilidad en Python
 __pycache__/
+
+.claude/worktrees/
