@@ -13,6 +13,7 @@ use App\Http\Controllers\DatosPersonalesController;
 use App\Http\Controllers\EmprendedoresController;
 use App\Http\Controllers\EspaciosController;
 use App\Http\Controllers\EventosController;
+use App\Http\Controllers\CajaOrdenesController;
 use App\Http\Controllers\FacturasController;
 use App\Http\Controllers\MiembrosController;
 use App\Http\Controllers\PlanesController;
@@ -204,6 +205,12 @@ Route::middleware(['auth', 'verified', 'portal:operativo', 'no.suspendida', 'con
         // Va antes del {factura} para que 'exportar' no se lea como un id.
         Route::get('facturas/exportar', [FacturasController::class, 'exportar'])->name('facturas.exportar');
         Route::post('facturas/{factura}/pagar', [FacturasController::class, 'pagar'])->name('facturas.pagar');
+
+        // Caja: órdenes de pago con referencia (Fase 4).
+        Route::get('caja/ordenes', [CajaOrdenesController::class, 'index'])->name('caja.ordenes');
+        Route::post('caja/ordenes/{orden}/confirmar', [CajaOrdenesController::class, 'confirmar'])->name('caja.confirmar');
+        Route::post('caja/ordenes/{orden}/cancelar', [CajaOrdenesController::class, 'cancelar'])->name('caja.cancelar');
+        Route::post('caja/ordenes/{orden}/regenerar', [CajaOrdenesController::class, 'regenerar'])->name('caja.regenerar');
     });
 
     Route::middleware('can:gestionar-anuncios')->group(function () {

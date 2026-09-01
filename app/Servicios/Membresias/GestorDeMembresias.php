@@ -40,12 +40,17 @@ class GestorDeMembresias
         ?string $fechaInicio = null,
         ?float $precioPagado = null,
         ?string $nota = null,
+        bool $cerrarAnterior = true,
     ): Suscripcion {
-        return DB::transaction(function () use ($miembro, $plan, $operativo, $fechaInicio, $precioPagado, $nota) {
+        return DB::transaction(function () use ($miembro, $plan, $operativo, $fechaInicio, $precioPagado, $nota, $cerrarAnterior) {
             $inicio = CarbonImmutable::parse($fechaInicio ?? 'today')->startOfDay();
 
+            // Al encadenar una vigencia (pago por referencia decidido en caja) NO
+            // se cierra la anterior: la nueva arranca cuando la actual termina.
             $anterior = $miembro->suscripciones()->where('estatus', 'Activa')->latest('fecha_inicio')->first();
-            $anterior?->update(['estatus' => 'Vencida']);
+            if ($cerrarAnterior) {
+                $anterior?->update(['estatus' => 'Vencida']);
+            }
 
             $suscripcion = Suscripcion::create([
                 'user_id'       => $miembro->id,
