@@ -2,9 +2,12 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\EstadoFacturaOrden;
 use App\Enums\EstadoPagoOrden;
 use App\Enums\MetodoReferencia;
 use App\Models\OrdenPago;
+use App\Notifications\FacturaEmitida;
+use App\Notifications\PagoConfirmado;
 use App\Servicios\Pagos\ConfirmadorDeOrden;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -12,6 +15,7 @@ use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 /**
  * Caja y contabilidad (Fase 4). Detrás del permiso `gestionar-facturacion`.
@@ -87,6 +91,13 @@ class CajaOrdenesController extends Controller
 
         $orden = $this->confirmador->confirmar($orden, $request->user(), $datos);
 
+        // Aviso al miembro: pago confirmado, membresía activa (Fase 6).
+        try {
+            $orden->user->notify(new PagoConfirmado($orden));
+        } catch (\Throwable $e) {
+            report($e);
+        }
+
         // Aviso de otras órdenes abiertas del mismo miembro, para no cobrar dos veces.
         $otras = OrdenPago::where('user_id', $orden->user_id)
             ->where('estado_pago', EstadoPagoOrden::Generada)
@@ -143,6 +154,113 @@ class CajaOrdenesController extends Controller
         $nueva->save();
 
         return back()->with('success', "Referencia regenerada: {$nueva->referencia} (precio del día).");
+    }
+
+    // ── Fase 5 · Facturas ────────────────────────────────────────────────────
+
+    /** Bandeja de facturas por emitir: confirmadas que pidieron factura y no la tienen. */
+    public function facturas(Request $request): Response
+    {
+        $ordenes = OrdenPago::query()
+            ->with(['user:id,name', 'plan:id,nombre'])
+            ->where('estado_pago', EstadoPagoOrden::Confirmada)
+            ->whereIn('estado_factura', [EstadoFacturaOrden::Solicitada, EstadoFacturaOrden::Emitida])
+            ->orderBy('confirmada_en')
+            ->paginate(25)
+            ->through(fn (OrdenPago $o) => [
+                'id'         => $o->id,
+                'referencia' => $o->referencia,
+                'miembro'    => $o->user?->name,
+                'concepto'   => $o->plan?->nombre,
+                'monto'      => (float) $o->monto,
+                'forma_pago' => $o->metodo->etiqueta(),   // el CFDI tiene que reflejarla
+                'estado_factura' => $o->estado_factura->value,
+                'estado_factura_label' => $o->estado_factura->etiqueta(),
+                'confirmada' => $o->confirmada_en?->toIso8601String(),
+                'fiscal'     => [
+                    'rfc' => $o->fiscal_rfc, 'razon_social' => $o->fiscal_razon_social,
+                    'regimen' => $o->fiscal_regimen, 'uso_cfdi' => $o->fiscal_uso_cfdi,
+                    'cp' => $o->fiscal_cp, 'email' => $o->fiscal_email,
+                ],
+            ]);
+
+        return Inertia::render('Caja/Facturas', ['ordenes' => $ordenes]);
+    }
+
+    /** Contabilidad sube el PDF y el XML + folio fiscal → la orden pasa a `emitida`. */
+    public function subirFactura(Request $request, OrdenPago $orden): RedirectResponse
+    {
+        if ($orden->estado_pago !== EstadoPagoOrden::Confirmada || ! $orden->pide_factura) {
+            return back()->with('error', 'Esta orden no espera factura.');
+        }
+
+        $request->validate([
+            'folio_fiscal' => ['required', 'string', 'max:64'],
+            'pdf'          => ['required', 'file', 'mimetypes:application/pdf', 'max:10240'],
+            'xml'          => ['required', 'file', 'mimetypes:application/xml,text/xml', 'max:10240'],
+        ]);
+
+        $pdf = $request->file('pdf')->store("facturas/{$orden->id}", 'local');
+        $xml = $request->file('xml')->store("facturas/{$orden->id}", 'local');
+
+        $orden->update([
+            'folio_fiscal'       => $request->string('folio_fiscal'),
+            'factura_pdf'        => $pdf,
+            'factura_xml'        => $xml,
+            'factura_emitida_en' => now(),
+            'estado_factura'     => EstadoFacturaOrden::Emitida,
+        ]);
+
+        return back()->with('success', 'Factura cargada. Ya puedes enviársela al miembro.');
+    }
+
+    /** Notificar al miembro → la orden pasa a `enviada`. */
+    public function enviarFactura(Request $request, OrdenPago $orden): RedirectResponse
+    {
+        if ($orden->estado_factura !== EstadoFacturaOrden::Emitida) {
+            return back()->with('error', 'Primero sube el PDF y el XML de la factura.');
+        }
+
+        $orden->update(['estado_factura' => EstadoFacturaOrden::Enviada, 'factura_enviada_en' => now()]);
+
+        try {
+            $orden->user->notify(new FacturaEmitida($orden));
+        } catch (\Throwable $e) {
+            report($e);
+        }
+
+        return back()->with('success', 'Factura enviada al miembro por correo.');
+    }
+
+    /** Export para el cierre del mes (CSV con fórmulas neutralizadas). */
+    public function exportarFacturas(): StreamedResponse
+    {
+        $ordenes = OrdenPago::query()
+            ->where('pide_factura', true)
+            ->whereIn('estado_factura', [EstadoFacturaOrden::Solicitada, EstadoFacturaOrden::Emitida, EstadoFacturaOrden::Enviada])
+            ->with(['user:id,name', 'plan:id,nombre'])
+            ->orderByDesc('confirmada_en')->get();
+
+        return response()->streamDownload(function () use ($ordenes) {
+            $out = fopen('php://output', 'w');
+            fputcsv($out, ['Referencia', 'Miembro', 'Concepto', 'Monto', 'Forma de pago', 'RFC', 'Razon social', 'Regimen', 'Uso CFDI', 'CP', 'Folio fiscal', 'Estado', 'Confirmada']);
+            foreach ($ordenes as $o) {
+                fputcsv($out, array_map([$this, 'celdaCsv'], [
+                    $o->referencia, $o->user?->name, $o->plan?->nombre, number_format((float) $o->monto, 2, '.', ''),
+                    $o->metodo->etiqueta(), $o->fiscal_rfc, $o->fiscal_razon_social, $o->fiscal_regimen,
+                    $o->fiscal_uso_cfdi, $o->fiscal_cp, $o->folio_fiscal, $o->estado_factura->etiqueta(),
+                    $o->confirmada_en?->toDateString(),
+                ]));
+            }
+            fclose($out);
+        }, 'facturas-nodico-' . now()->format('Y-m-d') . '.csv', ['Content-Type' => 'text/csv; charset=UTF-8']);
+    }
+
+    /** Neutraliza fórmulas: una celda que empieza con = + - @ no se ejecuta en Excel. */
+    private function celdaCsv($valor): string
+    {
+        $valor = (string) $valor;
+        return preg_match('/^[=+\-@]/', $valor) === 1 ? "'" . $valor : $valor;
     }
 
     // ── Interno ──────────────────────────────────────────────────────────────

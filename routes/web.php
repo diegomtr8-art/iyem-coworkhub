@@ -211,6 +211,12 @@ Route::middleware(['auth', 'verified', 'portal:operativo', 'no.suspendida', 'con
         Route::post('caja/ordenes/{orden}/confirmar', [CajaOrdenesController::class, 'confirmar'])->name('caja.confirmar');
         Route::post('caja/ordenes/{orden}/cancelar', [CajaOrdenesController::class, 'cancelar'])->name('caja.cancelar');
         Route::post('caja/ordenes/{orden}/regenerar', [CajaOrdenesController::class, 'regenerar'])->name('caja.regenerar');
+
+        // Facturas por emitir (Fase 5). 'exportar' va antes del {orden}.
+        Route::get('caja/facturas', [CajaOrdenesController::class, 'facturas'])->name('caja.facturas');
+        Route::get('caja/facturas/exportar', [CajaOrdenesController::class, 'exportarFacturas'])->name('caja.facturas.exportar');
+        Route::post('caja/ordenes/{orden}/factura', [CajaOrdenesController::class, 'subirFactura'])->name('caja.factura.subir');
+        Route::post('caja/ordenes/{orden}/factura/enviar', [CajaOrdenesController::class, 'enviarFactura'])->name('caja.factura.enviar');
     });
 
     Route::middleware('can:gestionar-anuncios')->group(function () {

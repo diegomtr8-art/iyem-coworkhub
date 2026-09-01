@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
-import { Head, router, useForm } from '@inertiajs/vue3'
+import { Head, Link, router, useForm } from '@inertiajs/vue3'
 import { Search, X, CheckCircle2, Ban, RefreshCw, AlertTriangle } from 'lucide-vue-next'
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue'
 import Panel from '@/Components/Panel/Panel.vue'
@@ -87,6 +87,12 @@ const columnas: Columna[] = [
 
   <AuthenticatedLayout>
     <template #breadcrumb><span class="font-display font-bold text-dark">Caja · Órdenes</span></template>
+
+    <div class="mb-4 flex justify-end">
+      <Link :href="route('caja.facturas')" class="inline-flex items-center gap-1.5 border-2 border-dark bg-white px-3 py-2 font-display text-xs font-bold text-dark hover:bg-dark hover:text-white">
+        Facturas por emitir →
+      </Link>
+    </div>
 
     <Panel padding="none">
       <template #acciones>

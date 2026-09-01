@@ -9,6 +9,7 @@ use App\Http\Controllers\Controller;
 use App\Models\DatosFiscales;
 use App\Models\OrdenPago;
 use App\Models\Plane;
+use App\Notifications\ReferenciaGenerada;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -87,6 +88,13 @@ class OrdenPagoController extends Controller
         }
 
         $orden->save();
+
+        // El correo con la referencia (Fase 6). Un fallo de correo no tumba el flujo.
+        try {
+            $usuario->notify(new ReferenciaGenerada($orden));
+        } catch (\Throwable $e) {
+            report($e);
+        }
 
         return redirect()->route('portal.referencia.mostrar', $orden);
     }
