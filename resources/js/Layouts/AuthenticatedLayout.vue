@@ -43,7 +43,7 @@ const grupos = computed(() => [
   {
     titulo: null,
     enlaces: [
-      { label: 'Hoy',          href: route('dashboard'),      icon: LayoutDashboard, active: 'dashboard', ver: true },
+      { label: 'Hoy',          href: route('dashboard'),      icon: LayoutDashboard, active: 'dashboard', ver: puede('operar-checkins') },
       { label: 'Check-in',     href: route('checkins.index'), icon: Clock,           active: 'checkins*', ver: puede('operar-checkins') },
       { label: 'Day-pass interior', href: route('daypass.index'), icon: UserCheck,   active: 'daypass*',  ver: puede('operar-checkins') },
       { label: 'Accesos',      href: route('accesos.index'),  icon: DoorOpen,        active: 'accesos.*', ver: puede('operar-checkins') },
@@ -58,7 +58,7 @@ const grupos = computed(() => [
       { label: 'Asesorías',    href: route('asesorias.index'), icon: Lightbulb,   active: 'asesorias*', ver: puede('gestionar-asesorias'), aviso: 'asesorias_pendientes' },
       { label: 'Eventos',      href: route('salones.index'),   icon: PartyPopper, active: 'salones*',   ver: puede('gestionar-salones') },
       { label: 'Facturación',  href: route('facturas.index'),  icon: Receipt,     active: 'facturas*',  ver: puede('gestionar-facturacion') },
-      { label: 'Caja',         href: route('caja.ordenes'),    icon: Wallet,      active: 'caja*',      ver: puede('gestionar-facturacion') },
+      { label: 'Caja',         href: route('caja.ordenes'),    icon: Wallet,      active: 'caja*',      ver: puede('operar-caja') },
       { label: 'Anuncios',     href: route('anuncios.index'),  icon: Megaphone,   active: 'anuncios*',  ver: puede('gestionar-anuncios') },
     ],
   },

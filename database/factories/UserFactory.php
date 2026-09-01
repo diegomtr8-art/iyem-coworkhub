@@ -79,6 +79,11 @@ class UserFactory extends Factory
         return $this->state(fn (array $attributes) => ['tipo' => RolUsuario::Staff->value]);
     }
 
+    public function caja(): static
+    {
+        return $this->state(fn (array $attributes) => ['tipo' => RolUsuario::Caja->value]);
+    }
+
     public function miembro(): static
     {
         return $this->state(fn (array $attributes) => ['tipo' => RolUsuario::Miembro->value]);

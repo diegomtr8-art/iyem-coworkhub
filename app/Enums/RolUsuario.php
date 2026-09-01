@@ -19,9 +19,10 @@ enum RolUsuario: string
 {
     case Admin   = 'admin';
     case Staff   = 'staff';
+    case Caja    = 'caja';
     case Miembro = 'miembro';
 
-    /** Roles que trabajan en el panel operativo (/dashboard). */
+    /** Roles que trabajan en el panel operativo (/dashboard, /caja…). */
     public function esOperativo(): bool
     {
         return $this !== self::Miembro;
@@ -39,7 +40,11 @@ enum RolUsuario: string
     /** Nombre de la ruta a la que llega este rol al iniciar sesion. */
     public function rutaInicio(): string
     {
-        return $this->esOperativo() ? 'dashboard' : 'portal.dashboard';
+        return match ($this) {
+            self::Caja    => 'caja.ordenes',   // caja entra directo a lo suyo
+            self::Admin, self::Staff => 'dashboard',
+            self::Miembro => 'portal.dashboard',
+        };
     }
 
     public function etiqueta(): string
@@ -47,6 +52,7 @@ enum RolUsuario: string
         return match ($this) {
             self::Admin   => 'Administración',
             self::Staff   => 'Recepción',
+            self::Caja    => 'Caja',
             self::Miembro => 'Miembro',
         };
     }

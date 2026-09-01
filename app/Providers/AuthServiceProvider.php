@@ -48,6 +48,11 @@ class AuthServiceProvider extends ServiceProvider
         'gestionar-catalogos',
     ];
 
+    /** Caja: cobra y confirma pagos en el mostrador; nada mas. */
+    public const CAJA = [
+        'operar-caja',
+    ];
+
     /**
      * Todos los permisos declarados.
      *
@@ -59,17 +64,31 @@ class AuthServiceProvider extends ServiceProvider
      */
     public static function todos(): array
     {
-        return array_merge(self::OPERACION, self::ADMINISTRACION);
+        return array_merge(self::OPERACION, self::ADMINISTRACION, self::CAJA);
+    }
+
+    /**
+     * Permisos que tiene cada rol. Un solo lugar donde vive «quién puede qué»:
+     * administracion todo; recepcion la operacion diaria; caja solo su mostrador.
+     *
+     * @return array<int, string>
+     */
+    public static function permisosDeRol(?RolUsuario $rol): array
+    {
+        return match ($rol) {
+            RolUsuario::Admin => self::todos(),
+            RolUsuario::Staff => self::OPERACION,
+            RolUsuario::Caja  => self::CAJA,
+            default           => [],
+        };
     }
 
     public function boot(): void
     {
-        foreach (self::OPERACION as $permiso) {
-            Gate::define($permiso, fn (User $usuario) => $usuario->esOperativo());
-        }
-
-        foreach (self::ADMINISTRACION as $permiso) {
-            Gate::define($permiso, fn (User $usuario) => $usuario->rol === RolUsuario::Admin);
+        foreach (self::todos() as $permiso) {
+            Gate::define($permiso, fn (User $usuario) => in_array(
+                $permiso, self::permisosDeRol($usuario->rol), true,
+            ));
         }
     }
 }
