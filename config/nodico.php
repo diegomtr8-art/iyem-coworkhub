@@ -233,4 +233,15 @@ return [
         'anticipo_libre' => true,
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Zona horaria del negocio
+    |--------------------------------------------------------------------------
+    |
+    | Nódico está en Mérida (UTC-6, sin horario de verano). La app guarda los
+    | instantes en UTC, pero el **día natural** del coworking se cuenta en esta
+    | zona: quien entra a las 22:00 consume el día de hoy, no el de mañana.
+    */
+    'zona_horaria' => env('NODICO_TZ', 'America/Merida'),
+
 ];

@@ -63,16 +63,21 @@ class RegistroDeAcceso
                 ]);
             }
 
-            $hoy = $momento->startOfDay();
+            // El día natural del coworking se cuenta en la hora local de Nódico
+            // (Mérida), no en UTC: quien entra a las 22:00 consume el día de hoy,
+            // no el de mañana. `hora_entrada` se sigue guardando en UTC (el instante
+            // real ocurrido); solo la ATRIBUCIÓN al día es local.
+            $zona     = config('nodico.zona_horaria', 'America/Merida');
+            $diaLocal = $momento->setTimezone($zona)->startOfDay();
 
-            if ($hoy->gt(CarbonImmutable::parse($suscripcion->fecha_fin))) {
+            if ($diaLocal->toDateString() > CarbonImmutable::parse($suscripcion->fecha_fin)->toDateString()) {
                 throw ValidationException::withMessages([
                     'general' => 'Tu membresía venció el '
                         . CarbonImmutable::parse($suscripcion->fecha_fin)->translatedFormat('j \d\e F') . '.',
                 ]);
             }
 
-            $consumeDia = $this->debeConsumirDia($suscripcion, $hoy);
+            $consumeDia = $this->debeConsumirDia($suscripcion, $diaLocal);
 
             if ($consumeDia) {
                 $restantes = $this->libro->saldoDelCiclo($suscripcion, BolsaDeHoras::Dias);
@@ -108,8 +113,8 @@ class RegistroDeAcceso
                     cantidad: 1,
                     motivo: MotivoMovimiento::Acceso,
                     autor: $usuario,
-                    nota: 'Entrada del ' . $hoy->translatedFormat('j \d\e F \d\e Y') . '.',
-                    claveIdempotencia: "acceso:{$suscripcion->id}:{$hoy->toDateString()}",
+                    nota: 'Entrada del ' . $diaLocal->translatedFormat('j \d\e F \d\e Y') . '.',
+                    claveIdempotencia: "acceso:{$suscripcion->id}:{$diaLocal->toDateString()}",
                     en: $momento,
                 );
             }
@@ -143,14 +148,20 @@ class RegistroDeAcceso
      * No consume cuando el plan es ilimitado (Nodo Pro, Nodo Match) ni cuando ya
      * hubo una entrada hoy con la misma suscripción.
      */
-    private function debeConsumirDia(Suscripcion $suscripcion, CarbonImmutable $dia): bool
+    private function debeConsumirDia(Suscripcion $suscripcion, CarbonImmutable $diaLocal): bool
     {
         if ($suscripcion->plan?->esIlimitado() ?? true) {
             return false;
         }
 
+        // «Ya entró hoy» = hubo una entrada dentro del día natural **local**. Como
+        // `hora_entrada` se guarda en UTC, se compara contra el rango del día local
+        // convertido a UTC —no `whereDate`, que compararía la fecha en UTC y
+        // descuadraría los accesos de la tarde-noche (que en UTC caen al día
+        // siguiente)—.
         $yaEntroHoy = Checkin::where('user_id', $suscripcion->user_id)
-            ->whereDate('hora_entrada', $dia->toDateString())
+            ->where('hora_entrada', '>=', $diaLocal->utc())
+            ->where('hora_entrada', '<', $diaLocal->addDay()->utc())
             ->exists();
 
         return ! $yaEntroHoy;
