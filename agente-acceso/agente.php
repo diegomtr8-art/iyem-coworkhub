@@ -224,6 +224,70 @@ function latidoANodico(): void
     curl_close($ch);
 }
 
+/** Pregunta a Nódico por órdenes pendientes. Devuelve el arreglo de comandos. */
+function sondearComandos(): array
+{
+    global $NODICO_URL, $SECRETO, $HTTP_TIMEOUT;
+    $cuerpo = json_encode(['agente' => gmdate('c')]);
+    $ts = (string) time();
+    $ch = curl_init($NODICO_URL . '/api/acceso/comandos');
+    curl_setopt_array($ch, [
+        CURLOPT_POST => true, CURLOPT_POSTFIELDS => $cuerpo, CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_TIMEOUT => $HTTP_TIMEOUT,
+        CURLOPT_HTTPHEADER => [
+            'Content-Type: application/json',
+            'X-Agente-Timestamp: ' . $ts,
+            'X-Agente-Firma: ' . hash_hmac('sha256', $ts . '.' . $cuerpo, $SECRETO),
+        ],
+    ]);
+    $resp = curl_exec($ch);
+    $http = curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
+    curl_close($ch);
+    if ($http !== 200) {
+        return [];
+    }
+    $j = json_decode((string) $resp, true);
+    return is_array($j) && is_array($j['comandos'] ?? null) ? $j['comandos'] : [];
+}
+
+/** Reporta a Nódico si un comando se ejecutó o falló. Best-effort. */
+function reportarComando(int $id, bool $ok, string $detalle): void
+{
+    global $NODICO_URL, $SECRETO, $HTTP_TIMEOUT;
+    $cuerpo = json_encode(['ok' => $ok, 'detalle' => mb_substr($detalle, 0, 2000)]);
+    $ts = (string) time();
+    $ch = curl_init($NODICO_URL . '/api/acceso/comandos/' . $id . '/resultado');
+    curl_setopt_array($ch, [
+        CURLOPT_POST => true, CURLOPT_POSTFIELDS => $cuerpo, CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_TIMEOUT => $HTTP_TIMEOUT,
+        CURLOPT_HTTPHEADER => [
+            'Content-Type: application/json',
+            'X-Agente-Timestamp: ' . $ts,
+            'X-Agente-Firma: ' . hash_hmac('sha256', $ts . '.' . $cuerpo, $SECRETO),
+        ],
+    ]);
+    @curl_exec($ch);
+    curl_close($ch);
+}
+
+/** Ejecuta un comando localmente. Hoy solo «abrir_puerta» (vía smartpass.php). */
+function ejecutarComando(array $c): array
+{
+    global $RAIZ;
+    if (($c['tipo'] ?? '') !== 'abrir_puerta') {
+        return [false, 'Comando desconocido: ' . ($c['tipo'] ?? '?')];
+    }
+    $device = (int) ($c['device_id'] ?? 0);
+    if ($device <= 0) {
+        return [false, 'Sin dispositivo indicado.'];
+    }
+    $cmd = escapeshellarg(PHP_BINARY) . ' ' . escapeshellarg($RAIZ . '/smartpass.php') . ' abrir ' . $device . ' 2>&1';
+    $salida = [];
+    exec($cmd, $salida, $rc);
+    $texto = trim(implode(' ', $salida));
+    return [$rc === 0, $texto !== '' ? $texto : "código $rc"];
+}
+
 // ─── Endpoint de salud (solo 127.0.0.1) ──────────────────────────────────────
 
 function abrirSalud(int $puerto)
@@ -362,5 +426,16 @@ while (true) {
                 break;
             }
         }
+    }
+
+    // 3 · Recoger y ejecutar órdenes de Nódico (abrir puerta, etc.).
+    foreach (sondearComandos() as $c) {
+        $id = (int) ($c['id'] ?? 0);
+        if ($id <= 0) {
+            continue;
+        }
+        [$ok, $detalle] = ejecutarComando($c);
+        reportarComando($id, $ok, $detalle);
+        bitacora($ok ? 'INFO' : 'WARN', "Comando #$id ({$c['tipo']}): " . ($ok ? 'OK' : 'FALLÓ') . " — $detalle");
     }
 }

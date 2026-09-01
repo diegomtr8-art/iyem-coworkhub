@@ -256,6 +256,8 @@ switch ($comando) {
             $msg = $r['json']['message'] ?? '(sin mensaje)';
             echo "✖ Smart Pass respondió code {$code}: {$msg}\n";
             echo "  crudo: " . substr($r['raw'], 0, 300) . "\n";
+            @unlink($COOKIE);
+            exit(2);   // que quien lo invoque (el agente) sepa que no abrió
         }
         break;
 

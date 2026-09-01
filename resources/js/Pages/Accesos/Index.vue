@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { ref, watch, computed } from 'vue'
 import { Head, router, useForm } from '@inertiajs/vue3'
-import { Search, Download, Link2, X, Wifi, WifiOff, Clock, UserCheck } from 'lucide-vue-next'
+import { Search, Download, Link2, X, Wifi, WifiOff, Clock, UserCheck, DoorOpen, Users, CheckCircle2, AlertCircle, Loader2 } from 'lucide-vue-next'
+import { Link } from '@inertiajs/vue3'
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue'
 import Panel from '@/Components/Panel/Panel.vue'
 import Estado from '@/Components/Panel/Estado.vue'
@@ -16,7 +17,21 @@ const props = defineProps<{
   noReconocidos: any[]
   sinVincular: number[]
   estadoAgente: { visto_en: string | null; minutos: number | null; sano: boolean; nunca: boolean }
+  dispositivos: { id: number; clave: string }[]
+  comandos: any[]
 }>()
+
+// Abrir puerta: encola la orden; el agente la ejecuta en su sondeo.
+const puerta = useForm({ device_id: props.dispositivos[0]?.id ?? null })
+function abrirPuerta() {
+  puerta.post(route('accesos.abrir'), { preserveScroll: true })
+}
+const estadoComando: Record<string, { txt: string; icono: any; clase: string }> = {
+  pendiente: { txt: 'En cola', icono: Loader2, clase: 'text-amber-700' },
+  enviado:   { txt: 'Enviada al agente', icono: Loader2, clase: 'text-amber-700' },
+  ejecutado: { txt: 'Abierta', icono: CheckCircle2, clase: 'text-emerald-700' },
+  fallido:   { txt: 'Falló', icono: AlertCircle, clase: 'text-red-700' },
+}
 
 const buscar = ref(props.filtros.buscar ?? '')
 const tipo = ref(props.filtros.tipo ?? '')
@@ -71,6 +86,49 @@ const columnas: Columna[] = [
           <template v-else>El registro puede estar incompleto hasta que el agente vuelva. La puerta sigue funcionando sola.</template>
         </p>
       </div>
+    </div>
+
+    <!-- Abrir puerta + acceso a los listados -->
+    <div class="mb-6 grid gap-4 lg:grid-cols-3">
+      <div class="border-2 border-dark bg-white p-4 lg:col-span-2">
+        <div class="flex flex-wrap items-end gap-3">
+          <div>
+            <p class="mb-1 font-display text-sm font-bold text-dark">Abrir puerta</p>
+            <p class="font-body text-xs text-dark/60">La orden se manda al agente y la puerta abre en unos segundos.</p>
+          </div>
+          <div class="ml-auto flex items-end gap-2">
+            <select v-if="dispositivos.length" v-model="puerta.device_id" aria-label="Dispositivo" class="min-h-[44px] border border-dark/25 bg-white px-2.5 text-sm focus:border-dark">
+              <option v-for="d in dispositivos" :key="d.id" :value="d.id">{{ d.clave || ('Dispositivo ' + d.id) }}</option>
+            </select>
+            <button
+              type="button" @click="abrirPuerta" :disabled="puerta.processing"
+              class="flex min-h-[44px] items-center gap-2 border-2 border-dark bg-nodo-400 px-4 font-display text-sm font-bold text-dark hover:bg-nodo-400/80 disabled:opacity-50"
+            >
+              <DoorOpen :size="18" aria-hidden="true" /> Abrir puerta
+            </button>
+          </div>
+        </div>
+
+        <!-- Órdenes recientes -->
+        <ul v-if="comandos.length" class="mt-3 divide-y divide-dark/10 border-t border-dark/10 pt-1">
+          <li v-for="c in comandos" :key="c.id" class="flex items-center justify-between gap-3 py-1.5 text-xs">
+            <span class="font-mono text-dark/60">{{ hora(c.creado_en) }}<span v-if="c.por"> · {{ c.por }}</span></span>
+            <span class="flex items-center gap-1.5 font-display font-bold" :class="(estadoComando[c.estado] || {}).clase">
+              <component :is="(estadoComando[c.estado] || {}).icono" :size="14" :class="{ 'animate-spin': c.estado === 'pendiente' || c.estado === 'enviado' }" aria-hidden="true" />
+              {{ (estadoComando[c.estado] || { txt: c.estado }).txt }}
+              <span v-if="c.resultado" class="font-body font-normal text-dark/50">— {{ c.resultado }}</span>
+            </span>
+          </li>
+        </ul>
+      </div>
+
+      <Link :href="route('personas.index')" class="flex items-center gap-3 border-2 border-dark bg-cream-50 p-4 hover:bg-nodo-400/20">
+        <Users :size="22" class="text-dark" aria-hidden="true" />
+        <div>
+          <p class="font-display text-sm font-bold text-dark">Miembros, empleados y servicio social</p>
+          <p class="font-body text-xs text-dark/60">Los tres listados y sus rostros →</p>
+        </div>
+      </Link>
     </div>
 
     <div class="grid gap-6 lg:grid-cols-3">

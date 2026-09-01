@@ -6,6 +6,7 @@ use App\Http\Controllers\AsesoriasAdminController;
 use App\Http\Controllers\SalonesController;
 use App\Http\Controllers\BitacoraController;
 use App\Http\Controllers\AccesosPanelController;
+use App\Http\Controllers\PersonasAccesoController;
 use App\Http\Controllers\CheckinAdminController;
 use App\Http\Controllers\DaypassInteriorController;
 use App\Http\Controllers\ContactoController;
@@ -204,6 +205,15 @@ Route::middleware(['auth', 'verified', 'portal:operativo', 'no.suspendida', 'con
         Route::get('accesos', [AccesosPanelController::class, 'index'])->name('accesos.index');
         Route::get('accesos/exportar', [AccesosPanelController::class, 'exportar'])->name('accesos.exportar');
         Route::post('accesos/vincular', [AccesosPanelController::class, 'vincular'])->name('accesos.vincular');
+        Route::post('accesos/abrir-puerta', [AccesosPanelController::class, 'abrirPuerta'])->name('accesos.abrir');
+
+        // Los tres listados: miembros, empleados y servicio social.
+        Route::get('accesos/personas', [PersonasAccesoController::class, 'index'])->name('personas.index');
+        Route::post('accesos/personas', [PersonasAccesoController::class, 'store'])->name('personas.store');
+        Route::patch('accesos/personas/{persona}', [PersonasAccesoController::class, 'update'])->name('personas.update');
+        Route::delete('accesos/personas/{persona}', [PersonasAccesoController::class, 'destroy'])->name('personas.destroy');
+        Route::post('accesos/personas/vincular', [PersonasAccesoController::class, 'vincular'])->name('personas.vincular');
+        Route::post('accesos/personas/desvincular', [PersonasAccesoController::class, 'desvincular'])->name('personas.desvincular');
     });
 
     Route::middleware('can:gestionar-facturacion')->group(function () {

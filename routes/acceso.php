@@ -16,3 +16,7 @@ use Illuminate\Support\Facades\Route;
 Route::post('/eventos', [AccesoController::class, 'eventos'])->name('eventos');
 Route::post('/alerta', [AccesoController::class, 'alerta'])->name('alerta');
 Route::post('/latido', [AccesoController::class, 'latido'])->name('latido');
+
+// Cola de órdenes hacia el agente (Fase 4: abrir puerta desde el panel).
+Route::post('/comandos', [AccesoController::class, 'comandos'])->name('comandos');
+Route::post('/comandos/{comando}/resultado', [AccesoController::class, 'resultadoComando'])->name('comandos.resultado');

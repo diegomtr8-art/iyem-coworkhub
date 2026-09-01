@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Enums\AccionOperativa;
 use App\Http\Controllers\Api\AccesoController;
 use App\Models\Checkin;
+use App\Models\ComandoAcceso;
 use App\Models\EntradaBitacora;
 use App\Models\EventoAcceso;
 use App\Models\User;
@@ -72,7 +73,57 @@ class AccesosPanelController extends Controller
                 ->pluck('person_id'),
 
             'estadoAgente' => $this->estadoAgente(),
+
+            // Dispositivos vistos, para elegir cuál abrir.
+            'dispositivos' => EventoAcceso::query()
+                ->select('device_id', 'device_key')
+                ->whereNotNull('device_id')
+                ->groupBy('device_id', 'device_key')
+                ->orderBy('device_key')->get()
+                ->map(fn (EventoAcceso $e) => ['id' => $e->device_id, 'clave' => $e->device_key]),
+
+            // Últimas órdenes de puerta, con su estado.
+            'comandos' => ComandoAcceso::with('solicitante:id,name')
+                ->orderByDesc('id')->limit(8)->get()
+                ->map(fn (ComandoAcceso $c) => [
+                    'id'          => $c->id,
+                    'tipo'        => $c->tipo,
+                    'device_id'   => $c->device_id,
+                    'estado'      => $c->estado,
+                    'resultado'   => $c->resultado,
+                    'por'         => $c->solicitante?->name,
+                    'creado_en'   => $c->created_at?->toIso8601String(),
+                    'resuelto_en' => $c->resuelto_en?->toIso8601String(),
+                ]),
         ]);
+    }
+
+    /**
+     * Fase 4 — abre la puerta desde el panel. No manda directo (Nódico no alcanza
+     * el localhost de la oficina): **encola** la orden y el agente la ejecuta en su
+     * siguiente sondeo. La pantalla muestra cómo va quedando.
+     */
+    public function abrirPuerta(Request $request): RedirectResponse
+    {
+        $datos = $request->validate([
+            'device_id' => ['nullable', 'integer'],
+        ]);
+
+        $comando = ComandoAcceso::create([
+            'tipo'                    => ComandoAcceso::ABRIR_PUERTA,
+            'device_id'               => $datos['device_id'] ?? null,
+            'estado'                  => 'pendiente',
+            'solicitado_por_user_id'  => $request->user()->id,
+        ]);
+
+        EntradaBitacora::registrar(
+            accion: AccionOperativa::AperturaPuerta,
+            descripcion: 'Encoló abrir la puerta' . ($comando->device_id ? " (dispositivo {$comando->device_id})" : '') . '.',
+            actor: $request->user(),
+            contexto: ['comando_id' => $comando->id, 'device_id' => $comando->device_id],
+        );
+
+        return back()->with('success', 'Orden enviada. El agente abrirá la puerta en unos segundos.');
     }
 
     /**

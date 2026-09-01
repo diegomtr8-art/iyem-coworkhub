@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\ComandoAcceso;
 use App\Servicios\Accesos\IngestaDeEventos;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -73,6 +74,59 @@ class AccesoController extends Controller
             'recibidos'  => count($datos['eventos']),
             'resultados' => $resumen,
         ]);
+    }
+
+    /**
+     * El agente pregunta por órdenes pendientes (abrir puerta, etc.). Se las
+     * lleva y quedan marcadas como «enviadas»: el agente reporta el resultado
+     * aparte. Es la mitad saliente que permite mandar sin abrir puertos.
+     */
+    public function comandos(Request $request): JsonResponse
+    {
+        $this->marcarVisto();
+
+        $pendientes = ComandoAcceso::where('estado', 'pendiente')
+            ->orderBy('id')->limit(20)->get();
+
+        if ($pendientes->isNotEmpty()) {
+            ComandoAcceso::whereIn('id', $pendientes->pluck('id'))
+                ->update(['estado' => 'enviado', 'enviado_en' => now()]);
+        }
+
+        return response()->json([
+            'ok'       => true,
+            'comandos' => $pendientes->map(fn (ComandoAcceso $c) => [
+                'id'        => $c->id,
+                'tipo'      => $c->tipo,
+                'device_id' => $c->device_id,
+            ])->values(),
+        ]);
+    }
+
+    /**
+     * El agente reporta si una orden se ejecutó o falló.
+     *
+     * El grupo de rutas del agente no monta `SubstituteBindings` (es servicio a
+     * servicio, sin el stack web), así que el id llega como string y se resuelve
+     * a mano en vez de por binding implícito.
+     */
+    public function resultadoComando(Request $request, string $comando): JsonResponse
+    {
+        $datos = $request->validate([
+            'ok'      => ['required', 'boolean'],
+            'detalle' => ['nullable', 'string', 'max:2000'],
+        ]);
+
+        $this->marcarVisto();
+
+        $orden = ComandoAcceso::findOrFail((int) $comando);
+        $orden->update([
+            'estado'      => $datos['ok'] ? 'ejecutado' : 'fallido',
+            'resultado'   => $datos['detalle'] ?? null,
+            'resuelto_en' => now(),
+        ]);
+
+        return response()->json(['ok' => true]);
     }
 
     /**
