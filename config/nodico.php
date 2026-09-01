@@ -233,4 +233,23 @@ return [
         'anticipo_libre' => true,
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Pagos con referencia (transferencia / efectivo)
+    |--------------------------------------------------------------------------
+    |
+    | La ruta que sí genera factura. El precio queda congelado hasta el
+    | vencimiento. Los datos bancarios van AQUÍ, nunca incrustados en el código
+    | (cambian): se llenan en el .env del servidor y quedan vacíos hasta que
+    | Nódico los proporcione.
+    */
+    'pagos_referencia' => [
+        'vencimiento_dias' => (int) env('NODICO_REFERENCIA_VENCIMIENTO_DIAS', 7),
+
+        'banco'        => env('NODICO_BANCO', ''),
+        'clabe'        => env('NODICO_CLABE', ''),
+        'beneficiario' => env('NODICO_BENEFICIARIO', ''),
+        'cuenta'       => env('NODICO_CUENTA', ''),
+    ],
+
 ];
