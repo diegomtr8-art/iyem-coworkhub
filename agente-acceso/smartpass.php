@@ -213,7 +213,7 @@ function crearPersona(array $sesion, string $nombre, string $personNo, ?array $f
 /** Pide al terminal que tome la foto de una persona (modo FR07). Best-effort. */
 function tomarFoto(array $sesion, int $personId, int $deviceId): void
 {
-    llamarSp($sesion, 'POST', '/admin/person/employees/take_photo', ['id' => $personId, 'ids' => [$deviceId]]);
+    llamarSp($sesion, 'POST', '/admin/person/employees/take_photo', ['ids' => [$personId], 'deviceIds' => [$deviceId]]);
 }
 
 /** Borra una persona de Smart Pass. */
