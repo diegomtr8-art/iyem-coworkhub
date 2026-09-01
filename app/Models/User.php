@@ -353,4 +353,5 @@ class User extends Authenticatable implements MustVerifyEmail
      * viajarían en cada `$request->user()` de cada petición del sitio.
      */
     public function datosFiscales()   { return $this->hasOne(DatosFiscales::class); }
+    public function ordenesPago()     { return $this->hasMany(OrdenPago::class); }
 }

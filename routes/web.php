@@ -23,6 +23,7 @@ use App\Http\Controllers\WelcomeController;
 use App\Http\Controllers\Portal\DashboardController as PortalDashboard;
 use App\Http\Controllers\Portal\ReservasController as PortalReservas;
 use App\Http\Controllers\Portal\CheckoutController;
+use App\Http\Controllers\Portal\OrdenPagoController;
 use App\Http\Controllers\Portal\SuscripcionController;
 use App\Http\Controllers\Portal\CheckinController as PortalCheckin;
 use App\Http\Controllers\Portal\PerfilController as PortalPerfil;
@@ -265,10 +266,23 @@ Route::middleware(['auth', 'verified', 'portal:miembro', 'no.suspendida', 'conse
 
     // 4.A — Cobro dentro de Nódico (Stripe Elements). La activación la hace el
     // webhook; estas rutas solo preparan el pago y consultan el estado.
-    Route::get('contratar/{plan}', [CheckoutController::class, 'mostrar'])->name('contratar');
-    Route::post('contratar/{plan}', [CheckoutController::class, 'procesarSuscripcion'])->name('contratar.suscripcion');
+    // Elegir cómo pagar (Fase 2): la elección va ANTES del formulario, con la
+    // consecuencia escrita (tarjeta = sin factura; referencia = con factura).
+    Route::get('contratar/{plan}', [OrdenPagoController::class, 'elegir'])->name('contratar');
+
+    // Tarjeta — Stripe (mismos métodos, ahora bajo /tarjeta).
+    Route::get('contratar/{plan}/tarjeta', [CheckoutController::class, 'mostrar'])->name('contratar.tarjeta');
+    Route::post('contratar/{plan}/tarjeta', [CheckoutController::class, 'procesarSuscripcion'])->name('contratar.suscripcion');
     Route::get('pago/confirmando', [CheckoutController::class, 'confirmando'])->name('pago.confirmando');
     Route::get('pago/estado', [CheckoutController::class, 'estado'])->name('pago.estado');
+
+    // Transferencia / efectivo — orden con referencia (Fase 2/3).
+    Route::post('contratar/{plan}/referencia', [OrdenPagoController::class, 'generar'])->name('referencia.generar');
+    Route::get('referencia/{orden}', [OrdenPagoController::class, 'mostrar'])->name('referencia.mostrar');
+    Route::post('referencia/{orden}/ya-pague', [OrdenPagoController::class, 'yaPague'])->name('referencia.ya-pague');
+    Route::get('mis-pagos', [OrdenPagoController::class, 'misPagos'])->name('pagos');
+    Route::get('mis-pagos/{orden}/pdf', [OrdenPagoController::class, 'descargarPdf'])->name('pagos.pdf');
+    Route::get('mis-pagos/{orden}/xml', [OrdenPagoController::class, 'descargarXml'])->name('pagos.xml');
     Route::post('membresia/cancelar-renovacion', [SuscripcionController::class, 'cancelarRenovacion'])->name('membresia.cancelar');
     Route::post('membresia/reactivar-renovacion', [SuscripcionController::class, 'reactivarRenovacion'])->name('membresia.reactivar');
 

@@ -46,6 +46,10 @@ return new class extends Migration
             $tabla->text('nota')->nullable();               // monto distinto, encadenar, reactivación
             $tabla->string('motivo_cancelacion', 191)->nullable();
 
+            // El miembro pulsó «ya pagué»: no confirma nada, pero sube la orden en
+            // la bandeja de caja para que la busquen.
+            $tabla->dateTime('reportado_pagado_en')->nullable();
+
             // La suscripción que se creó al confirmarse.
             $tabla->foreignId('suscripcion_id')->nullable()->constrained('suscripciones');
 

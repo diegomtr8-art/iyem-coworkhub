@@ -26,7 +26,7 @@ class OrdenPago extends Model
         'referencia', 'referencia_normalizada', 'user_id', 'plan_id', 'monto',
         'metodo', 'estado_pago', 'estado_factura', 'pide_factura', 'vence_el',
         'confirmada_por_user_id', 'confirmada_en', 'fecha_pago', 'monto_recibido',
-        'evidencia', 'nota', 'motivo_cancelacion', 'suscripcion_id',
+        'evidencia', 'nota', 'motivo_cancelacion', 'reportado_pagado_en', 'suscripcion_id',
         'fiscal_rfc', 'fiscal_razon_social', 'fiscal_regimen', 'fiscal_uso_cfdi',
         'fiscal_cp', 'fiscal_email',
         'folio_fiscal', 'factura_pdf', 'factura_xml', 'factura_emitida_en', 'factura_enviada_en',
@@ -49,6 +49,7 @@ class OrdenPago extends Model
         'vence_el'           => 'datetime',
         'confirmada_en'      => 'datetime',
         'fecha_pago'         => 'date',
+        'reportado_pagado_en' => 'datetime',
         'factura_emitida_en' => 'datetime',
         'factura_enviada_en' => 'datetime',
     ];

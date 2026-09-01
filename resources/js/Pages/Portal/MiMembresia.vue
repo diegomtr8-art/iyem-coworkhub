@@ -126,6 +126,10 @@ const fecha = (iso: string) =>
           <p v-if="facturacion.metodo_pago" class="font-body text-sm text-cream/70">
             Método de pago: {{ facturacion.metodo_pago.marca }} ···· {{ facturacion.metodo_pago.ultimos4 }}
           </p>
+          <p v-if="facturacion.tiene_recurrente" class="mt-2 font-body text-xs text-cream/70">
+            Los pagos con tarjeta se activan al instante pero <strong class="text-cream">no generan factura</strong>.
+            Si necesitas factura, contrata por transferencia o efectivo.
+          </p>
           <p v-if="facturacion.en_periodo_de_gracia" class="mt-2 font-body text-sm text-coral">
             Renovación cancelada. Sigues con acceso hasta el fin del periodo pagado.
             <button type="button" @click="reactivarRenovacion" class="font-bold underline">Reactivar</button>

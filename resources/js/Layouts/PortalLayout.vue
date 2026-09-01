@@ -3,7 +3,7 @@ import { computed, ref, watch } from 'vue'
 import { Link, usePage } from '@inertiajs/vue3'
 import {
   LayoutDashboard, CalendarPlus, CalendarDays, CreditCard, User as UserIcon,
-  Receipt, DoorOpen, Lightbulb, LogOut, Menu, X, Home, ShieldCheck,
+  Receipt, DoorOpen, Lightbulb, LogOut, Menu, X, Home, ShieldCheck, Wallet,
 } from 'lucide-vue-next'
 import { Toaster, toast } from 'vue-sonner'
 
@@ -39,6 +39,7 @@ const nav = [
   { label: 'Mis reservas',    href: route('portal.reservas'),       icono: CalendarDays,    activo: 'portal.reservas' },
   { label: 'Asesoría IYEM',   href: route('portal.asesoria'),       icono: Lightbulb,       activo: 'portal.asesoria*' },
   { label: 'Mi membresía',    href: route('portal.suscripcion'),    icono: CreditCard,      activo: 'portal.suscripcion' },
+  { label: 'Mis pagos',       href: route('portal.pagos'),          icono: Wallet,          activo: 'portal.pagos*' },
   { label: 'Accesos y pagos', href: route('portal.accesos'),        icono: DoorOpen,        activo: 'portal.accesos' },
   { label: 'Datos fiscales',  href: route('portal.datos-fiscales'), icono: Receipt,         activo: 'portal.datos-fiscales*' },
   { label: 'Mi perfil',       href: route('portal.perfil'),         icono: UserIcon,        activo: 'portal.perfil*' },
