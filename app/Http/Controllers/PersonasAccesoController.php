@@ -4,7 +4,6 @@ namespace App\Http\Controllers;
 
 use App\Enums\AccionOperativa;
 use App\Enums\CategoriaPersonaAcceso;
-use App\Enums\RolUsuario;
 use App\Models\EntradaBitacora;
 use App\Models\PersonaAcceso;
 use App\Models\User;
@@ -29,7 +28,7 @@ class PersonasAccesoController extends Controller
         $buscar = trim((string) $request->input('buscar', ''));
 
         $miembros = User::query()
-            ->where('rol', RolUsuario::Miembro->value)
+            ->miembros()
             ->when($buscar, fn ($q) => $q->where(fn ($w) => $w
                 ->where('name', 'like', "%{$buscar}%")
                 ->orWhere('email', 'like', "%{$buscar}%")))
