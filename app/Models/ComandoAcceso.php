@@ -14,9 +14,10 @@ class ComandoAcceso extends Model
 {
     protected $table = 'comandos_acceso';
 
-    public const ABRIR_PUERTA   = 'abrir_puerta';
-    public const ENROLAR_ROSTRO = 'enrolar_rostro';
-    public const BORRAR_ROSTRO  = 'borrar_rostro';
+    public const ABRIR_PUERTA     = 'abrir_puerta';
+    public const ENROLAR_ROSTRO   = 'enrolar_rostro';
+    public const BORRAR_ROSTRO    = 'borrar_rostro';
+    public const RECONECTAR_TORNO = 'reconectar_torno';
 
     protected $fillable = [
         'tipo', 'device_id', 'payload', 'person_id', 'estado', 'resultado',

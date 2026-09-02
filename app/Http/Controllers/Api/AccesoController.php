@@ -22,6 +22,7 @@ class AccesoController extends Controller
 {
     /** Clave del último contacto del agente, para el estado del sistema (Fase 5). */
     public const AGENTE_VISTO = 'acceso.agente_visto_en';
+    public const TORNO_ESTADO = 'acceso.torno_estado';
 
     public function __construct(
         private readonly IngestaDeEventos $ingesta,
@@ -39,6 +40,20 @@ class AccesoController extends Controller
     public function latido(Request $request): JsonResponse
     {
         $this->marcarVisto();
+
+        // El agente adjunta el estado del torno (leído de la BD de Smart Pass).
+        // Se guarda con la hora en que llegó, para saber en el panel si el dato
+        // es fresco. Sin agente vivo, este cache caduca y el panel lo dice.
+        $torno = $request->input('torno');
+        if (is_array($torno)) {
+            Cache::put(self::TORNO_ESTADO, [
+                'online'         => (bool) ($torno['online'] ?? false),
+                'antiguedad_seg' => $torno['antiguedad_seg'] ?? null,
+                'ultimo'         => $torno['ultimo'] ?? null,
+                'existe'         => (bool) ($torno['existe'] ?? true),
+                'reportado_en'   => now()->toIso8601String(),
+            ], now()->addDay());
+        }
 
         return response()->json(['ok' => true]);
     }

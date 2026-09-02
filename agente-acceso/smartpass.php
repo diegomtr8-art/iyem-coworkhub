@@ -413,6 +413,68 @@ switch ($comando) {
         echo "Persona {$id} borrada.\n";
         break;
 
+    case 'crearpersona':
+        // Crea la persona SIN foto (enrolado por FR07: la foto la captura el torno
+        // con «tomarfoto»). Uso: crearpersona <nombre> <person_no>
+        $nombre = $argv[2] ?? '';
+        $pno    = $argv[3] ?? '';
+        if ($nombre === '' || $pno === '') {
+            fwrite(STDERR, "Uso: php smartpass.php crearpersona <nombre> <person_no>
+");
+            exit(1);
+        }
+        $pid = crearPersona(iniciarSesion(), $nombre, $pno, null);
+        echo "PERSONID:{$pid}
+";
+        break;
+
+    case 'tomarfoto':
+        // Ordena al torno capturar el rostro de la persona AHORA (debe estar frente
+        // al lector). Uso: tomarfoto <person_id> <device_id>
+        $pid = $argv[2] ?? '';
+        $dev = $argv[3] ?? '';
+        if (! ctype_digit((string) $pid) || ! ctype_digit((string) $dev)) {
+            fwrite(STDERR, "Uso: php smartpass.php tomarfoto <person_id> <device_id>
+");
+            exit(1);
+        }
+        [$http, $j, $raw] = llamarSp(iniciarSesion(), 'POST', '/admin/person/employees/take_photo', ['ids' => [(int) $pid], 'deviceIds' => [(int) $dev]]);
+        echo "HTTP {$http} · code=" . ($j['code'] ?? '?') . " · msg=" . ($j['message'] ?? '') . "
+";
+        echo "RESP: " . mb_substr($raw, 0, 300) . "
+";
+        break;
+
+    case 'reconectar':
+        // Fuerza el re-registro del torno reescribiendo SU MISMA contraseña LAN: es
+        // el truco del «Grabar» de Dispositivo→Detalle→Red, sin cambiar nada. Se
+        // escribe en el servidor, así que reconecta aunque el equipo esté caído.
+        // Uso: reconectar <device_id>
+        $dev = $argv[2] ?? '';
+        if (! ctype_digit((string) $dev)) {
+            fwrite(STDERR, "Uso: php smartpass.php reconectar <device_id>\n");
+            exit(1);
+        }
+        $s = iniciarSesion();
+        [$h1, $j1] = llamarSp($s, 'GET', '/admin/devices/network/' . (int) $dev, []);
+        $lan = $j1['data']['lanPwd'] ?? null;
+        if ($lan === null || $lan === '') {
+            fwrite(STDERR, "No se pudo leer la contraseña LAN actual (http {$h1}).\n");
+            exit(2);
+        }
+        [$h2, $j2] = llamarSp($s, 'PUT', '/admin/devices/network/set_password', [
+            'oldPwd'   => $lan,
+            'lanPwd'   => $lan,
+            'deviceId' => (int) $dev,
+        ]);
+        echo 'HTTP ' . $h2 . ' · code=' . ($j2['code'] ?? '?') . ' · msg=' . ($j2['message'] ?? '') . "\n";
+        if ((int) ($j2['code'] ?? 0) === 200) {
+            echo "RECONECTADO: re-registro forzado (se reescribió la misma contraseña LAN).\n";
+        } else {
+            exit(2);
+        }
+        break;
+
     default:
         echo <<<AYUDA
         Cliente Smart Pass del agente de Nódico.

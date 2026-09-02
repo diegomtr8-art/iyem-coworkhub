@@ -46,6 +46,7 @@ enum AccionOperativa: string
     // Control de acceso.
     case VinculacionRostro = 'vinculacion_rostro';
     case AperturaPuerta    = 'apertura_puerta';
+    case ReconexionTorno   = 'reconexion_torno';
 
     public function etiqueta(): string
     {
@@ -68,6 +69,7 @@ enum AccionOperativa: string
             self::ExportacionFiscal     => 'Exportación de datos fiscales',
             self::VinculacionRostro     => 'Vinculación de rostro con miembro',
             self::AperturaPuerta        => 'Apertura de puerta desde el panel',
+            self::ReconexionTorno       => 'Reconexión manual del torno',
         };
     }
 

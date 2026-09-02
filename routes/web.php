@@ -224,6 +224,7 @@ Route::middleware(['auth', 'verified', 'portal:operativo', 'no.suspendida', 'con
         Route::get('accesos/exportar', [AccesosPanelController::class, 'exportar'])->name('accesos.exportar');
         Route::post('accesos/vincular', [AccesosPanelController::class, 'vincular'])->name('accesos.vincular');
         Route::post('accesos/abrir-puerta', [AccesosPanelController::class, 'abrirPuerta'])->name('accesos.abrir');
+        Route::post('accesos/reconectar', [AccesosPanelController::class, 'reconectar'])->name('accesos.reconectar');
 
         // Los tres listados: miembros, empleados y servicio social.
         Route::get('accesos/personas', [PersonasAccesoController::class, 'index'])->name('personas.index');

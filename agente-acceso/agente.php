@@ -39,6 +39,8 @@ $LOTE          = max(1, (int) ($cfg['LOTE_MAXIMO'] ?? 200));
 $SALUD_PUERTO  = (int) ($cfg['SALUD_PUERTO'] ?? 9099);
 $HTTP_TIMEOUT  = max(5, (int) ($cfg['HTTP_TIMEOUT'] ?? 15));
 $ESTADO_DIR    = $cfg['ESTADO_DIR'] ?? ($RAIZ . DIRECTORY_SEPARATOR . 'estado');
+$TORNO_ID      = (int) ($cfg['TORNO_DEVICE_ID'] ?? 1);   // el FR07 en la BD de Smart Pass
+$TORNO_TIMEOUT = max(90, (int) ($cfg['TORNO_TIMEOUT_SEG'] ?? 120));  // sin latido → caído
 
 if ($NODICO_URL === '' || $SECRETO === '') {
     fwrite(STDERR, "Falta NODICO_URL o NODICO_SECRETO en el .env. Abortando.\n");
@@ -61,6 +63,7 @@ $SALUD = [
     'ultimo_error'      => null,
     'id_retrocedido'    => false,
     'detenido'          => false,
+    'torno'             => null,   // estado del FR07: {online, antiguedad_seg, ultimo}
 ];
 
 $backoffHasta = 0;   // epoch hasta el que no se reintenta el envío
@@ -128,6 +131,40 @@ function conectarSmartpass(array $cfg): PDO
         PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
         PDO::ATTR_TIMEOUT            => 10,
     ]);
+}
+
+/**
+ * Estado del torno leído de la BD de Smart Pass. La antigüedad se calcula con el
+ * reloj de la propia BD (TIMESTAMPDIFF) para no depender de zonas horarias: el
+ * torno guarda su hora local y el flag `is_online` a veces miente (queda en 1 sin
+ * latido). Un torno «en línea de verdad» es el que latió hace poco.
+ */
+function leerEstadoTorno(PDO $pdo, int $deviceId, int $timeout): array
+{
+    $st = $pdo->prepare(
+        'SELECT is_online, last_active_time,
+                TIMESTAMPDIFF(SECOND, last_active_time, NOW()) AS antiguedad
+         FROM tdx_device_base_info WHERE id = ?'
+    );
+    $st->execute([$deviceId]);
+    $r = $st->fetch();
+    if (! $r) {
+        return ['existe' => false, 'online' => false, 'antiguedad_seg' => null, 'ultimo' => null];
+    }
+
+    // El reloj del torno puede ir adelantado del de la BD (antigüedad negativa):
+    // eso es un latido recientísimo, no una caída. Se trata como 0.
+    $ant = (int) $r['antiguedad'];
+    $antReal = $ant < 0 ? 0 : $ant;
+    $online = ((int) $r['is_online'] === 1) && ($antReal <= $timeout);
+
+    return [
+        'existe'         => true,
+        'online'         => $online,
+        'flag'           => (int) $r['is_online'],
+        'antiguedad_seg' => $antReal,
+        'ultimo'         => $r['last_active_time'],
+    ];
 }
 
 /** Convierte un evento de Smart Pass al contrato de Nódico. */
@@ -207,8 +244,8 @@ function alertarANodico(string $tipo, string $detalle): void
 /** Latido: le dice a Nódico «sigo vivo» aunque no haya eventos. Best-effort. */
 function latidoANodico(): void
 {
-    global $NODICO_URL, $SECRETO, $HTTP_TIMEOUT;
-    $cuerpo = json_encode(['visto' => gmdate('c')]);
+    global $NODICO_URL, $SECRETO, $HTTP_TIMEOUT, $SALUD;
+    $cuerpo = json_encode(['visto' => gmdate('c'), 'torno' => $SALUD['torno']]);
     $ts = (string) time();
     $ch = curl_init($NODICO_URL . '/api/acceso/latido');
     curl_setopt_array($ch, [
@@ -316,6 +353,16 @@ function ejecutarComando(array $c): array
             exec("$php $cli borrar $pid 2>&1", $salida, $rc);
             return [$rc === 0, trim(implode(' ', $salida)) ?: "código $rc", null];
 
+        case 'reconectar_torno':
+            // Reescribe la misma contraseña LAN del torno → lo obliga a re-registrarse.
+            $device = (int) ($c['device_id'] ?? 0);
+            if ($device <= 0) {
+                return [false, 'Sin dispositivo indicado.', null];
+            }
+            exec("$php $cli reconectar $device 2>&1", $salida, $rc);
+            $texto = trim(implode(' ', $salida));
+            return [$rc === 0, $texto !== '' ? $texto : "código $rc", null];
+
         default:
             return [false, 'Comando desconocido: ' . ($c['tipo'] ?? '?'), null];
     }
@@ -389,6 +436,13 @@ while (true) {
     if (! $SALUD['detenido']) {
         try {
             $pdo = conectarSmartpass($cfg);
+
+            // Estado del torno para el panel (se manda en el próximo latido).
+            try {
+                $SALUD['torno'] = leerEstadoTorno($pdo, $TORNO_ID, $TORNO_TIMEOUT);
+            } catch (Throwable $e) {
+                // Un fallo leyendo el estado no debe frenar la ingesta de eventos.
+            }
 
             // Detección de id que retrocede: el MAX de origen no puede ser menor
             // que nuestro cursor. Si lo es, la BD se reinició → parar y avisar.

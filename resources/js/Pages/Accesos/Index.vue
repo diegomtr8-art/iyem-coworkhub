@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, watch, computed, onMounted, onUnmounted } from 'vue'
 import { Head, router, useForm } from '@inertiajs/vue3'
-import { Search, Download, Link2, X, Wifi, WifiOff, Clock, UserCheck, DoorOpen, Users, CheckCircle2, AlertCircle, Loader2 } from 'lucide-vue-next'
+import { Search, Download, Link2, X, Wifi, WifiOff, Clock, UserCheck, DoorOpen, Users, CheckCircle2, AlertCircle, Loader2, ScanFace, RefreshCw } from 'lucide-vue-next'
 import { Link } from '@inertiajs/vue3'
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue'
 import Panel from '@/Components/Panel/Panel.vue'
@@ -17,6 +17,7 @@ const props = defineProps<{
   noReconocidos: any[]
   sinVincular: number[]
   estadoAgente: { visto_en: string | null; minutos: number | null; sano: boolean; nunca: boolean }
+  estadoTorno: { conocido: boolean; online: boolean; antiguedad_seg: number | null; ultimo: string | null; reportado_en: string | null; fresco: boolean }
   dispositivos: { id: number; clave: string }[]
   comandos: any[]
 }>()
@@ -26,12 +27,19 @@ const puerta = useForm({ device_id: props.dispositivos[0]?.id ?? null })
 function abrirPuerta() {
   puerta.post(route('accesos.abrir'), { preserveScroll: true })
 }
+
+// Reconectar el torno: encola el «Grabar» (reescribir la contraseña LAN).
+const recon = useForm({ device_id: props.dispositivos[0]?.id ?? 1 })
+function reconectarTorno() {
+  recon.device_id = puerta.device_id ?? 1
+  recon.post(route('accesos.reconectar'), { preserveScroll: true })
+}
 // Auto-actualización: refresca estado de órdenes, agente y quién está dentro cada
 // pocos segundos, sin tocar el registro (para no romper filtros/paginación).
 let poll: number | undefined
 onMounted(() => {
   poll = window.setInterval(() => {
-    router.reload({ only: ['comandos', 'estadoAgente', 'dentroAhora'] })
+    router.reload({ only: ['comandos', 'estadoAgente', 'estadoTorno', 'dentroAhora'] })
   }, 5000)
 })
 onUnmounted(() => { if (poll) clearInterval(poll) })
@@ -39,7 +47,7 @@ onUnmounted(() => { if (poll) clearInterval(poll) })
 const estadoComando: Record<string, { txt: string; icono: any; clase: string }> = {
   pendiente: { txt: 'En cola', icono: Loader2, clase: 'text-amber-700' },
   enviado:   { txt: 'Enviada al agente', icono: Loader2, clase: 'text-amber-700' },
-  ejecutado: { txt: 'Abierta', icono: CheckCircle2, clase: 'text-emerald-700' },
+  ejecutado: { txt: 'Listo', icono: CheckCircle2, clase: 'text-emerald-700' },
   fallido:   { txt: 'Falló', icono: AlertCircle, clase: 'text-red-700' },
 }
 
@@ -61,6 +69,7 @@ function enviarVincular() {
   vinc.post(route('accesos.vincular'), { preserveScroll: true, onSuccess: () => { abierto.value = false } })
 }
 
+const haceTexto = (seg: number | null) => seg == null ? '' : seg < 60 ? `hace ${seg}s` : `hace ${Math.floor(seg / 60)} min`
 const hora = (iso: string) => iso ? new Date(iso).toLocaleString('es-MX', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) : '—'
 const horaCorta = (iso: string) => iso ? new Date(iso).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' }) : '—'
 
@@ -96,6 +105,35 @@ const columnas: Columna[] = [
           <template v-else>El registro puede estar incompleto hasta que el agente vuelva. La puerta sigue funcionando sola.</template>
         </p>
       </div>
+    </div>
+
+    <!-- Estado del torno FR07 + botón de reconexión manual -->
+    <div
+      class="mb-6 flex flex-wrap items-center gap-3 border-2 p-4"
+      :class="!estadoTorno.conocido ? 'border-amber-500/50 bg-amber-50' : (estadoTorno.online ? 'border-emerald-600/40 bg-emerald-50' : 'border-red-600/50 bg-red-50')"
+    >
+      <ScanFace :size="22" aria-hidden="true"
+        :class="!estadoTorno.conocido ? 'text-amber-700' : (estadoTorno.online ? 'text-emerald-700' : 'text-red-700')" />
+      <div class="min-w-0">
+        <p class="font-display text-sm font-bold"
+          :class="!estadoTorno.conocido ? 'text-amber-900' : (estadoTorno.online ? 'text-emerald-900' : 'text-red-900')">
+          <template v-if="!estadoTorno.conocido">Torno: estado desconocido</template>
+          <template v-else-if="estadoTorno.online">Torno en línea</template>
+          <template v-else>Torno sin conexión</template>
+        </p>
+        <p class="font-body text-xs"
+          :class="!estadoTorno.conocido ? 'text-amber-800/80' : (estadoTorno.online ? 'text-emerald-800/80' : 'text-red-800/80')">
+          <template v-if="!estadoTorno.conocido">El agente no está reportando el estado del torno.</template>
+          <template v-else-if="estadoTorno.online">Reconoce y abre. Último latido {{ haceTexto(estadoTorno.antiguedad_seg) }}.</template>
+          <template v-else>Dejó de latir {{ haceTexto(estadoTorno.antiguedad_seg) }}. Pulsa Reconectar para forzar el re-registro.</template>
+        </p>
+      </div>
+      <button
+        type="button" @click="reconectarTorno" :disabled="recon.processing"
+        class="ml-auto flex min-h-[44px] items-center gap-2 border-2 border-dark bg-white px-4 font-display text-sm font-bold text-dark hover:bg-cream-50 disabled:opacity-50"
+      >
+        <RefreshCw :size="16" aria-hidden="true" :class="{ 'animate-spin': recon.processing }" /> Reconectar
+      </button>
     </div>
 
     <!-- Abrir puerta + acceso a los listados -->

@@ -73,6 +73,7 @@ class AccesosPanelController extends Controller
                 ->pluck('person_id'),
 
             'estadoAgente' => $this->estadoAgente(),
+            'estadoTorno'  => $this->estadoTorno(),
 
             // Dispositivos vistos, para elegir cuál abrir.
             'dispositivos' => EventoAcceso::query()
@@ -204,6 +205,61 @@ class AccesosPanelController extends Controller
             'sano'      => $vistoEn !== null && $minutos < self::AGENTE_TIMEOUT_MIN,
             'nunca'     => $vistoEn === null,
         ];
+    }
+
+    /**
+     * Estado del torno FR07, tal como lo reportó el agente en su último latido.
+     * Si el agente está caído, el dato es viejo: se marca «desconocido» para no
+     * mostrar un «en línea» que en realidad nadie confirmó hace rato.
+     */
+    private function estadoTorno(): array
+    {
+        $t = Cache::get(AccesoController::TORNO_ESTADO);
+        if (! is_array($t)) {
+            return ['conocido' => false, 'online' => false, 'antiguedad_seg' => null, 'ultimo' => null, 'reportado_en' => null, 'fresco' => false];
+        }
+
+        // El reporte es «fresco» si llegó hace menos que el timeout del agente:
+        // pasado eso, el agente probablemente no está reportando y no sabemos nada.
+        $reportado = $t['reportado_en'] ? CarbonImmutable::parse($t['reportado_en']) : null;
+        $fresco = $reportado !== null && $reportado->diffInMinutes(now()) < self::AGENTE_TIMEOUT_MIN;
+
+        return [
+            'conocido'       => $fresco,
+            'online'         => $fresco && (bool) ($t['online'] ?? false),
+            'antiguedad_seg' => $t['antiguedad_seg'] ?? null,
+            'ultimo'         => $t['ultimo'] ?? null,
+            'reportado_en'   => $t['reportado_en'] ?? null,
+            'fresco'         => $fresco,
+        ];
+    }
+
+    /**
+     * Fase 2 de la reconexión — encola el «Grabar» (reescribir la contraseña LAN)
+     * para que el torno se re-registre. No va directo: Nódico no alcanza el
+     * localhost de la oficina; el agente lo ejecuta en su siguiente sondeo.
+     */
+    public function reconectar(Request $request): RedirectResponse
+    {
+        $datos = $request->validate([
+            'device_id' => ['nullable', 'integer'],
+        ]);
+
+        ComandoAcceso::create([
+            'tipo'                    => ComandoAcceso::RECONECTAR_TORNO,
+            'device_id'               => $datos['device_id'] ?? 1,
+            'estado'                  => 'pendiente',
+            'solicitado_por_user_id'  => $request->user()->id,
+        ]);
+
+        EntradaBitacora::registrar(
+            accion: AccionOperativa::ReconexionTorno,
+            descripcion: 'Reconexión manual del torno solicitada desde el panel.',
+            actor: $request->user(),
+            contexto: ['device_id' => $datos['device_id'] ?? 1],
+        );
+
+        return back()->with('success', 'Reconectando el torno… en unos segundos verás el resultado.');
     }
 
     private function paraLaVista(EventoAcceso $e): array
