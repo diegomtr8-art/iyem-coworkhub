@@ -224,13 +224,22 @@ class AccesosPanelController extends Controller
         $reportado = $t['reportado_en'] ? CarbonImmutable::parse($t['reportado_en']) : null;
         $fresco = $reportado !== null && $reportado->diffInMinutes(now()) < self::AGENTE_TIMEOUT_MIN;
 
+        $recon = Cache::get(AccesoController::TORNO_RECONEXION);
+        $recon = is_array($recon) ? $recon : [];
+
         return [
-            'conocido'       => $fresco,
-            'online'         => $fresco && (bool) ($t['online'] ?? false),
-            'antiguedad_seg' => $t['antiguedad_seg'] ?? null,
-            'ultimo'         => $t['ultimo'] ?? null,
-            'reportado_en'   => $t['reportado_en'] ?? null,
-            'fresco'         => $fresco,
+            'conocido'         => $fresco,
+            'online'           => $fresco && (bool) ($t['online'] ?? false),
+            'antiguedad_seg'   => $t['antiguedad_seg'] ?? null,
+            'ultimo'           => $t['ultimo'] ?? null,
+            'reportado_en'     => $t['reportado_en'] ?? null,
+            'fresco'           => $fresco,
+            // Resumen del día del motor de reconexión (Fase 4): el número que
+            // convierte «a veces se cae» en «ayer se cayó 14 veces, 40 min sin registrar».
+            'caidas_hoy'       => (int) ($recon['caidas_hoy'] ?? 0),
+            'reconexiones_hoy' => (int) ($recon['reconexiones_hoy'] ?? 0),
+            'downtime_seg_hoy' => (int) ($recon['downtime_seg_hoy'] ?? 0),
+            'cap_alcanzado'    => (bool) ($recon['cap_alcanzado'] ?? false),
         ];
     }
 

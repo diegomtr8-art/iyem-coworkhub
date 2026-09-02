@@ -23,6 +23,7 @@ class AccesoController extends Controller
     /** Clave del último contacto del agente, para el estado del sistema (Fase 5). */
     public const AGENTE_VISTO = 'acceso.agente_visto_en';
     public const TORNO_ESTADO = 'acceso.torno_estado';
+    public const TORNO_RECONEXION = 'acceso.torno_reconexion';
 
     public function __construct(
         private readonly IngestaDeEventos $ingesta,
@@ -52,6 +53,18 @@ class AccesoController extends Controller
                 'ultimo'         => $torno['ultimo'] ?? null,
                 'existe'         => (bool) ($torno['existe'] ?? true),
                 'reportado_en'   => now()->toIso8601String(),
+            ], now()->addDay());
+        }
+
+        // Resumen del día del motor de reconexión (caídas, reconexiones, downtime).
+        $recon = $request->input('reconexion');
+        if (is_array($recon)) {
+            Cache::put(self::TORNO_RECONEXION, [
+                'caidas_hoy'       => (int) ($recon['caidas_hoy'] ?? 0),
+                'reconexiones_hoy' => (int) ($recon['reconexiones_hoy'] ?? 0),
+                'downtime_seg_hoy' => (int) ($recon['downtime_seg_hoy'] ?? 0),
+                'cap_alcanzado'    => (bool) ($recon['cap_alcanzado'] ?? false),
+                'reportado_en'     => now()->toIso8601String(),
             ], now()->addDay());
         }
 

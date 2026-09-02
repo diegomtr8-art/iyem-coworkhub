@@ -26,6 +26,8 @@ declare(strict_types=1);
 date_default_timezone_set('UTC');
 error_reporting(E_ALL);
 
+require __DIR__ . '/reconexion.php';   // motor de reconexión (lógica pura)
+
 // ─── Configuración ───────────────────────────────────────────────────────────
 
 $RAIZ = __DIR__;
@@ -41,6 +43,19 @@ $HTTP_TIMEOUT  = max(5, (int) ($cfg['HTTP_TIMEOUT'] ?? 15));
 $ESTADO_DIR    = $cfg['ESTADO_DIR'] ?? ($RAIZ . DIRECTORY_SEPARATOR . 'estado');
 $TORNO_ID      = (int) ($cfg['TORNO_DEVICE_ID'] ?? 1);   // el FR07 en la BD de Smart Pass
 $TORNO_TIMEOUT = max(90, (int) ($cfg['TORNO_TIMEOUT_SEG'] ?? 120));  // sin latido → caído
+
+// Motor de reconexión automática (Fases 1-3). APAGADO por defecto: se enciende
+// con RECONEXION_AUTO=1 en el .env cuando esté validado.
+$RECON_AUTO      = filter_var($cfg['RECONEXION_AUTO'] ?? false, FILTER_VALIDATE_BOOLEAN);
+$RECON_CONFIRMAR = max(10, (int) ($cfg['RECONEXION_CONFIRMAR_SEG'] ?? 60));  // sin latido → caído de verdad
+$RECON_SILENCIO  = max(0, (int) ($cfg['RECONEXION_SILENCIO_SEG'] ?? 30));    // no reconfigurar si hubo paso reciente
+$RECON_TOPE_HORA = max(1, (int) ($cfg['RECONEXION_TOPE_HORA'] ?? 6));        // máximo de intentos por hora
+$RECON_ESCALONES = array_values(array_filter(array_map(
+    'intval',
+    explode(',', $cfg['RECONEXION_ESCALONES'] ?? '60,300,900,1800')
+), fn ($n) => $n > 0)) ?: [60, 300, 900, 1800];
+$OPER_HORA_INI   = (int) ($cfg['OPERACION_HORA_INICIO'] ?? 9);
+$OPER_HORA_FIN   = (int) ($cfg['OPERACION_HORA_FIN'] ?? 19);
 
 if ($NODICO_URL === '' || $SECRETO === '') {
     fwrite(STDERR, "Falta NODICO_URL o NODICO_SECRETO en el .env. Abortando.\n");
@@ -64,6 +79,7 @@ $SALUD = [
     'id_retrocedido'    => false,
     'detenido'          => false,
     'torno'             => null,   // estado del FR07: {online, antiguedad_seg, ultimo}
+    'reconexion'        => null,   // resumen del día: {caidas_hoy, reconexiones_hoy, ...}
 ];
 
 $backoffHasta = 0;   // epoch hasta el que no se reintenta el envío
@@ -167,6 +183,43 @@ function leerEstadoTorno(PDO $pdo, int $deviceId, int $timeout): array
     ];
 }
 
+/** Lee el estado del motor de reconexión (o arranca uno nuevo). */
+function leerReconexion(string $dir): array
+{
+    $ruta = $dir . '/reconexion.json';
+    if (is_file($ruta)) {
+        $j = json_decode((string) file_get_contents($ruta), true);
+        if (is_array($j)) {
+            return $j;
+        }
+    }
+    return reconexionInicial(date('Y-m-d'));
+}
+
+/** Guarda el estado del motor de reconexión. */
+function guardarReconexion(string $dir, array $st): void
+{
+    @file_put_contents($dir . '/reconexion.json', json_encode($st, JSON_UNESCAPED_UNICODE), LOCK_EX);
+}
+
+/** ¿Estamos en horario de operación (lun-vie, [ini,fin) en hora de Mérida)? */
+function enHorarioMerida(string $tz, int $ini, int $fin): bool
+{
+    $ahora = new DateTime('now', new DateTimeZone($tz));
+    $dia = (int) $ahora->format('N');   // 1=lunes ... 7=domingo
+    $hora = (int) $ahora->format('G');
+    return $dia >= 1 && $dia <= 5 && $hora >= $ini && $hora < $fin;
+}
+
+/** Antigüedad (s) del último paso registrado, según el reloj de la BD; null si no hay. */
+function eventoRecienteSeg(PDO $pdo): ?int
+{
+    $v = $pdo->query(
+        'SELECT TIMESTAMPDIFF(SECOND, MAX(create_time), NOW()) FROM tdx_pass_record'
+    )->fetchColumn();
+    return $v === null ? null : max(0, (int) $v);
+}
+
 /** Convierte un evento de Smart Pass al contrato de Nódico. */
 function mapearEvento(array $r, DateTimeZone $tzOrigen): array
 {
@@ -245,7 +298,7 @@ function alertarANodico(string $tipo, string $detalle): void
 function latidoANodico(): void
 {
     global $NODICO_URL, $SECRETO, $HTTP_TIMEOUT, $SALUD;
-    $cuerpo = json_encode(['visto' => gmdate('c'), 'torno' => $SALUD['torno']]);
+    $cuerpo = json_encode(['visto' => gmdate('c'), 'torno' => $SALUD['torno'], 'reconexion' => $SALUD['reconexion']]);
     $ts = (string) time();
     $ch = curl_init($NODICO_URL . '/api/acceso/latido');
     curl_setopt_array($ch, [
@@ -417,6 +470,14 @@ $ultimoSondeo = 0;
 $ultimoLatido = 0;
 $LATIDO_SEGUNDOS = 60;   // «sigo vivo» a Nódico, aunque no haya eventos
 
+$estadoRecon = leerReconexion($ESTADO_DIR);   // motor de reconexión (persistido)
+$SALUD['reconexion'] = reconexionResumen($estadoRecon);
+if ($RECON_AUTO) {
+    bitacora('INFO', 'Reconexión automática ENCENDIDA (tope ' . $RECON_TOPE_HORA . '/h, escalones ' . implode(',', $RECON_ESCALONES) . 's).');
+} else {
+    bitacora('INFO', 'Reconexión automática apagada: solo se detecta y cuenta. Enciéndela con RECONEXION_AUTO=1.');
+}
+
 while (true) {
     atenderSalud($salud, 0.5);
 
@@ -442,6 +503,52 @@ while (true) {
                 $SALUD['torno'] = leerEstadoTorno($pdo, $TORNO_ID, $TORNO_TIMEOUT);
             } catch (Throwable $e) {
                 // Un fallo leyendo el estado no debe frenar la ingesta de eventos.
+            }
+
+            // Motor de reconexión (Fases 1-3): detecta la caída y —si está
+            // encendido— la reconecta con freno. La decisión es pura y probada;
+            // aquí solo se ejecutan los efectos.
+            if (is_array($SALUD['torno'])) {
+                try {
+                    $dec = decidirReconexion($estadoRecon, [
+                        'ahora'               => time(),
+                        'hoy'                 => (new DateTime('now', new DateTimeZone($SMARTPASS_TZ)))->format('Y-m-d'),
+                        'online'              => (bool) ($SALUD['torno']['online'] ?? false),
+                        'smartpass_ok'        => (bool) ($SALUD['torno']['existe'] ?? true),
+                        'evento_reciente_seg' => eventoRecienteSeg($pdo),
+                        'en_horario'          => enHorarioMerida($SMARTPASS_TZ, $OPER_HORA_INI, $OPER_HORA_FIN),
+                        'auto'                => $RECON_AUTO,
+                        'confirmar_seg'       => $RECON_CONFIRMAR,
+                        'silencio_seg'        => $RECON_SILENCIO,
+                        'tope_hora'           => $RECON_TOPE_HORA,
+                        'escalones'           => $RECON_ESCALONES,
+                    ]);
+                    $estadoRecon = $dec['estado'];
+                    guardarReconexion($ESTADO_DIR, $estadoRecon);
+                    $SALUD['reconexion'] = reconexionResumen($estadoRecon);
+
+                    if (! empty($dec['evento'])) {
+                        bitacora('INFO', 'Torno: ' . $dec['evento']);
+                    }
+                    if (! empty($dec['alerta'])) {
+                        bitacora('ALERTA', $dec['alerta']);
+                        alertarANodico('reconexion', $dec['alerta']);
+                    }
+                    if ($dec['accion'] === 'reconectar') {
+                        $phpR = escapeshellarg(PHP_BINARY);
+                        $cliR = escapeshellarg($RAIZ . '/smartpass.php');
+                        $salidaR = [];
+                        exec("$phpR $cliR reconectar " . (int) $TORNO_ID . ' 2>&1', $salidaR, $rcR);
+                        $detR = trim(implode(' ', $salidaR));
+                        bitacora($rcR === 0 ? 'INFO' : 'WARN', 'Torno: reconexión ' . ($rcR === 0 ? 'lanzada' : 'falló') . ' — ' . $detR);
+                    }
+                    if (! empty($dec['cambio'])) {
+                        latidoANodico();       // el cambio de estado se avisa YA, sin esperar el latido periódico
+                        $ultimoLatido = time();
+                    }
+                } catch (Throwable $e) {
+                    bitacora('WARN', 'Motor de reconexión: ' . $e->getMessage());
+                }
             }
 
             // Detección de id que retrocede: el MAX de origen no puede ser menor

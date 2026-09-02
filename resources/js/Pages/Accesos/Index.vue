@@ -17,7 +17,7 @@ const props = defineProps<{
   noReconocidos: any[]
   sinVincular: number[]
   estadoAgente: { visto_en: string | null; minutos: number | null; sano: boolean; nunca: boolean }
-  estadoTorno: { conocido: boolean; online: boolean; antiguedad_seg: number | null; ultimo: string | null; reportado_en: string | null; fresco: boolean }
+  estadoTorno: { conocido: boolean; online: boolean; antiguedad_seg: number | null; ultimo: string | null; reportado_en: string | null; fresco: boolean; caidas_hoy: number; reconexiones_hoy: number; downtime_seg_hoy: number; cap_alcanzado: boolean }
   dispositivos: { id: number; clave: string }[]
   comandos: any[]
 }>()
@@ -70,6 +70,7 @@ function enviarVincular() {
 }
 
 const haceTexto = (seg: number | null) => seg == null ? '' : seg < 60 ? `hace ${seg}s` : `hace ${Math.floor(seg / 60)} min`
+const durTexto = (seg: number) => seg < 60 ? `${seg}s` : `${Math.floor(seg / 60)} min`
 const hora = (iso: string) => iso ? new Date(iso).toLocaleString('es-MX', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) : '—'
 const horaCorta = (iso: string) => iso ? new Date(iso).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' }) : '—'
 
@@ -126,6 +127,14 @@ const columnas: Columna[] = [
           <template v-if="!estadoTorno.conocido">El agente no está reportando el estado del torno.</template>
           <template v-else-if="estadoTorno.online">Reconoce y abre. Último latido {{ haceTexto(estadoTorno.antiguedad_seg) }}.</template>
           <template v-else>Dejó de latir {{ haceTexto(estadoTorno.antiguedad_seg) }}. Pulsa Reconectar para forzar el re-registro.</template>
+        </p>
+        <p v-if="estadoTorno.conocido && estadoTorno.caidas_hoy > 0" class="mt-1 font-body text-xs text-dark/60">
+          Hoy: <b>{{ estadoTorno.caidas_hoy }}</b> {{ estadoTorno.caidas_hoy === 1 ? 'caída' : 'caídas' }} ·
+          <b>{{ estadoTorno.reconexiones_hoy }}</b> reconexiones ·
+          <b>{{ durTexto(estadoTorno.downtime_seg_hoy) }}</b> sin registrar
+        </p>
+        <p v-if="estadoTorno.cap_alcanzado" class="mt-1 font-display text-xs font-bold text-red-700">
+          ⚠ Se alcanzó el tope de reconexiones por hora: el enlace del torno necesita revisión física (cable).
         </p>
       </div>
       <button
