@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, watch, onUnmounted } from 'vue'
 import { Head, router, useForm } from '@inertiajs/vue3'
-import { Search, Plus, Pencil, Trash2, Link2, Unlink, X, ScanFace, Camera, Upload, Monitor } from 'lucide-vue-next'
+import { Search, Plus, Pencil, Trash2, Link2, Unlink, X, ScanFace, Camera, Upload, Monitor, RefreshCw, Check } from 'lucide-vue-next'
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue'
 import Panel from '@/Components/Panel/Panel.vue'
 import Paginacion from '@/Components/Panel/Paginacion.vue'
@@ -84,7 +84,7 @@ function desvincular(tipo: 'miembro' | 'persona', id: number) {
 // ── Enrolar rostro: crear en Smart Pass y vincular al perfil ─────────────────
 const enrolAbierto = ref(false)
 const enrolSujeto = ref<{ tipo: 'miembro' | 'persona'; id: number; nombre: string } | null>(null)
-const captura = ref<'archivo' | 'camara' | 'dispositivo'>('archivo')
+const captura = ref<'archivo' | 'camara' | 'dispositivo'>('camara')
 const fotoBase64 = ref('')            // dataURL: sirve de vista previa y de envío
 const deviceId = ref<number | null>(props.dispositivos[0]?.id ?? null)
 const enviando = ref(false)
@@ -95,7 +95,7 @@ const video = ref<HTMLVideoElement | null>(null)
 
 function abrirEnrolar(tipo: 'miembro' | 'persona', id: number, nombre: string) {
   enrolSujeto.value = { tipo, id, nombre }
-  captura.value = 'archivo'; fotoBase64.value = ''; errorEnrol.value = ''
+  captura.value = 'camara'; fotoBase64.value = ''; errorEnrol.value = ''
   deviceId.value = props.dispositivos[0]?.id ?? null
   enrolAbierto.value = true
 }
@@ -129,6 +129,12 @@ function capturar() {
 }
 function detenerCamara() { stream?.getTracks().forEach(t => t.stop()); stream = null; camaraOn.value = false }
 onUnmounted(detenerCamara)
+
+// Descartar la foto y volver a capturar (cámara: reabre; archivo: limpia).
+function volverATomar() {
+  fotoBase64.value = ''; errorEnrol.value = ''
+  if (captura.value === 'camara') iniciarCamara()
+}
 
 function enviarEnrolar() {
   if (!enrolSujeto.value) return
@@ -332,47 +338,65 @@ function elegirCaptura(c: 'archivo' | 'camara' | 'dispositivo') {
           </div>
 
           <div class="p-4">
-            <!-- Vista previa de la foto -->
-            <div v-if="fotoBase64 && captura !== 'dispositivo'" class="mb-3 flex justify-center">
-              <img :src="fotoBase64" alt="Vista previa" class="max-h-56 border-2 border-dark object-cover" />
-            </div>
-
-            <!-- Modo archivo -->
-            <div v-if="captura === 'archivo'">
-              <label class="flex min-h-[44px] cursor-pointer items-center justify-center gap-2 border-2 border-dashed border-dark/40 px-4 font-display text-sm font-bold text-dark hover:border-dark">
-                <Upload :size="16" /> {{ fotoBase64 ? 'Cambiar imagen' : 'Elegir imagen (JPG/PNG)' }}
-                <input type="file" accept="image/jpeg,image/png" class="hidden" @change="onArchivo" />
-              </label>
-            </div>
-
-            <!-- Modo cámara -->
-            <div v-else-if="captura === 'camara'" class="text-center">
-              <div v-show="camaraOn" class="mb-3 flex justify-center">
-                <video ref="video" class="max-h-56 border-2 border-dark" playsinline muted></video>
+            <!-- FR07: el terminal captura; aquí no hay vista previa -->
+            <div v-if="captura === 'dispositivo'" class="space-y-2">
+              <div class="flex items-start gap-2 border-2 border-amber-500/50 bg-amber-50 p-3">
+                <Monitor :size="18" class="mt-0.5 shrink-0 text-amber-700" aria-hidden="true" />
+                <p class="font-body text-xs text-amber-900">La foto la toma el <b>terminal FR07</b>, así que <b>no se puede ver ni confirmar aquí</b>. Para revisar la foto antes de vincular, usa <b>Cámara web</b>.</p>
               </div>
-              <button v-if="!camaraOn && !fotoBase64" type="button" @click="iniciarCamara" class="min-h-[44px] border-2 border-dark bg-white px-4 font-display text-sm font-bold text-dark hover:bg-nodo-400">Encender cámara</button>
-              <button v-else-if="camaraOn" type="button" @click="capturar" class="min-h-[44px] border-2 border-dark bg-nodo-400 px-4 font-display text-sm font-bold text-dark">Capturar</button>
-              <button v-else type="button" @click="iniciarCamara" class="min-h-[44px] border border-dark/30 px-4 font-display text-sm font-bold text-dark">Tomar otra</button>
-            </div>
-
-            <!-- Modo dispositivo (FR07) -->
-            <div v-else class="space-y-2">
-              <p class="font-body text-xs text-dark/60">La persona se para frente al terminal y este toma la foto. Elige el dispositivo:</p>
+              <p class="font-body text-xs text-dark/60">La persona se para frente al terminal. Elige el dispositivo:</p>
               <select v-model="deviceId" aria-label="Dispositivo" class="w-full border border-dark/25 bg-white px-2.5 py-2 text-sm focus:border-dark">
                 <option v-for="d in dispositivos" :key="d.id" :value="d.id">{{ d.clave || ('Dispositivo ' + d.id) }}</option>
                 <option v-if="!dispositivos.length" :value="null">— sin dispositivos vistos —</option>
               </select>
             </div>
 
-            <p v-if="errorEnrol" class="mt-3 text-xs text-red-700">{{ errorEnrol }}</p>
-            <p class="mt-3 font-body text-xs text-dark/50">Se crea la persona en Smart Pass y, al confirmarse, su rostro queda vinculado a este perfil automáticamente (unos segundos).</p>
+            <!-- Archivo / cámara: capturar → ver la foto → confirmar o volver a tomar -->
+            <template v-else>
+              <!-- Paso 2 · vista previa + confirmar / volver a tomar -->
+              <div v-if="fotoBase64" class="text-center">
+                <p class="mb-2 font-display text-sm font-bold text-dark">¿Se ve bien la foto?</p>
+                <div class="mb-2 flex justify-center">
+                  <img :src="fotoBase64" alt="Foto capturada" class="max-h-64 border-2 border-dark object-cover" />
+                </div>
+                <p class="mb-3 font-body text-xs text-dark/55">Cara de frente, centrada y con buena luz. Si no, vuelve a tomarla.</p>
+                <div class="flex flex-col-reverse gap-2 sm:flex-row sm:justify-center">
+                  <button type="button" @click="volverATomar" class="flex min-h-[44px] items-center justify-center gap-1.5 border-2 border-dark bg-white px-4 font-display text-sm font-bold text-dark hover:bg-cream-50">
+                    <RefreshCw :size="16" aria-hidden="true" /> Volver a tomar
+                  </button>
+                  <button type="button" :disabled="enviando" @click="enviarEnrolar" class="flex min-h-[44px] items-center justify-center gap-1.5 border-2 border-dark bg-nodo-400 px-4 font-display text-sm font-bold text-dark hover:bg-nodo-400/80 disabled:opacity-50">
+                    <Check :size="16" aria-hidden="true" /> {{ enviando ? 'Vinculando…' : 'Confirmar y vincular' }}
+                  </button>
+                </div>
+              </div>
+
+              <!-- Paso 1 · capturar -->
+              <div v-else>
+                <div v-if="captura === 'archivo'">
+                  <label class="flex min-h-[120px] cursor-pointer flex-col items-center justify-center gap-2 border-2 border-dashed border-dark/40 px-4 py-6 font-display text-sm font-bold text-dark hover:border-dark">
+                    <Upload :size="22" aria-hidden="true" /> Elegir imagen (JPG/PNG)
+                    <input type="file" accept="image/jpeg,image/png" class="hidden" @change="onArchivo" />
+                  </label>
+                </div>
+                <div v-else class="text-center">
+                  <div v-show="camaraOn" class="mb-3 flex justify-center">
+                    <video ref="video" class="max-h-64 border-2 border-dark" playsinline muted></video>
+                  </div>
+                  <button v-if="!camaraOn" type="button" @click="iniciarCamara" class="min-h-[44px] border-2 border-dark bg-white px-4 font-display text-sm font-bold text-dark hover:bg-nodo-400">Encender cámara</button>
+                  <button v-else type="button" @click="capturar" class="mx-auto flex min-h-[44px] items-center justify-center gap-1.5 border-2 border-dark bg-nodo-400 px-6 font-display text-sm font-bold text-dark"><Camera :size="16" aria-hidden="true" /> Capturar foto</button>
+                </div>
+              </div>
+            </template>
+
+            <p v-if="errorEnrol" class="mt-3 text-center text-xs text-red-700">{{ errorEnrol }}</p>
           </div>
 
-          <div class="flex justify-end gap-2 border-t border-dark/15 bg-cream-50 px-4 py-3">
+          <div class="flex items-center justify-between gap-2 border-t border-dark/15 bg-cream-50 px-4 py-3">
             <button type="button" class="min-h-[40px] border border-dark/25 px-4 font-display text-xs font-bold text-dark" @click="cerrarEnrolar">Cancelar</button>
-            <button type="button" :disabled="enviando" @click="enviarEnrolar" class="flex min-h-[40px] items-center gap-1.5 border-2 border-dark bg-nodo-400 px-4 font-display text-xs font-bold text-dark disabled:opacity-50">
-              <ScanFace :size="14" /> {{ enviando ? 'Enviando…' : 'Registrar' }}
+            <button v-if="captura === 'dispositivo'" type="button" :disabled="enviando || !deviceId" @click="enviarEnrolar" class="flex min-h-[40px] items-center gap-1.5 border-2 border-dark bg-nodo-400 px-4 font-display text-xs font-bold text-dark disabled:opacity-50">
+              <ScanFace :size="14" aria-hidden="true" /> {{ enviando ? 'Enviando…' : 'Tomar en el FR07' }}
             </button>
+            <span v-else class="font-body text-xs text-dark/45">Al confirmar, el rostro queda vinculado en unos segundos.</span>
           </div>
         </div>
       </div>
