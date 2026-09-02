@@ -4,7 +4,8 @@ import { Link, usePage } from '@inertiajs/vue3'
 import {
   LayoutDashboard, Users, CalendarDays, Clock, Receipt,
   Megaphone, BarChart3, Building2, Tag, LogOut, Menu, X, Home, UserCheck, PartyPopper,
-  ScrollText, ShieldCheck, ShieldAlert, Lightbulb, Newspaper, Wallet, DoorOpen
+  ScrollText, ShieldCheck, ShieldAlert, Lightbulb, Newspaper, Wallet, DoorOpen,
+  Monitor as MonitorIcon
 } from 'lucide-vue-next'
 import { Toaster } from 'vue-sonner'
 import BuscadorMiembro from '@/Components/Panel/BuscadorMiembro.vue'
@@ -66,6 +67,7 @@ const grupos = computed(() => [
     titulo: 'Configurar',
     enlaces: [
       { label: 'Espacios',     href: route('espacios.index'),      icon: Building2,   active: 'espacios*', ver: puede('gestionar-espacios') },
+      { label: 'Tablero',      href: route('tablero.enlaces'),     icon: MonitorIcon, active: 'tablero.enlaces*', ver: puede('gestionar-espacios') },
       { label: 'Planes',       href: route('planes.index'),        icon: Tag,         active: 'planes*',   ver: puede('gestionar-planes') },
       { label: 'Asesores',     href: route('asesores.index'),      icon: UserCheck,   active: 'asesores*', ver: puede('gestionar-catalogos') },
       { label: 'Temas de asesoría', href: route('temas.index'),    icon: Lightbulb,   active: 'temas*',    ver: puede('gestionar-catalogos') },

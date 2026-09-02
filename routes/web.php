@@ -19,6 +19,8 @@ use App\Http\Controllers\CajaOrdenesController;
 use App\Http\Controllers\FacturasController;
 use App\Http\Controllers\MiembrosController;
 use App\Http\Controllers\PlanesController;
+use App\Http\Controllers\TableroPublicoController;
+use App\Http\Controllers\TableroEnlacesController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ReportesController;
 use App\Http\Controllers\ReservasController;
@@ -47,6 +49,17 @@ Route::post('/contacto',   [ContactoController::class, 'store'])
 
 Route::get('/aviso-de-privacidad', [WelcomeController::class, 'privacidad'])->name('privacidad');
 Route::get('/terminos',            [WelcomeController::class, 'terminos'])->name('terminos');
+
+// Tablero público de ocupación (Fase 6): sin sesión, con token de solo lectura
+// en la URL. Con límite de peticiones; el JSON no lleva datos de personas.
+Route::prefix('tablero')->group(function () {
+    Route::get('{token}', [TableroPublicoController::class, 'mostrar'])
+        ->where('token', '[A-Za-z0-9]{20,64}')->name('tablero.publico');
+    Route::get('{token}/datos', [TableroPublicoController::class, 'datos'])
+        ->where('token', '[A-Za-z0-9]{20,64}')->middleware('throttle:120,1')->name('tablero.datos');
+    Route::get('{token}/espacio/{espacio}/agenda', [TableroPublicoController::class, 'agenda'])
+        ->where('token', '[A-Za-z0-9]{20,64}')->middleware('throttle:120,1')->name('tablero.agenda');
+});
 
 // robots.txt dinamico: en staging se bloquea la indexacion completa.
 Route::get('/robots.txt', function () {
@@ -115,6 +128,11 @@ Route::middleware(['auth', 'verified', 'portal:operativo', 'no.suspendida', 'con
 
     Route::middleware('can:gestionar-espacios')->group(function () {
         Route::resource('espacios', EspaciosController::class)->except(['show']);
+
+        // Enlaces públicos del tablero de ocupación (Fase 6).
+        Route::get('tablero-enlaces', [TableroEnlacesController::class, 'index'])->name('tablero.enlaces');
+        Route::post('tablero-enlaces', [TableroEnlacesController::class, 'generar'])->name('tablero.enlaces.generar');
+        Route::post('tablero-enlaces/{enlace}/revocar', [TableroEnlacesController::class, 'revocar'])->name('tablero.enlaces.revocar');
     });
 
     Route::middleware('can:ver-miembros')->group(function () {

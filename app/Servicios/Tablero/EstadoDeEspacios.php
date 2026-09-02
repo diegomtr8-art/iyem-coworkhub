@@ -72,6 +72,46 @@ class EstadoDeEspacios
         ];
     }
 
+    /**
+     * La agenda de hoy de un espacio, para el toque (Fase 4): franja de apertura
+     * y los bloques ocupados **solo con su horario, sin nombres**. Los huecos los
+     * calcula el front (son lo que la persona busca).
+     */
+    public function agendaDe(Espacio $espacio, ?CarbonImmutable $ahora = null): array
+    {
+        $ahora = $ahora ?? CarbonImmutable::now();
+        $hoy   = $ahora->startOfDay();
+        $franja = $this->calendario->franjaDelDia($espacio, $hoy);
+
+        $ocupados = collect();
+
+        Reserva::whereDate('fecha', $hoy)->where('espacio_id', $espacio->id)->confirmadas()
+            ->orderBy('hora_inicio')->get()
+            ->each(fn (Reserva $r) => $ocupados->push([
+                'inicio' => substr((string) $r->hora_inicio, 0, 5),
+                'fin'    => substr((string) $r->hora_fin, 0, 5),
+                'tipo'   => 'reserva',
+            ]));
+
+        BloqueoEspacio::whereDate('fecha', $hoy)->where('espacio_id', $espacio->id)->get()
+            ->each(fn (BloqueoEspacio $b) => $ocupados->push([
+                'inicio' => substr((string) $b->hora_inicio, 0, 5),
+                'fin'    => substr((string) $b->hora_fin, 0, 5),
+                'tipo'   => 'bloqueo',
+            ]));
+
+        return [
+            'id'        => $espacio->id,
+            'nombre'    => $espacio->nombre,
+            'tipo'      => (string) $espacio->tipo,
+            'capacidad' => $espacio->capacidad,
+            'abierto'   => $franja !== null,
+            'apertura'  => $franja[0] ?? null,
+            'cierre'    => $franja[1] ?? null,
+            'ocupados'  => $ocupados->sortBy('inicio')->values()->all(),
+        ];
+    }
+
     // ── Interno ────────────────────────────────────────────────────────────────
 
     private function estadoDe(
