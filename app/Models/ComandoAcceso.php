@@ -18,6 +18,7 @@ class ComandoAcceso extends Model
     public const ENROLAR_ROSTRO   = 'enrolar_rostro';
     public const BORRAR_ROSTRO    = 'borrar_rostro';
     public const RECONECTAR_TORNO = 'reconectar_torno';
+    public const CAPTURAR_FR07    = 'capturar_fr07';
 
     protected $fillable = [
         'tipo', 'device_id', 'payload', 'person_id', 'estado', 'resultado',

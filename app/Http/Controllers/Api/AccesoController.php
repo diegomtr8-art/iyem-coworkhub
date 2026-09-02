@@ -149,15 +149,24 @@ class AccesoController extends Controller
             'ok'        => ['required', 'boolean'],
             'detalle'   => ['nullable', 'string', 'max:2000'],
             'person_id' => ['nullable', 'integer'],   // lo devuelve el enrolado
+            'foto'      => ['nullable', 'string'],     // data URL de la foto capturada en el FR07
         ]);
 
         $this->marcarVisto();
 
         $orden = ComandoAcceso::findOrFail((int) $comando);
+
+        // La foto de vista previa (captura FR07) se guarda en el payload del comando.
+        $payload = $orden->payload ?? [];
+        if (! empty($datos['foto'])) {
+            $payload['foto_capturada'] = $datos['foto'];
+        }
+
         $orden->update([
             'estado'      => $datos['ok'] ? 'ejecutado' : 'fallido',
             'resultado'   => $datos['detalle'] ?? null,
             'person_id'   => $datos['person_id'] ?? $orden->person_id,
+            'payload'     => $payload,
             'resuelto_en' => now(),
         ]);
 

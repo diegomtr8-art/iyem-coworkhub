@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, watch, onUnmounted } from 'vue'
 import { Head, router, useForm } from '@inertiajs/vue3'
-import { Search, Plus, Pencil, Trash2, Link2, Unlink, X, ScanFace, Camera, Upload, Monitor, RefreshCw, Check } from 'lucide-vue-next'
+import { Search, Plus, Pencil, Trash2, Link2, Unlink, X, ScanFace, Camera, Upload, Monitor, RefreshCw, Check, Loader2 } from 'lucide-vue-next'
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue'
 import Panel from '@/Components/Panel/Panel.vue'
 import Paginacion from '@/Components/Panel/Paginacion.vue'
@@ -99,7 +99,7 @@ function abrirEnrolar(tipo: 'miembro' | 'persona', id: number, nombre: string) {
   deviceId.value = props.dispositivos[0]?.id ?? null
   enrolAbierto.value = true
 }
-function cerrarEnrolar() { detenerCamara(); enrolAbierto.value = false }
+function cerrarEnrolar() { detenerCamara(); limpiarFr07(); enrolAbierto.value = false }
 
 function onArchivo(e: Event) {
   const f = (e.target as HTMLInputElement).files?.[0]
@@ -128,12 +128,63 @@ function capturar() {
   detenerCamara()
 }
 function detenerCamara() { stream?.getTracks().forEach(t => t.stop()); stream = null; camaraOn.value = false }
-onUnmounted(detenerCamara)
+onUnmounted(() => { detenerCamara(); if (fr07Poll) clearInterval(fr07Poll) })
 
 // Descartar la foto y volver a capturar (cámara: reabre; archivo: limpia).
 function volverATomar() {
   fotoBase64.value = ''; errorEnrol.value = ''
   if (captura.value === 'camara') iniciarCamara()
+}
+
+// --- Captura por FR07 con vista previa (el torno toma la foto y la muestra) ---
+const fr07Estado = ref<'idle' | 'proceso' | 'foto' | 'error'>('idle')
+const fr07Msg = ref('')
+const fr07PersonId = ref<number | null>(null)
+let fr07Poll: number | undefined
+
+function limpiarFr07() {
+  if (fr07Poll) { clearInterval(fr07Poll); fr07Poll = undefined }
+  fr07Estado.value = 'idle'; fr07Msg.value = ''; fr07PersonId.value = null; fotoBase64.value = ''
+}
+
+async function capturarFr07(reintento = false) {
+  if (!enrolSujeto.value || !deviceId.value) { errorEnrol.value = 'Elige un dispositivo.'; return }
+  errorEnrol.value = ''; fotoBase64.value = ''
+  fr07Estado.value = 'proceso'; fr07Msg.value = 'Ordenando la captura… pídele que se pare frente al torno.'
+  try {
+    const { data } = await (window as any).axios.post(route('personas.capturar'), {
+      tipo: enrolSujeto.value.tipo, id: enrolSujeto.value.id,
+      device_id: deviceId.value, person_id: reintento ? fr07PersonId.value : null,
+    })
+    sondearFr07(data.id)
+  } catch { fr07Estado.value = 'error'; fr07Msg.value = 'No se pudo iniciar la captura.' }
+}
+
+function sondearFr07(id: number) {
+  if (fr07Poll) clearInterval(fr07Poll)
+  fr07Poll = window.setInterval(async () => {
+    try {
+      const { data } = await (window as any).axios.get(route('personas.comando', id))
+      if (data.person_id) fr07PersonId.value = data.person_id
+      if (data.estado === 'pendiente') fr07Msg.value = 'En cola… el agente la tomará en segundos.'
+      else if (data.estado === 'enviado') fr07Msg.value = 'Tomando la foto en el torno — que mire a la cámara.'
+      else if (data.estado === 'ejecutado' && data.foto) {
+        clearInterval(fr07Poll); fr07Poll = undefined
+        fotoBase64.value = data.foto; fr07Estado.value = 'foto'
+      } else if (data.estado === 'ejecutado' || data.estado === 'fallido') {
+        clearInterval(fr07Poll); fr07Poll = undefined
+        fr07Estado.value = 'error'; fr07Msg.value = data.resultado || 'No se recibió la foto del torno.'
+      }
+    } catch { /* reintenta en el siguiente ciclo */ }
+  }, 2000)
+}
+
+function confirmarFr07() {
+  if (!enrolSujeto.value || !fr07PersonId.value) return
+  enviando.value = true
+  router.post(route('personas.vincular'),
+    { tipo: enrolSujeto.value.tipo, id: enrolSujeto.value.id, person_id: fr07PersonId.value },
+    { preserveScroll: true, onFinish: () => { enviando.value = false }, onSuccess: cerrarEnrolar })
 }
 
 function enviarEnrolar() {
@@ -149,7 +200,7 @@ function enviarEnrolar() {
 }
 
 function elegirCaptura(c: 'archivo' | 'camara' | 'dispositivo') {
-  detenerCamara(); fotoBase64.value = ''; errorEnrol.value = ''; captura.value = c
+  detenerCamara(); limpiarFr07(); errorEnrol.value = ''; captura.value = c
 }
 </script>
 
@@ -338,17 +389,51 @@ function elegirCaptura(c: 'archivo' | 'camara' | 'dispositivo') {
           </div>
 
           <div class="p-4">
-            <!-- FR07: el terminal captura; aquí no hay vista previa -->
-            <div v-if="captura === 'dispositivo'" class="space-y-2">
-              <div class="flex items-start gap-2 border-2 border-amber-500/50 bg-amber-50 p-3">
-                <Monitor :size="18" class="mt-0.5 shrink-0 text-amber-700" aria-hidden="true" />
-                <p class="font-body text-xs text-amber-900">La foto la toma el <b>terminal FR07</b>, así que <b>no se puede ver ni confirmar aquí</b>. Para revisar la foto antes de vincular, usa <b>Cámara web</b>.</p>
+            <!-- FR07: el terminal captura → progreso → vista previa → confirmar -->
+            <div v-if="captura === 'dispositivo'" class="space-y-3">
+              <!-- idle: elegir dispositivo y disparar -->
+              <template v-if="fr07Estado === 'idle'">
+                <p class="font-body text-xs text-dark/60">La persona se para frente al terminal; el torno toma la foto y aquí la revisas antes de vincular. Elige el dispositivo:</p>
+                <select v-model="deviceId" aria-label="Dispositivo" class="w-full border border-dark/25 bg-white px-2.5 py-2 text-sm focus:border-dark">
+                  <option v-for="d in dispositivos" :key="d.id" :value="d.id">{{ d.clave || ('Dispositivo ' + d.id) }}</option>
+                  <option v-if="!dispositivos.length" :value="null">— sin dispositivos vistos —</option>
+                </select>
+                <button type="button" :disabled="!deviceId" @click="capturarFr07(false)" class="flex min-h-[44px] w-full items-center justify-center gap-1.5 border-2 border-dark bg-nodo-400 px-4 font-display text-sm font-bold text-dark hover:bg-nodo-400/80 disabled:opacity-50">
+                  <Camera :size="16" aria-hidden="true" /> Tomar foto en el FR07
+                </button>
+              </template>
+
+              <!-- en proceso -->
+              <div v-else-if="fr07Estado === 'proceso'" class="py-6 text-center">
+                <Loader2 :size="32" class="mx-auto mb-3 animate-spin text-dark" aria-hidden="true" />
+                <p class="font-display text-sm font-bold text-dark">En proceso…</p>
+                <p class="mx-auto mt-1 max-w-xs font-body text-xs text-dark/60">{{ fr07Msg }}</p>
               </div>
-              <p class="font-body text-xs text-dark/60">La persona se para frente al terminal. Elige el dispositivo:</p>
-              <select v-model="deviceId" aria-label="Dispositivo" class="w-full border border-dark/25 bg-white px-2.5 py-2 text-sm focus:border-dark">
-                <option v-for="d in dispositivos" :key="d.id" :value="d.id">{{ d.clave || ('Dispositivo ' + d.id) }}</option>
-                <option v-if="!dispositivos.length" :value="null">— sin dispositivos vistos —</option>
-              </select>
+
+              <!-- foto lista: preview + confirmar / volver a tomar -->
+              <div v-else-if="fr07Estado === 'foto'" class="text-center">
+                <p class="mb-2 font-display text-sm font-bold text-dark">¿Se ve bien la foto?</p>
+                <div class="mb-2 flex justify-center">
+                  <img :src="fotoBase64" alt="Foto capturada por el torno" class="max-h-64 border-2 border-dark object-cover" />
+                </div>
+                <p class="mb-3 font-body text-xs text-dark/55">La tomó el torno. Si no quedó bien, vuelve a tomarla.</p>
+                <div class="flex flex-col-reverse gap-2 sm:flex-row sm:justify-center">
+                  <button type="button" @click="capturarFr07(true)" class="flex min-h-[44px] items-center justify-center gap-1.5 border-2 border-dark bg-white px-4 font-display text-sm font-bold text-dark hover:bg-cream-50">
+                    <RefreshCw :size="16" aria-hidden="true" /> Volver a tomar
+                  </button>
+                  <button type="button" :disabled="enviando" @click="confirmarFr07" class="flex min-h-[44px] items-center justify-center gap-1.5 border-2 border-dark bg-nodo-400 px-4 font-display text-sm font-bold text-dark hover:bg-nodo-400/80 disabled:opacity-50">
+                    <Check :size="16" aria-hidden="true" /> {{ enviando ? 'Vinculando…' : 'Confirmar y vincular' }}
+                  </button>
+                </div>
+              </div>
+
+              <!-- error -->
+              <div v-else class="text-center">
+                <div class="border-2 border-red-600/40 bg-red-50 p-3 text-left font-body text-xs text-red-800">{{ fr07Msg }}</div>
+                <button type="button" @click="capturarFr07(true)" class="mt-3 inline-flex min-h-[44px] items-center justify-center gap-1.5 border-2 border-dark bg-nodo-400 px-4 font-display text-sm font-bold text-dark">
+                  <RefreshCw :size="16" aria-hidden="true" /> Reintentar
+                </button>
+              </div>
             </div>
 
             <!-- Archivo / cámara: capturar → ver la foto → confirmar o volver a tomar -->
@@ -392,11 +477,8 @@ function elegirCaptura(c: 'archivo' | 'camara' | 'dispositivo') {
           </div>
 
           <div class="flex items-center justify-between gap-2 border-t border-dark/15 bg-cream-50 px-4 py-3">
-            <button type="button" class="min-h-[40px] border border-dark/25 px-4 font-display text-xs font-bold text-dark" @click="cerrarEnrolar">Cancelar</button>
-            <button v-if="captura === 'dispositivo'" type="button" :disabled="enviando || !deviceId" @click="enviarEnrolar" class="flex min-h-[40px] items-center gap-1.5 border-2 border-dark bg-nodo-400 px-4 font-display text-xs font-bold text-dark disabled:opacity-50">
-              <ScanFace :size="14" aria-hidden="true" /> {{ enviando ? 'Enviando…' : 'Tomar en el FR07' }}
-            </button>
-            <span v-else class="font-body text-xs text-dark/45">Al confirmar, el rostro queda vinculado en unos segundos.</span>
+            <button type="button" class="min-h-[40px] border border-dark/25 px-4 font-display text-xs font-bold text-dark" @click="cerrarEnrolar">Cerrar</button>
+            <span class="font-body text-xs text-dark/45">El rostro se vincula solo al confirmar la foto.</span>
           </div>
         </div>
       </div>

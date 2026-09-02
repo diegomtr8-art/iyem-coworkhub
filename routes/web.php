@@ -234,6 +234,8 @@ Route::middleware(['auth', 'verified', 'portal:operativo', 'no.suspendida', 'con
         Route::post('accesos/personas/vincular', [PersonasAccesoController::class, 'vincular'])->name('personas.vincular');
         Route::post('accesos/personas/desvincular', [PersonasAccesoController::class, 'desvincular'])->name('personas.desvincular');
         Route::post('accesos/personas/enrolar', [PersonasAccesoController::class, 'enrolar'])->name('personas.enrolar');
+        Route::post('accesos/personas/capturar-fr07', [PersonasAccesoController::class, 'capturarFr07'])->name('personas.capturar');
+        Route::get('accesos/personas/comando/{comando}', [PersonasAccesoController::class, 'comandoEstado'])->name('personas.comando');
     });
 
     Route::middleware('can:gestionar-facturacion')->group(function () {

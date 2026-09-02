@@ -8,6 +8,7 @@ use App\Models\ComandoAcceso;
 use App\Models\EntradaBitacora;
 use App\Models\PersonaAcceso;
 use App\Models\User;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -176,6 +177,60 @@ class PersonasAccesoController extends Controller
         ]);
 
         return back()->with('success', "Enrolando a {$nombre}… en unos segundos quedará su rostro vinculado.");
+    }
+
+    /**
+     * Captura por FR07 CON vista previa: encola la orden para que el torno tome la
+     * foto y la baje, SIN vincular todavía. Devuelve el id del comando para que la
+     * pantalla lo sondee y muestre la foto; el operador confirma o vuelve a tomar.
+     */
+    public function capturarFr07(Request $request): JsonResponse
+    {
+        $datos = $request->validate([
+            'tipo'      => ['required', Rule::in(['miembro', 'persona'])],
+            'id'        => ['required', 'integer'],
+            'device_id' => ['required', 'integer'],
+            'person_id' => ['nullable', 'integer'],   // en la re-toma, reusa la ficha ya creada
+        ]);
+
+        if ($datos['tipo'] === 'miembro') {
+            $perfil = User::findOrFail($datos['id']);
+            $nombre = $perfil->name;
+            $numero = 'NDCM' . $perfil->id;
+        } else {
+            $perfil = PersonaAcceso::findOrFail($datos['id']);
+            $nombre = $perfil->nombre;
+            $numero = $perfil->identificador ?: ('NDC' . mb_strtoupper(mb_substr($perfil->categoria->value, 0, 1)) . $perfil->id);
+        }
+
+        $comando = ComandoAcceso::create([
+            'tipo'                   => ComandoAcceso::CAPTURAR_FR07,
+            'device_id'              => (int) $datos['device_id'],
+            'payload'                => [
+                'perfil_tipo' => $datos['tipo'],
+                'perfil_id'   => (int) $datos['id'],
+                'nombre'      => $nombre,
+                'person_no'   => preg_replace('/[^A-Za-z0-9]/', '', (string) $numero),
+                'device_id'   => (int) $datos['device_id'],
+                'person_id'   => $datos['person_id'] ?? null,
+            ],
+            'estado'                 => 'pendiente',
+            'solicitado_por_user_id' => $request->user()->id,
+        ]);
+
+        return response()->json(['id' => $comando->id]);
+    }
+
+    /** Estado de una captura FR07 (para sondear desde la pantalla): incluye la foto. */
+    public function comandoEstado(ComandoAcceso $comando): JsonResponse
+    {
+        return response()->json([
+            'id'        => $comando->id,
+            'estado'    => $comando->estado,
+            'resultado' => $comando->resultado,
+            'person_id' => $comando->person_id,
+            'foto'      => $comando->payload['foto_capturada'] ?? null,
+        ]);
     }
 
     public function desvincular(Request $request): RedirectResponse

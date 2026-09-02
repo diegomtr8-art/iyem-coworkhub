@@ -240,6 +240,51 @@ function personIdPorNo(string $personNo): int
 }
 
 /** Pide al terminal que tome la foto de una persona (modo FR07). Best-effort. */
+/** URL del recurso de la foto (más reciente) de una persona, leída de la BD. '' si no hay. */
+function fotoUrlDePersona(int $personId): string
+{
+    global $cfg;
+    try {
+        $dsn = sprintf('mysql:host=%s;port=%s;dbname=%s;charset=utf8mb4',
+            $cfg['SMARTPASS_DB_HOST'] ?? '127.0.0.1', $cfg['SMARTPASS_DB_PORT'] ?? '3307',
+            $cfg['SMARTPASS_DB_NAME'] ?? 'tdx_face_owl');
+        $pdo = new PDO($dsn, $cfg['SMARTPASS_DB_USER'] ?? '', $cfg['SMARTPASS_DB_PASS'] ?? '',
+            [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
+        $st = $pdo->prepare(
+            'SELECT r.resource_url FROM tdx_person_photo p
+             JOIN tdx_resource_data r ON r.id = p.resource_id
+             WHERE p.person_id = ? AND p.deleted_flag = 0
+             ORDER BY p.id DESC LIMIT 1'
+        );
+        $st->execute([$personId]);
+        return (string) ($st->fetchColumn() ?: '');
+    } catch (Throwable $e) {
+        return '';
+    }
+}
+
+/** Descarga una imagen de Smart Pass (recurso local) y la devuelve como data URL base64. */
+function imagenBase64(string $url): string
+{
+    global $SP_URL, $COOKIE;
+    $ch = curl_init($SP_URL . $url);
+    curl_setopt_array($ch, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_COOKIEFILE     => $COOKIE,
+        CURLOPT_COOKIEJAR      => $COOKIE,
+        CURLOPT_USERAGENT      => SP_USER_AGENT,
+        CURLOPT_TIMEOUT        => 20,
+    ]);
+    $bytes = curl_exec($ch);
+    $http  = curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
+    $ct    = curl_getinfo($ch, CURLINFO_CONTENT_TYPE) ?: 'image/jpeg';
+    curl_close($ch);
+    if ($http !== 200 || $bytes === false || $bytes === '') {
+        return '';
+    }
+    return 'data:' . $ct . ';base64,' . base64_encode((string) $bytes);
+}
+
 function tomarFoto(array $sesion, int $personId, int $deviceId): void
 {
     llamarSp($sesion, 'POST', '/admin/person/employees/take_photo', ['ids' => [$personId], 'deviceIds' => [$deviceId]]);
@@ -473,6 +518,41 @@ switch ($comando) {
         } else {
             exit(2);
         }
+        break;
+
+    case 'capturarfoto':
+        // Ordena la captura al torno, baja la foto a Smart Pass y la devuelve en
+        // base64 (para la vista previa en Nódico). La persona debe estar de frente.
+        // Uso: capturarfoto <person_id> <device_id>
+        $pid = $argv[2] ?? '';
+        $dev = $argv[3] ?? '';
+        if (! ctype_digit((string) $pid) || ! ctype_digit((string) $dev)) {
+            fwrite(STDERR, "Uso: php smartpass.php capturarfoto <person_id> <device_id>\n");
+            exit(1);
+        }
+        $s = iniciarSesion();
+        // 1) Ordenar la captura en el terminal.
+        llamarSp($s, 'POST', '/admin/person/employees/take_photo', ['ids' => [(int) $pid], 'deviceIds' => [(int) $dev]]);
+        // 2) Esperar a que la foto llegue: se baja del dispositivo y se busca en la BD.
+        $url = '';
+        for ($i = 0; $i < 12; $i++) {
+            usleep(1_500_000);
+            llamarSp($s, 'POST', '/admin/person/employees/download_from_device', ['ids' => [(int) $pid]]);
+            $url = fotoUrlDePersona((int) $pid);
+            if ($url !== '') {
+                break;
+            }
+        }
+        if ($url === '') {
+            fwrite(STDERR, "No se recibió la foto del torno (¿la persona estaba de frente?).\n");
+            exit(2);
+        }
+        $b64 = imagenBase64($url);
+        if ($b64 === '') {
+            fwrite(STDERR, "Se capturó pero no se pudo leer la imagen.\n");
+            exit(2);
+        }
+        echo 'FOTO:' . $b64 . "\n";
         break;
 
     default:

@@ -341,12 +341,15 @@ function sondearComandos(): array
 }
 
 /** Reporta a Nódico si un comando se ejecutó o falló. Best-effort. */
-function reportarComando(int $id, bool $ok, string $detalle, ?int $personId = null): void
+function reportarComando(int $id, bool $ok, string $detalle, ?int $personId = null, ?string $foto = null): void
 {
     global $NODICO_URL, $SECRETO, $HTTP_TIMEOUT;
     $datos = ['ok' => $ok, 'detalle' => mb_substr($detalle, 0, 2000)];
     if ($personId !== null) {
         $datos['person_id'] = $personId;
+    }
+    if ($foto !== null && $foto !== '') {
+        $datos['foto'] = $foto;   // data URL base64 de la foto capturada (vista previa)
     }
     $cuerpo = json_encode($datos);
     $ts = (string) time();
@@ -415,6 +418,33 @@ function ejecutarComando(array $c): array
             exec("$php $cli reconectar $device 2>&1", $salida, $rc);
             $texto = trim(implode(' ', $salida));
             return [$rc === 0, $texto !== '' ? $texto : "código $rc", null];
+
+        case 'capturar_fr07':
+            // Crea la ficha (o reusa si viene person_id en la re-toma), ordena la
+            // captura al torno y devuelve la foto en base64 para la vista previa.
+            $p = $c['payload'] ?? [];
+            $device = (int) ($c['device_id'] ?? ($p['device_id'] ?? 0));
+            if ($device <= 0) {
+                return [false, 'Sin dispositivo indicado.', null, null];
+            }
+            $personId = (int) ($p['person_id'] ?? 0);
+            if ($personId <= 0) {
+                $sal = [];
+                exec("$php $cli crearpersona " . escapeshellarg((string) ($p['nombre'] ?? 'Sin nombre'))
+                    . ' ' . escapeshellarg((string) ($p['person_no'] ?? '')) . ' 2>&1', $sal, $rc);
+                $txt = trim(implode(' ', $sal));
+                if (! preg_match('/PERSONID:(\d+)/', $txt, $m)) {
+                    return [false, 'No se pudo crear la ficha: ' . $txt, null, null];
+                }
+                $personId = (int) $m[1];
+            }
+            $sal2 = [];
+            exec("$php $cli capturarfoto $personId $device 2>&1", $sal2, $rc2);
+            $txt2 = trim(implode("\n", $sal2));
+            if (preg_match('/FOTO:(data:\S+)/', $txt2, $m2)) {
+                return [true, 'Foto capturada.', $personId, $m2[1]];
+            }
+            return [false, $txt2 !== '' ? $txt2 : "código $rc2", $personId, null];
 
         default:
             return [false, 'Comando desconocido: ' . ($c['tipo'] ?? '?'), null];
@@ -628,8 +658,9 @@ while (true) {
         if ($id <= 0) {
             continue;
         }
-        [$ok, $detalle, $personId] = ejecutarComando($c);
-        reportarComando($id, $ok, $detalle, $personId);
+        $res = ejecutarComando($c);
+        [$ok, $detalle, $personId] = $res;
+        reportarComando($id, $ok, $detalle, $personId, $res[3] ?? null);
         bitacora($ok ? 'INFO' : 'WARN', "Comando #$id ({$c['tipo']}): " . ($ok ? 'OK' : 'FALLÓ') . " — $detalle");
     }
 }
