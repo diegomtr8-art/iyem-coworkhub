@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Enums\EstadoFacturaOrden;
 use App\Enums\EstadoPagoOrden;
 use App\Enums\MetodoReferencia;
+use App\Models\Comunicado;
 use App\Models\OrdenPago;
 use App\Notifications\FacturaEmitida;
 use App\Notifications\PagoConfirmado;
@@ -223,13 +224,24 @@ class CajaOrdenesController extends Controller
 
         $orden->update(['estado_factura' => EstadoFacturaOrden::Enviada, 'factura_enviada_en' => now()]);
 
+        // Aviso en el portal (además del correo): le aparece en su tablero y en la
+        // campana de avisos, con enlace mental a «Mis facturas».
+        $folio = $orden->folio_fiscal ? " (folio {$orden->folio_fiscal})" : '';
+        Comunicado::create([
+            'user_id' => $orden->user_id,
+            'titulo'  => 'Te llegó una factura',
+            'mensaje' => "Ya emitimos tu factura de {$orden->plan?->nombre}{$folio}. La enviamos a tu correo y puedes descargarla cuando quieras en «Mis facturas».",
+            'tipo'    => 'pago',
+            'leido'   => false,
+        ]);
+
         try {
             $orden->user->notify(new FacturaEmitida($orden));
         } catch (\Throwable $e) {
             report($e);
         }
 
-        return back()->with('success', 'Factura enviada al miembro por correo.');
+        return back()->with('success', 'Factura enviada al miembro (correo + aviso en su portal).');
     }
 
     /** Export para el cierre del mes (CSV con fórmulas neutralizadas). */

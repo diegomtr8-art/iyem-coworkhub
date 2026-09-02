@@ -70,6 +70,13 @@ class FacturasReferenciaTest extends TestCase
         $orden->refresh();
         $this->assertSame(EstadoFacturaOrden::Enviada, $orden->estado_factura);
         Notification::assertSentTo($orden->user, FacturaEmitida::class);
+
+        // Además del correo, le queda un aviso en el portal.
+        $this->assertDatabaseHas('comunicados', [
+            'user_id' => $orden->user_id,
+            'tipo'    => 'pago',
+            'titulo'  => 'Te llegó una factura',
+        ]);
     }
 
     public function test_un_miembro_no_puede_subir_facturas(): void
