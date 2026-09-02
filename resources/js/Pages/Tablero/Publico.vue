@@ -83,11 +83,10 @@ const desplazado = computed(() => `translate(${(nudge.value % 2) * 3}px, ${Math.
 const porTipo = (t: string) => datos.espacios.filter((e: any) => e.tipo === t)
 const region = computed(() => {
   const priv = porTipo('privado')
-  const juntas = porTipo('sala_juntas')
   return {
     cowork:  porTipo('coworking')[0],
     priv1: priv[0], priv2: priv[1], priv3: priv[2], priv4: priv[3],
-    juntas1: juntas[0], juntas2: juntas[1],
+    juntas1: porTipo('sala_juntas')[0],
     podcast: porTipo('contenido')[0],
     foto: porTipo('fotografia')[0],
   } as Record<string, any>
@@ -194,8 +193,8 @@ const timeline = computed(() => {
           <g class="reg" @click="abrir(region.priv2)"><rect x="72" y="764" width="162" height="94" :fill="fill(region.priv2)"/><text x="153" y="804" font-size="19" text-anchor="middle" :fill="txt(region.priv2)">Cubículo 2</text><text x="153" y="832" font-size="17" font-weight="900" text-anchor="middle" :fill="txt(region.priv2)">{{ dato(region.priv2) }}</text></g>
           <g class="reg" @click="abrir(region.priv1)"><rect x="72" y="866" width="162" height="80" :fill="fill(region.priv1)"/><text x="153" y="900" font-size="19" text-anchor="middle" :fill="txt(region.priv1)">Cubículo 1</text><text x="153" y="926" font-size="17" font-weight="900" text-anchor="middle" :fill="txt(region.priv1)">{{ dato(region.priv1) }}</text></g>
 
-          <!-- Sala de Juntas 1 -->
-          <g class="reg" @click="abrir(region.juntas1)"><rect x="72" y="300" width="196" height="150" :fill="fill(region.juntas1)"/><text x="170" y="358" font-size="21" text-anchor="middle" :fill="txt(region.juntas1)">Sala de Juntas 1</text><text x="170" y="394" font-size="24" font-weight="900" text-anchor="middle" :fill="txt(region.juntas1)">{{ dato(region.juntas1) }}</text></g>
+          <!-- Sala de Juntas (única) -->
+          <g class="reg" @click="abrir(region.juntas1)"><rect x="72" y="300" width="196" height="150" :fill="fill(region.juntas1)"/><text x="170" y="358" font-size="21" text-anchor="middle" :fill="txt(region.juntas1)">Sala de Juntas</text><text x="170" y="394" font-size="24" font-weight="900" text-anchor="middle" :fill="txt(region.juntas1)">{{ dato(region.juntas1) }}</text></g>
 
           <!-- Coworking (3 mesas = una zona) -->
           <g class="reg" @click="abrir(region.cowork)">
@@ -207,12 +206,11 @@ const timeline = computed(() => {
             <text x="535" y="786" font-size="18" text-anchor="middle" fill="#34C4C4" font-family="'Space Mono',monospace">COWORKING · {{ region.cowork?.personas_dentro ?? 0 }} DENTRO</text>
           </g>
 
-          <!-- Islas -->
-          <rect x="1044" y="60" width="504" height="660" fill="none" stroke="rgba(244,241,234,.20)" stroke-width="2" stroke-dasharray="6 6"/>
-          <g class="reg" @click="abrir(region.juntas2)"><rect x="1076" y="84" width="440" height="176" :fill="fill(region.juntas2)"/><text x="1296" y="162" font-size="22" text-anchor="middle" :fill="txt(region.juntas2)">Sala de Juntas 2</text><text x="1296" y="196" font-size="18" font-weight="900" text-anchor="middle" :fill="txt(region.juntas2)">{{ dato(region.juntas2) }}</text></g>
-          <g class="reg" @click="abrir(region.podcast)"><rect x="1076" y="302" width="440" height="176" :fill="fill(region.podcast)"/><text x="1296" y="380" font-size="22" text-anchor="middle" :fill="txt(region.podcast)">Sala de Podcast</text><text x="1296" y="414" font-size="18" font-weight="900" text-anchor="middle" :fill="txt(region.podcast)">{{ dato(region.podcast) }}</text></g>
-          <g class="reg" @click="abrir(region.foto)"><rect x="1076" y="520" width="440" height="176" :fill="fill(region.foto)"/><text x="1296" y="598" font-size="22" text-anchor="middle" :fill="txt(region.foto)">Sala de Fotografía</text><text x="1296" y="632" font-size="18" font-weight="900" text-anchor="middle" :fill="txt(region.foto)">{{ dato(region.foto) }}</text></g>
-          <text x="1296" y="702" font-size="15" text-anchor="middle" fill="rgba(244,241,234,.38)" font-family="'Space Mono',monospace">FUERA DEL PISO PRINCIPAL</text>
+          <!-- Islas (fuera del piso principal): Podcast y Fotografía -->
+          <rect x="1044" y="120" width="504" height="470" fill="none" stroke="rgba(244,241,234,.20)" stroke-width="2" stroke-dasharray="6 6"/>
+          <g class="reg" @click="abrir(region.podcast)"><rect x="1076" y="152" width="440" height="190" :fill="fill(region.podcast)"/><text x="1296" y="234" font-size="22" text-anchor="middle" :fill="txt(region.podcast)">Sala de Podcast</text><text x="1296" y="270" font-size="18" font-weight="900" text-anchor="middle" :fill="txt(region.podcast)">{{ dato(region.podcast) }}</text></g>
+          <g class="reg" @click="abrir(region.foto)"><rect x="1076" y="372" width="440" height="190" :fill="fill(region.foto)"/><text x="1296" y="454" font-size="22" text-anchor="middle" :fill="txt(region.foto)">Sala de Fotografía</text><text x="1296" y="490" font-size="18" font-weight="900" text-anchor="middle" :fill="txt(region.foto)">{{ dato(region.foto) }}</text></g>
+          <text x="1296" y="620" font-size="15" text-anchor="middle" fill="rgba(244,241,234,.38)" font-family="'Space Mono',monospace">FUERA DEL PISO PRINCIPAL</text>
         </svg>
       </div>
 
