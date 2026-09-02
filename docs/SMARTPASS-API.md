@@ -190,3 +190,85 @@ o que crean datos las hacemos juntos y se limpian después:
 4. **Baja**: cuerpo del DELETE.
 
 Con esto validado, la Fase 1 (el agente) puede escribirse sobre un contrato firme.
+
+---
+
+# Reconexión del terminal FR07 (Fase 0 — feature/reconexion-terminal)
+
+El FR07 pierde la sesión con Smart Pass y **no la reestablece solo**: queda «Sin
+conexión» hasta que una persona entra a la plataforma, va a *Dispositivo → Detalle →
+Red*, reescribe **la misma** contraseña de comunicación LAN y pulsa **Grabar**. Ese
+guardado no corrige nada: envía una orden que **obliga al equipo a re-registrarse**.
+
+**Causa de fondo (física):** el enlace wifi pierde ~12 % de los paquetes (7–388 ms,
+cortes de segundos). Una conexión TCP permanente no sobrevive. La solución real es
+**cable de red + IP fija**. Lo de abajo es una red de seguridad, no el arreglo.
+
+## A · Detección de estado — LECTURA, sin tocar el equipo
+
+El agente corre en la **misma máquina** que el MySQL de Smart Pass, así que la lectura
+más barata NO es una llamada HTTP sino la BD local (cero impacto, cero desgaste):
+
+```sql
+SELECT is_online, last_active_time
+FROM tdx_device_base_info
+WHERE device_key = :device_key;   -- FR07 «Nodico» = AA312DF45B59A915
+```
+
+- `is_online` = 1 en línea / 0 sin conexión.
+- `last_active_time` = último latido del equipo.
+
+Alternativa por API (si algún día el agente no comparte máquina con la BD):
+`POST /admin/devices/is_online` (función SPA `checkDeviceWhetherIsOnline`). La BD es
+preferible: es local y no depende de la sesión de admin.
+
+> Regla: **se lee cada 30 s; se considera caído solo tras DOS lecturas seguidas en 0**
+> (un minuto). Una sola lectura en 0 puede ser un paquete perdido, no una caída.
+
+## B · Reconexión — dos candidatas (a confirmar EN VIVO, contigo)
+
+Ambas salen del JS de la SPA (`app.b8b3fe4e.js`). Base de rutas: `o = "/admin"`.
+
+| # | Qué hace | Ruta · método | Cuerpo (según SPA) | Coste |
+|---|----------|---------------|--------------------|-------|
+| 1 | **Reiniciar** (Control remoto) | `PUT /admin/devices/remote/restart` | `[deviceId]` — array crudo, ej. `[1]` (SPA: `fetchDeviceRestart([e.id])`) | Reinicio del equipo (~30–60 s fuera). **No** escribe flash. |
+| 2 | **Grabar contraseña LAN** (lo que funciona hoy) | `PUT /admin/devices/network/set_password` | `{...}` **por confirmar** (SPA: `fetchDevicesPassword(e)`) | Escribe configuración a **flash** → fuerza re-registro. |
+
+**Recomendación (responde al «prefiere la llamada más barata» del encargo):**
+probar primero **`remote/restart`** — no desgasta flash. PERO hay una duda física que
+solo la captura en vivo resuelve: *si la sesión ya está muerta, ¿el servidor logra
+entregarle un comando remoto al equipo?* El truco de `set_password` funciona HOY con la
+sesión caída, lo que sugiere que llega por otra vía. Por eso:
+
+- En la sesión en vivo probamos `remote/restart` con el equipo caído. Si lo revive →
+  esa es la buena (más barata). Si no llega → usamos `set_password` como el mecanismo
+  real y `restart` solo como intento previo.
+
+## C · Familia de Control remoto observada (referencia)
+
+```
+PUT /admin/devices/remote/restart     reiniciar
+PUT /admin/devices/remote/reset       restablecer   (NO usar: borra config)
+PUT /admin/devices/remote/opendoor    abrir puerta  (ya en uso)
+PUT /admin/devices/remote/set_time    ajustar hora
+PUT /admin/devices/network/set_password   contraseña LAN («Grabar»)
+PUT /admin/devices/network/set_network    red del equipo
+GET /admin/devices/is_online              estado (POST en SPA)
+```
+
+## D · Lo que FALTA capturar EN VIVO (contigo, una sola vez, avisando antes)
+
+Estas dos tienen efecto sobre el equipo:
+
+1. **`set_password` («Grabar»)**: DevTools → pestaña Red → *Dispositivo → Detalle →
+   Red* → reescribir la MISMA contraseña LAN (hoy de fábrica `12345678`) → **Grabar**.
+   Anotar: cuerpo exacto (¿lleva `deviceKey`? ¿`id`? ¿`password` en claro o cifrada?),
+   y **qué devuelve en éxito vs. en error** (para distinguir sin adivinar).
+2. **`remote/restart`**: con el equipo caído, ejecutarlo y ver si lo revive y qué
+   responde (código 200 y `code` interno).
+
+La lectura de estado (A) ya está confirmada por BD; no necesita captura.
+
+> **Contraseña LAN**: va SOLO en el `.env` del agente, nunca en el repo. Hoy es
+> `12345678` (de fábrica). Pendiente: cambiarla **de forma coordinada** una vez que la
+> reconexión funcione — cambiarla antes rompe el mecanismo.
