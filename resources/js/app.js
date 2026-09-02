@@ -1,4 +1,5 @@
 import '../css/app.css';
+import 'vue-sonner/style.css'; // sin esto los toasts salen sin estilo (se veían mal)
 import './bootstrap';
 
 import { createInertiaApp } from '@inertiajs/vue3';

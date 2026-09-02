@@ -176,3 +176,15 @@
 .documento-legal a {
   @apply text-dark underline underline-offset-2;
 }
+
+/* ── Toasts (vue-sonner) con el acabado de Nódico ──
+   Esquinas rectas, sombra dura y la tipografía de marca; el color por tipo
+   (éxito/error/aviso) lo sigue poniendo `richColors`. */
+[data-sonner-toast] {
+  @apply font-display;
+  border-radius: 0 !important;
+  box-shadow: 4px 4px 0 rgba(46, 45, 44, 0.9) !important;
+}
+[data-sonner-toast] [data-title] {
+  @apply font-bold;
+}
