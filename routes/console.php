@@ -53,6 +53,15 @@ Schedule::command('nodico:marcar-no-show')
     ->onOneServer()
     ->appendOutputTo($bitacoraDeTareas);
 
+// Tablero en vivo — cierra los check-ins que quedaron abiertos, para que el %
+// de ocupación no arrastre gente que nunca marcó salida. Poco después del cierre.
+Schedule::command('nodico:cerrar-checkins')
+    ->dailyAt('19:15')
+    ->timezone('America/Merida')
+    ->withoutOverlapping()
+    ->onOneServer()
+    ->appendOutputTo($bitacoraDeTareas);
+
 // Vigilancia del libro: sin `--arreglar`, solo informa. Si los contadores
 // divergen del libro, el comando sale con código de error y queda escrito en
 // `tareas.log`. Corregirlo es una decisión, no algo que deba pasar de noche y
