@@ -200,15 +200,20 @@ export default function Pagar() {
       </Texto>
 
       <View style={{ gap: espacio.m, marginTop: espacio.m }}>
-        {tarjetaDisponible ? (
-          <Opcion
-            icono="tarjeta"
-            titulo="Tarjeta"
-            detalle="Se activa al instante. Sin factura."
-            activa={metodo === 'tarjeta'}
-            alPulsar={() => setMetodo('tarjeta')}
-          />
-        ) : null}
+        {/* La tarjeta siempre se enseña: si no está disponible, se dice por
+            qué en vez de desaparecer sin explicación. */}
+        <Opcion
+          icono="tarjeta"
+          titulo="Tarjeta"
+          detalle={
+            tarjetaDisponible
+              ? 'Se activa al instante. Sin factura.'
+              : 'El pago con tarjeta no está disponible por ahora. Paga con transferencia o en caja.'
+          }
+          activa={metodo === 'tarjeta'}
+          deshabilitada={!tarjetaDisponible}
+          alPulsar={() => setMetodo('tarjeta')}
+        />
         {referenciaDisponible ? (
           <>
             <Opcion
@@ -270,21 +275,27 @@ function Opcion({
   titulo,
   detalle,
   activa,
+  deshabilitada,
   alPulsar,
 }: {
   icono: NombreIcono;
   titulo: string;
   detalle: string;
   activa: boolean;
+  deshabilitada?: boolean;
   alPulsar: () => void;
 }) {
   const { p } = useTema();
   return (
     <Pressable
       onPress={alPulsar}
+      disabled={deshabilitada}
       accessibilityRole="radio"
-      accessibilityState={{ checked: activa }}
-      style={[estilos.opcion, { backgroundColor: p.fondo, borderColor: activa ? p.acentoTexto : p.borde }]}>
+      accessibilityState={{ checked: activa, disabled: !!deshabilitada }}
+      style={[
+        estilos.opcion,
+        { backgroundColor: p.fondo, borderColor: activa ? p.acentoTexto : p.borde, opacity: deshabilitada ? 0.6 : 1 },
+      ]}>
       <Icono nombre={icono} color={activa ? p.acentoTexto : p.textoSuave} />
       <View style={{ flex: 1, gap: 2 }}>
         <Texto variante="cuerpoFuerte">{titulo}</Texto>
