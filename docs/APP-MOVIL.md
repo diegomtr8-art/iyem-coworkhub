@@ -32,17 +32,22 @@ Para comprobarlo, abre `http://192.168.10.6:8010/api/v1/estado` desde el navegad
 **3. `.env` de la app** (`app-movil/.env`, hay un ejemplo en `.env.example`):
 
 ```
+# Contra el servidor de pruebas (lo normal, una vez desplegada la API ahí):
+EXPO_PUBLIC_API_URL=https://prueba.nodico.com.mx/api/v1
+# Contra Laravel en esta computadora, con el teléfono en la misma wifi:
 EXPO_PUBLIC_API_URL=http://192.168.10.6:8010/api/v1
 ```
 
-Si la IP de la computadora cambia, se cambia aquí (`ipconfig` → «Dirección IPv4») y se reinicia `expo start`.
+Sin la variable, la app usa `https://prueba.nodico.com.mx/api/v1`. Los builds de EAS no leen este archivo: toman la URL de su perfil en `eas.json` (los tres perfiles apuntan al servidor de pruebas). Si la IP de la computadora cambia, se cambia aquí (`ipconfig` → «Dirección IPv4») y se reinicia `expo start`.
+
+**Pagos con tarjeta:** el servidor local no tiene claves de Stripe, así que ahí la opción «Tarjeta» sale deshabilitada. Además, Stripe avisa del cobro (webhook) a `prueba.nodico.com.mx`, no a esta computadora. El pago con tarjeta se prueba contra el servidor de pruebas.
 
 **4. Arrancar Expo:**
 
 ```bash
 cd app-movil
 npm install      # solo la primera vez
-npx expo start
+npx expo start --lan --port 8090   # el 8081 lo usa otro proyecto
 ```
 
 **5. En el teléfono:** instala **Expo Go** desde la App Store o Google Play y escanea el QR. En iPhone se escanea con la cámara; en Android, desde Expo Go.
@@ -54,7 +59,7 @@ Si el teléfono no alcanza la computadora (redes con aislamiento de clientes, VP
 El correo lleva un enlace que abre la app. En Expo Go la URL de la app no es `nodico://`, sino la que imprime `npx expo start` más la ruta, por ejemplo:
 
 ```
-exp://192.168.10.6:8081/--/auth/enlace
+exp://192.168.10.6:8090/--/auth/enlace
 ```
 
 Esa es la base que va en `NODICO_APP_URL_ENLACE` del `.env` de Laravel mientras se prueba en Expo Go. El servidor le añade `?token=…`. En una compilación propia es `nodico://auth/enlace`.
@@ -82,8 +87,8 @@ Cada fila está verificada contra la documentación de Expo **SDK 57** (septiemb
 | Notificaciones **locales** (recordatorio 1 h antes de la reserva) | ✅ | ✅ | [notifications](https://docs.expo.dev/versions/latest/sdk/notifications/) — «Local notifications … remain available in Expo Go» |
 | Notificaciones **push remotas**, Android | ❌ | ✅ | misma página: «unavailable in Expo Go on Android from SDK 53» |
 | Notificaciones **push remotas**, iOS | ⚠️ la doc no lo prohíbe, pero el token de Expo necesita un proyecto de EAS (`projectId`), que todavía no existe | ✅ | misma página |
-| **Ingresar con Google** | ❌ (el botón se oculta en Expo Go) | ✅ | [google-authentication](https://docs.expo.dev/guides/google-authentication/) — «These libraries can't be used in Expo Go» |
-| **Sign in with Apple** | ⚠️ funciona en iOS, pero con identificadores distintos a los de la app publicada | ✅ | [apple-authentication](https://docs.expo.dev/versions/latest/sdk/apple-authentication/) |
+| **Ingresar con Google** | ❌ | ✅ | [google-authentication](https://docs.expo.dev/guides/google-authentication/) — «These libraries can't be used in Expo Go». **Pendiente:** el servidor ya lo acepta (`POST /auth/google`), pero la app todavía no tiene el botón ni la librería. |
+| **Sign in with Apple** | ⚠️ funciona en iOS, con identificadores distintos a los de la app publicada | ✅ | [apple-authentication](https://docs.expo.dev/versions/latest/sdk/apple-authentication/). **Pendiente:** no está construido; será obligatorio en cuanto la app ofrezca Google, y el servidor lo tiene bloqueado por `ext-sodium` (ver `docs/AUTH-PROVEEDORES.md`). |
 
 **Cómo trabajarlo:** toda la interfaz y la navegación se prueban en Expo Go, que es donde el ciclo es más rápido. Para lo nativo que falta —push remoto, Face ID, calendario, Google y Apple Pay— se pasa a una compilación de desarrollo:
 
@@ -119,7 +124,7 @@ app-movil/
     │   ├── consultas.ts     TanStack Query con persistencia sin conexión
     │   ├── nativo.ts        calendario, compartir, descargas y push
     │   └── tipos.ts         formas del contrato de la API
-    └── tema/                tokens de color, espaciado y tipografía; modo claro y oscuro
+    └── tema/                tokens de color, espaciado y tipografía; siempre oscuro
 ```
 
 ### Decisiones que conviene conocer
@@ -138,17 +143,21 @@ app-movil/
 
 La marca de Nódico traducida al teléfono (`src/tema/tokens.ts`):
 
-| Token | Oscuro (base) | Claro | Uso |
-|---|---|---|---|
-| `fondo` | `#1A1918` | `#F6F4EE` | Fondo de la app |
-| `acento` | `#FFE124` | `#FFE124` | Único acento fuerte: botones principales, día elegido, anillo de salas |
-| `coral` | `#FF7A5C` | `#E8603F` | Estudio de contenido, problemas, no-show |
-| `lima` | `#B8E04A` | `#7FAE1C` | Días de coworking, estados «bien», ingresos |
-| `morado` | `#9B7BFF` | `#7A5AF0` | Asesoría IYEM, acompañante |
+**La app es negra siempre** y usa solo la paleta oficial de Nódico, la misma de la web (`tailwind.config.js`). No sigue el modo claro del sistema: `app.json` fija `userInterfaceStyle: "dark"`.
+
+| Token | Color | Uso |
+|---|---|---|
+| `fondo` | tinta `#1A1918` | Fondo de la app |
+| `superficie` / `superficieAlta` | dark `#2E2D2C` / `#3D3C3A` | Tarjetas, listas, campos |
+| `texto` / `textoSuave` | crema `#F4F1EA` / `#E8E1D1` | Texto principal y secundario |
+| `acento` | amarillo `#FFE124` | Único acento fuerte: botones, selección, pestaña activa, anillo de salas |
+| `coral` | `#EF7E88` | Estudio de contenido, problemas, no-show |
+| `lima` | `#D6E265` | Asesoría, estados «bien» (solo sobre oscuro) |
+| `morado` | `#864B95` | Solo como relleno con texto blanco; sobre negro no alcanza el contraste para texto o gráficas |
 
 - **Tipografía:** Carmen Sans (Heavy, ExtraBold, Bold y SemiBold) para números y títulos; GT Eesti para el texto. Los números grandes —horas restantes, días que faltan— usan Carmen Sans Heavy de 32 a 56 pt.
-- **Espaciado generoso:** márgenes laterales de 24 pt, tarjetas con 24 pt de relleno y radios de 24 pt.
-- **Modo claro y oscuro:** respeta el del sistema. Oscuro es la base de la marca.
+- **Espaciado generoso:** márgenes laterales de 24 pt, tarjetas con 24 pt de relleno y radios de 20 pt.
+- **Limpia y accesible:** listas agrupadas (`Grupo` + `Fila`) en lugar de tarjetas con bordes; títulos de sección en frase normal, sin mayúsculas espaciadas; un solo acento; contraste AA en todo el texto; el texto crece con el tamaño de letra del sistema (con tope); las pestañas llevan nombre; lector de pantalla con etiquetas completas; las animaciones respetan «reducir movimiento».
 - **Lo que la hace sentirse nativa:** anillos SVG animados con Reanimated en Inicio; hojas nativas para detalles; háptica al elegir, confirmar y cancelar; esqueletos que respiran en lugar de indicadores giratorios; deslizar para refrescar; deslizar una reserva para cancelarla; estados vacíos con ilustración y acción; gesto de regresar nativo; respeto del notch y la barra de gestos.
 
 ---
