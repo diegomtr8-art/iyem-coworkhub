@@ -23,7 +23,7 @@ class EstadoDeEspaciosTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        CarbonImmutable::setTestNow(CarbonImmutable::create(2026, 9, 2, 10, 0, 0)); // miércoles
+        CarbonImmutable::setTestNow(CarbonImmutable::create(2026, 9, 2, 10, 0, 0, 'America/Merida')); // miércoles
     }
 
     protected function tearDown(): void
@@ -70,7 +70,7 @@ class EstadoDeEspaciosTest extends TestCase
         Reserva::factory()->create(['espacio_id' => $sala->id, 'fecha' => today(),
             'hora_inicio' => '09:00:00', 'hora_fin' => '11:00:00', 'estatus' => 'Confirmada']);
 
-        CarbonImmutable::setTestNow(CarbonImmutable::create(2026, 9, 2, 12, 0, 0));
+        CarbonImmutable::setTestNow(CarbonImmutable::create(2026, 9, 2, 12, 0, 0, 'America/Merida'));
         $this->assertSame('libre', $this->estadoDe($sala->id)['estado']);
     }
 
@@ -99,7 +99,7 @@ class EstadoDeEspaciosTest extends TestCase
     public function test_fuera_de_horario_lo_dice(): void
     {
         $sala = $this->sala();
-        CarbonImmutable::setTestNow(CarbonImmutable::create(2026, 9, 2, 21, 0, 0)); // cerrado
+        CarbonImmutable::setTestNow(CarbonImmutable::create(2026, 9, 2, 21, 0, 0, 'America/Merida')); // cerrado
         $this->assertSame('fuera_horario', $this->estadoDe($sala->id)['estado']);
     }
 

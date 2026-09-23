@@ -20,7 +20,11 @@ class EnlaceDeAcceso extends Notification
 {
     use Queueable;
 
-    public function __construct(private readonly string $token)
+    /**
+     * @param  bool  $paraLaApp  el enlace abre la app en vez del sitio (se pidió
+     *                           desde el teléfono y solo sirve ahí)
+     */
+    public function __construct(private readonly string $token, private readonly bool $paraLaApp = false)
     {
     }
 
@@ -38,7 +42,11 @@ class EnlaceDeAcceso extends Notification
             ->subject('Tu enlace de acceso — Nódico')
             ->view('emails.enlace-magico', [
                 'nombre'  => $this->primerNombre($notifiable),
-                'url'     => route('enlace-magico.entrar', ['token' => $this->token]),
+                // Para la app, un enlace https que salta a la app: los clientes
+                // de correo no dejan pulsar un esquema propio (`nodico://`).
+                'url'     => $this->paraLaApp
+                    ? route('app.enlace', ['token' => $this->token])
+                    : route('enlace-magico.entrar', ['token' => $this->token]),
                 'minutos' => EnlaceMagico::MINUTOS_DE_VIDA,
             ]);
     }

@@ -263,4 +263,45 @@ return [
     */
     'zona_horaria' => env('NODICO_TZ', 'America/Merida'),
 
+
+    /*
+    |--------------------------------------------------------------------------
+    | App móvil (docs/API-MOVIL.md)
+    |--------------------------------------------------------------------------
+    | `version_minima`: por debajo, la API responde 409 `version_obsoleta` y la
+    | app pide actualizar. Los días de inactividad son los de la decisión del
+    | 22/09/2026: el token de miembro muere a los 60 días sin uso, el de
+    | reportes a los 15 (trae ingresos y datos de contacto de miembros).
+    |
+    | `url_enlace`: a dónde manda el enlace mágico pedido desde la app. En
+    | producción, el esquema propio; con Expo Go, la URL que imprime
+    | `npx expo start` (exp://IP:8081/--).
+    */
+    'app_movil' => [
+        'version_minima' => [
+            'ios'     => env('NODICO_APP_VERSION_MINIMA_IOS', '1.0.0'),
+            'android' => env('NODICO_APP_VERSION_MINIMA_ANDROID', '1.0.0'),
+        ],
+        'version_recomendada' => env('NODICO_APP_VERSION_RECOMENDADA', '1.0.0'),
+        'mantenimiento'         => (bool) env('NODICO_APP_MANTENIMIENTO', false),
+        'mensaje_mantenimiento' => env('NODICO_APP_MENSAJE_MANTENIMIENTO', 'Estamos haciendo mejoras. Vuelve en unos minutos.'),
+
+        'dias_inactividad' => [
+            'miembro'  => (int) env('NODICO_APP_DIAS_INACTIVIDAD_MIEMBRO', 60),
+            'reportes' => (int) env('NODICO_APP_DIAS_INACTIVIDAD_REPORTES', 15),
+        ],
+
+        'url_enlace' => env('NODICO_APP_URL_ENLACE', 'nodico://auth/enlace'),
+
+        // Client IDs de Google que pueden firmar un id_token para esta app.
+        'google_client_ids' => array_values(array_filter([
+            env('GOOGLE_CLIENT_ID'),
+            env('GOOGLE_CLIENT_ID_IOS'),
+            env('GOOGLE_CLIENT_ID_ANDROID'),
+        ])),
+
+        // La credencial QR vive como mucho esto (y nunca más que la membresía).
+        'credencial_dias' => (int) env('NODICO_CREDENCIAL_DIAS', 35),
+    ],
+
 ];

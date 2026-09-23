@@ -60,9 +60,17 @@ class ProfileController extends Controller
 
         $user = $request->user();
 
+        $borrador = app(\App\Servicios\Acceso\BorradorDeCuenta::class);
+
+        // Primero lo que puede fallar (cancelar la renovación en Stripe): si
+        // falla, la persona sigue con su sesión y ve el error.
+        $borrador->cancelarRenovacion($user);
+
+        // Cerrar sesión **antes** de borrar: `logout()` rota el «recordarme» y
+        // guarda al usuario, y sobre un usuario ya borrado lo volvería a crear.
         Auth::logout();
 
-        $user->delete();
+        $borrador->borrar($user);
 
         $request->session()->invalidate();
         $request->session()->regenerateToken();

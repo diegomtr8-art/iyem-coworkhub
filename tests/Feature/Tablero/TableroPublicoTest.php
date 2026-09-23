@@ -21,7 +21,7 @@ class TableroPublicoTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        CarbonImmutable::setTestNow(CarbonImmutable::create(2026, 9, 2, 10, 0, 0));
+        CarbonImmutable::setTestNow(CarbonImmutable::create(2026, 9, 2, 10, 0, 0, 'America/Merida'));
     }
 
     protected function tearDown(): void

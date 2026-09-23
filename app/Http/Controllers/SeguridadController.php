@@ -62,6 +62,19 @@ class SeguridadController extends Controller
                 'codigosSinUsar' => $usuario->codigosRecuperacion()->whereNull('usado_en')->count(),
             ],
 
+            // App móvil — teléfonos con sesión abierta (tokens de Sanctum).
+            'telefonos' => $usuario->tokens()
+                ->orderByDesc('last_used_at')
+                ->orderByDesc('id')
+                ->get()
+                ->map(fn ($t) => [
+                    'id'         => $t->id,
+                    'nombre'     => $t->name,
+                    'plataforma' => $t->plataforma,
+                    'ultimoUso'  => $t->last_used_at?->format('d/m/Y H:i'),
+                    'desde'      => $t->created_at?->format('d/m/Y'),
+                ]),
+
             'dispositivosConfiables' => $usuario->dispositivosConfiables()
                 ->where('expira_en', '>', now())
                 ->orderByDesc('created_at')
@@ -115,6 +128,24 @@ class SeguridadController extends Controller
      * prestado: hay que poder revocarlo **sin** acceso a ese equipo, y por eso
      * la confianza vive como fila en la base y no solo como cookie.
      */
+    /**
+     * App móvil — cerrar la sesión de un teléfono (uno perdido, por ejemplo).
+     * Revoca su token; sus avisos push caen en cascada.
+     */
+    public function cerrarTelefono(Request $request, int $token): RedirectResponse
+    {
+        $usuario = $request->user();
+        $fila    = $usuario->tokens()->whereKey($token)->first();
+
+        abort_unless($fila, 404);
+
+        $fila->delete();
+
+        EventoAutenticacion::registrar(EventoAuth::CierreRemoto, $usuario, contexto: ['app' => true, 'dispositivo' => $fila->name]);
+
+        return back()->with('success', 'Cerramos la sesión de la app en ' . $fila->name . '.');
+    }
+
     public function olvidarDispositivo(Request $request, DispositivoConfiable $dispositivo): RedirectResponse
     {
         abort_unless($dispositivo->user_id === $request->user()->id, 403);

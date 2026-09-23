@@ -44,7 +44,8 @@ class ValidadorDeReserva
         ?CarbonImmutable $ahora = null,
     ): void {
         $ahora = $ahora ?? CarbonImmutable::now();
-        $dia   = CarbonImmutable::parse($fecha)->startOfDay();
+        // El día y las horas son de Mérida (ver Reserva::zonaDelCalendario).
+        $dia   = CarbonImmutable::parse($fecha, Reserva::zonaDelCalendario())->startOfDay();
 
         $this->validarGranularidad($horaInicio, $horaFin);
         $this->validarDuracion($horaInicio, $horaFin);
@@ -160,7 +161,7 @@ class ValidadorDeReserva
 
         $maxima = (int) config('nodico.operacion.antelacion_maxima_dias', 90);
 
-        if ($dia->gt($ahora->addDays($maxima)->startOfDay())) {
+        if ($dia->gt($ahora->setTimezone(Reserva::zonaDelCalendario())->addDays($maxima)->startOfDay())) {
             throw ValidationException::withMessages([
                 'fecha' => 'Solo se puede reservar con ' . round($maxima / 30) . ' meses de antelación como máximo.',
             ]);

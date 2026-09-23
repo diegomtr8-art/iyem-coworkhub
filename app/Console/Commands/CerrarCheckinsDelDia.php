@@ -41,7 +41,13 @@ class CerrarCheckinsDelDia extends Command
                 continue;
             }
             // Cierre del día en que entró; nunca antes de su propia entrada.
-            $finDelDia = CarbonImmutable::parse($c->hora_entrada->toDateString() . ' ' . $cierre);
+            // El cierre es hora de Mérida del día **local** en que entró: en UTC
+            // las 19:00 caían a las 13:00 de Mérida y recortaban la estancia.
+            $zona      = \App\Models\Reserva::zonaDelCalendario();
+            $finDelDia = CarbonImmutable::parse(
+                $c->hora_entrada->copy()->setTimezone($zona)->toDateString() . ' ' . $cierre,
+                $zona,
+            );
             $salida = $finDelDia->lt($ahora) ? $finDelDia : $ahora;
             if ($salida->lt($c->hora_entrada)) {
                 $salida = $c->hora_entrada;

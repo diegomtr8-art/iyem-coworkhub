@@ -35,7 +35,8 @@ class DashboardController extends Controller
 
     public function index(Request $request)
     {
-        $ahora = CarbonImmutable::now();
+        // Hora de pared de Mérida, la del calendario de reservas.
+        $ahora = CarbonImmutable::now(\App\Models\Reserva::zonaDelCalendario());
         $hoy   = $ahora->startOfDay();
 
         return Inertia::render('Dashboard', [

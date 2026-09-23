@@ -41,7 +41,13 @@ class GestorDeAsesorias
         string $horarioPreferido,
         float $horas = 1,
         ?int $asesorPreferidoId = null,
+        ?User $solicitante = null,
     ): SolicitudAsesoria {
+        // Nodo Match (22/09/2026): el acompañante pide contra la bolsa
+        // compartida, pero la solicitud es **suya**. Sin solicitante explícito
+        // se asume el titular, que es lo que hacía siempre.
+        $userId = $solicitante?->id ?? $suscripcion->user_id;
+
         $plan = $suscripcion->plan;
 
         if (! BolsaDeHoras::Asesoria->incluidaEn($plan)) {
@@ -50,24 +56,25 @@ class GestorDeAsesorias
             ]);
         }
 
-        $dia = CarbonImmutable::parse($diaPreferido)->startOfDay();
+        // Día de calendario de Mérida, igual que `Reserva::hoy()` contra el que se compara.
+        $dia = CarbonImmutable::parse($diaPreferido, \App\Models\Reserva::zonaDelCalendario())->startOfDay();
 
-        if ($dia->lt(CarbonImmutable::today())) {
+        if ($dia->lt(\App\Models\Reserva::hoy())) {
             throw ValidationException::withMessages([
                 'dia_preferido' => 'Elige un día que no haya pasado.',
             ]);
         }
 
-        if ($dia->gt(CarbonImmutable::parse($suscripcion->fecha_fin))) {
+        if ($dia->gt(CarbonImmutable::parse($suscripcion->fecha_fin->toDateString(), \App\Models\Reserva::zonaDelCalendario()))) {
             throw ValidationException::withMessages([
                 'dia_preferido' => 'Ese día cae fuera de la vigencia de tu membresía.',
             ]);
         }
 
-        $this->verificarCupo($suscripcion, $horas, $dia);
+        $this->verificarCupo($suscripcion, $horas, $dia, null, $userId);
 
         return SolicitudAsesoria::create([
-            'user_id'             => $suscripcion->user_id,
+            'user_id'             => $userId,
             'suscripcion_id'      => $suscripcion->id,
             'tema'                => $tema,
             'dia_preferido'       => $dia->toDateString(),
@@ -110,6 +117,7 @@ class GestorDeAsesorias
                 $fresca->horas,
                 CarbonImmutable::parse($fechaConfirmada),
                 $fresca->id,
+                $fresca->user_id,
             );
 
             // El nombre se **congela** aquí, aunque venga del catálogo: si al
@@ -135,7 +143,25 @@ class GestorDeAsesorias
                 nota: 'Asesoría confirmada con ' . ($asesor?->nombre ?? $asesorNombre) . '.',
             );
 
-            return $fresca->refresh();
+            $fresca->refresh();
+
+            // App móvil: aviso push de la confirmación, ya guardada. Un fallo
+            // del aviso no deshace la confirmación.
+            DB::afterCommit(function () use ($fresca) {
+                try {
+                    $fresca->user?->notify(new \App\Notifications\AvisoDeLaApp(
+                        'reservas',
+                        'Tu asesoría está confirmada',
+                        'Con ' . $fresca->asesorLegible() . ', el '
+                            . $fresca->fecha_confirmada?->translatedFormat('j \d\e F, H:i') . ' h.',
+                        ['pantalla' => 'asesoria', 'id' => $fresca->id],
+                    ));
+                } catch (\Throwable $e) {
+                    report($e);
+                }
+            });
+
+            return $fresca;
         });
     }
 
@@ -226,6 +252,7 @@ class GestorDeAsesorias
         float $horas,
         CarbonImmutable $dia,
         ?int $excluyendoId = null,
+        ?int $userId = null,
     ): void {
         $restante = $this->libro->saldoDelCiclo($suscripcion, BolsaDeHoras::Asesoria);
 
@@ -241,7 +268,11 @@ class GestorDeAsesorias
             return;
         }
 
+        // El tope diario es **por persona** (decisión del 22/09/2026): en un
+        // Match, titular y acompañante tienen cada uno su hora al día, aunque
+        // las dos salgan de la misma bolsa.
         $eseDia = SolicitudAsesoria::where('suscripcion_id', $suscripcion->id)
+            ->when($userId, fn ($q, $id) => $q->where('user_id', $id))
             ->whereIn('estado', [EstadoAsesoria::Confirmada->value, EstadoAsesoria::Realizada->value])
             ->when($excluyendoId, fn ($q, $id) => $q->whereKeyNot($id))
             ->where(fn ($q) => $q

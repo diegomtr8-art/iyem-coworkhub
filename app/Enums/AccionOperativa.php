@@ -48,6 +48,10 @@ enum AccionOperativa: string
     case AperturaPuerta    = 'apertura_puerta';
     case ReconexionTorno   = 'reconexion_torno';
 
+    // App móvil.
+    case ValidacionCredencial = 'validacion_credencial';
+    case ConsultaReportes     = 'consulta_reportes';
+
     public function etiqueta(): string
     {
         return match ($this) {
@@ -70,6 +74,8 @@ enum AccionOperativa: string
             self::VinculacionRostro     => 'Vinculación de rostro con miembro',
             self::AperturaPuerta        => 'Apertura de puerta desde el panel',
             self::ReconexionTorno       => 'Reconexión manual del torno',
+            self::ValidacionCredencial  => 'Validación de credencial en recepción',
+            self::ConsultaReportes      => 'Consulta de reportes con datos de miembros',
         };
     }
 
@@ -98,6 +104,7 @@ enum AccionOperativa: string
             self::ConsultaDatosFiscales,
             self::CambioDatosFiscales,
             self::ExportacionFiscal,
+            self::ConsultaReportes,
         ], true);
     }
 

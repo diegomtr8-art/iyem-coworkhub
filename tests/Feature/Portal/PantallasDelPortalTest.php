@@ -244,9 +244,9 @@ class PantallasDelPortalTest extends TestCase
         // Dentro de una hora: ya no.
         Reserva::factory()->create([
             'user_id' => $user->id, 'espacio_id' => $sala->id, 'suscripcion_id' => $suscripcion->id,
-            'fecha' => today(),
-            'hora_inicio' => now()->addHour()->format('H:i:s'),
-            'hora_fin' => now()->addHours(2)->format('H:i:s'),
+            'fecha' => now('America/Merida')->toDateString(),
+            'hora_inicio' => now('America/Merida')->addHour()->format('H:i:s'),
+            'hora_fin' => now('America/Merida')->addHours(2)->format('H:i:s'),
         ]);
 
         $this->actingAs($user)->get(route('portal.reservas'))->assertInertia(function (AssertableInertia $p) {

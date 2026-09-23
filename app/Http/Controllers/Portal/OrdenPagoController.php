@@ -9,7 +9,7 @@ use App\Http\Controllers\Controller;
 use App\Models\DatosFiscales;
 use App\Models\OrdenPago;
 use App\Models\Plane;
-use App\Notifications\ReferenciaGenerada;
+use App\Servicios\Pagos\GeneradorDeReferencia;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -29,9 +29,6 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
  */
 class OrdenPagoController extends Controller
 {
-    /** Los datos que contabilidad necesita sí o sí para poder facturar. */
-    private const FISCALES_OBLIGATORIOS = ['rfc', 'razon_social', 'regimen_fiscal', 'uso_cfdi', 'codigo_postal'];
-
     /** Fase 2 — elegir cómo pagar, con la consecuencia de cada opción. */
     public function elegir(Request $request, Plane $plan): Response
     {
@@ -56,45 +53,19 @@ class OrdenPagoController extends Controller
             'pide_factura' => ['required', 'boolean'],
         ]);
 
-        $usuario = $request->user();
-        $pideFactura = (bool) $datos['pide_factura'];
-        $df = $usuario->datosFiscales;
-
-        // Contabilidad no puede facturar sin datos fiscales completos. También se
-        // valida en el servidor, no solo en la pantalla (Fase 7).
-        if ($pideFactura && ! $this->datosFiscalesCompletos($usuario)) {
+        // Sin datos fiscales completos no se puede facturar: se manda a
+        // completarlos, como siempre. La regla vive en el generador.
+        if ((bool) $datos['pide_factura'] && ! $this->generador()->datosFiscalesCompletos($request->user())) {
             return redirect()->route('portal.datos-fiscales')
                 ->with('info', 'Para pedir factura necesitas completar tus datos fiscales. Complétalos y vuelve a generar tu referencia.');
         }
 
-        $ref  = OrdenPago::nuevaReferencia();
-        $dias = (int) config('nodico.pagos_referencia.vencimiento_dias', 7);
-
-        $orden = new OrdenPago([
-            'referencia'             => $ref['referencia'],
-            'referencia_normalizada' => $ref['referencia_normalizada'],
-            'user_id'                => $usuario->id,
-            'plan_id'                => $plan->id,
-            'monto'                  => (float) $plan->precio,
-            'metodo'                 => MetodoReferencia::from($datos['metodo']),
-            'pide_factura'           => $pideFactura,
-            'estado_pago'            => EstadoPagoOrden::Generada,
-            'estado_factura'         => $pideFactura ? EstadoFacturaOrden::Solicitada : EstadoFacturaOrden::NoSolicitada,
-            'vence_el'               => now()->addDays($dias)->endOfDay(),
-        ]);
-
-        if ($pideFactura) {
-            $orden->copiarFiscalesDe($df);   // foto fiscal, no enlace vivo
-        }
-
-        $orden->save();
-
-        // El correo con la referencia (Fase 6). Un fallo de correo no tumba el flujo.
-        try {
-            $usuario->notify(new ReferenciaGenerada($orden));
-        } catch (\Throwable $e) {
-            report($e);
-        }
+        $orden = $this->generador()->generar(
+            $request->user(),
+            $plan,
+            MetodoReferencia::from($datos['metodo']),
+            (bool) $datos['pide_factura'],
+        );
 
         return redirect()->route('portal.referencia.mostrar', $orden);
     }
@@ -104,16 +75,9 @@ class OrdenPagoController extends Controller
     {
         $this->soloDueno($request, $orden);
 
-        $banco = config('nodico.pagos_referencia');
-
         return Inertia::render('Portal/Referencia', [
-            'orden'         => $this->paraLaVista($orden->load('plan')),
-            'datosBancarios' => $orden->metodo === MetodoReferencia::Transferencia ? [
-                'banco'        => $banco['banco'] ?? '',
-                'clabe'        => $banco['clabe'] ?? '',
-                'beneficiario' => $banco['beneficiario'] ?? '',
-                'cuenta'       => $banco['cuenta'] ?? '',
-            ] : null,
+            'orden'          => $this->paraLaVista($orden->load('plan')),
+            'datosBancarios' => $this->generador()->datosBancarios($orden),
         ]);
     }
 
@@ -199,16 +163,12 @@ class OrdenPagoController extends Controller
 
     private function datosFiscalesCompletos(?\App\Models\User $usuario): bool
     {
-        $df = $usuario?->datosFiscales;
-        if (! $df) {
-            return false;
-        }
-        foreach (self::FISCALES_OBLIGATORIOS as $campo) {
-            if (blank($df->{$campo})) {
-                return false;
-            }
-        }
-        return true;
+        return $this->generador()->datosFiscalesCompletos($usuario);
+    }
+
+    private function generador(): GeneradorDeReferencia
+    {
+        return app(GeneradorDeReferencia::class);
     }
 
     private function paraLaVista(OrdenPago $o): array

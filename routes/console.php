@@ -82,3 +82,13 @@ Schedule::command('nodico:rotar-emprendedor')
     ->onOneServer()
     ->appendOutputTo($bitacoraDeTareas);
 
+
+// App móvil — recordatorios de reserva (una hora antes) y membresía por vencer.
+// Cada cuarto de hora en horario de operación; cada aviso sale una sola vez.
+Schedule::command('nodico:avisos-push')
+    ->everyFifteenMinutes()
+    ->between('07:00', '21:00')
+    ->timezone('America/Merida')
+    ->withoutOverlapping()
+    ->onOneServer()
+    ->appendOutputTo($bitacoraDeTareas);

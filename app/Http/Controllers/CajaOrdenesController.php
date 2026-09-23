@@ -94,7 +94,7 @@ class CajaOrdenesController extends Controller
 
         // Aviso al miembro: pago confirmado, membresía activa (Fase 6).
         try {
-            $orden->user->notify(new PagoConfirmado($orden));
+            $orden->user?->notify(new PagoConfirmado($orden));
         } catch (\Throwable $e) {
             report($e);
         }
@@ -104,9 +104,9 @@ class CajaOrdenesController extends Controller
             ->where('estado_pago', EstadoPagoOrden::Generada)
             ->whereKeyNot($orden->id)->count();
 
-        $msg = "Pago confirmado. Membresía de {$orden->user->name} activa.";
+        $msg = "Pago confirmado. Membresía de " . ($orden->user?->name ?? 'una cuenta ya borrada') . " activa.";
         if ($otras > 0) {
-            return back()->with('warning', $msg . " Ojo: {$orden->user->name} tiene {$otras} referencia(s) más sin pagar; revísalas para no cobrar doble.");
+            return back()->with('warning', $msg . " Ojo: " . ($orden->user?->name ?? 'esa persona') . " tiene {$otras} referencia(s) más sin pagar; revísalas para no cobrar doble.");
         }
 
         return back()->with('success', $msg);
@@ -133,6 +133,12 @@ class CajaOrdenesController extends Controller
             return back()->with('error', 'Solo se regenera una orden vencida.');
         }
 
+        // La cuenta se borró: la orden se conserva como registro, pero no hay a
+        // quién cobrarle una nueva.
+        if (! $orden->user) {
+            return back()->with('error', 'Esa cuenta ya no existe; no se puede regenerar la referencia.');
+        }
+
         $plan = $orden->plan;
         $ref  = OrdenPago::nuevaReferencia();
         $dias = (int) config('nodico.pagos_referencia.vencimiento_dias', 7);
@@ -150,7 +156,7 @@ class CajaOrdenesController extends Controller
             'vence_el'               => now()->addDays($dias)->endOfDay(),
         ]);
         if ($orden->pide_factura) {
-            $nueva->copiarFiscalesDe($orden->user->datosFiscales);
+            $nueva->copiarFiscalesDe($orden->user?->datosFiscales);
         }
         $nueva->save();
 
@@ -236,7 +242,15 @@ class CajaOrdenesController extends Controller
         ]);
 
         try {
-            $orden->user->notify(new FacturaEmitida($orden));
+            $orden->user?->notify(new FacturaEmitida($orden));
+
+            // App móvil: el aviso push, si tiene la app y no lo apagó.
+            $orden->user?->notify(new \App\Notifications\AvisoDeLaApp(
+                'membresia',
+                'Tu factura está lista',
+                'Ya puedes descargar tu factura de ' . ($orden->plan?->nombre ?? 'Nódico') . ' desde la app.',
+                ['pantalla' => 'facturas'],
+            ));
         } catch (\Throwable $e) {
             report($e);
         }

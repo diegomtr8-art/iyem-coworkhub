@@ -256,9 +256,9 @@ class MotorDeReservasTest extends TestCase
             'user_id'        => $user->id,
             'espacio_id'     => $sala->id,
             'suscripcion_id' => $suscripcion->id,
-            'fecha'          => today(),
-            'hora_inicio'    => now()->addHour()->format('H:i:s'),
-            'hora_fin'       => now()->addHours(3)->format('H:i:s'),
+            'fecha'          => now('America/Merida')->toDateString(),
+            'hora_inicio'    => now('America/Merida')->addHour()->format('H:i:s'),
+            'hora_fin'       => now('America/Merida')->addHours(3)->format('H:i:s'),
         ]);
 
         $this->consumir($suscripcion, BolsaDeHoras::Sala, 2);
@@ -287,9 +287,9 @@ class MotorDeReservasTest extends TestCase
             'user_id'        => $user->id,
             'espacio_id'     => $sala->id,
             'suscripcion_id' => $suscripcion->id,
-            'fecha'          => today(),
-            'hora_inicio'    => now()->addHours(2)->addMinutes(5)->format('H:i:s'),
-            'hora_fin'       => now()->addHours(4)->format('H:i:s'),
+            'fecha'          => now('America/Merida')->toDateString(),
+            'hora_inicio'    => now('America/Merida')->addHours(2)->addMinutes(5)->format('H:i:s'),
+            'hora_fin'       => now('America/Merida')->addHours(4)->format('H:i:s'),
         ]);
 
         $this->assertTrue($reserva->cancelarDevuelveHoras());

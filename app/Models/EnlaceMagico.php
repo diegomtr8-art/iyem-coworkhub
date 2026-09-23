@@ -67,6 +67,30 @@ class EnlaceMagico extends Model
         return ['token' => $token, 'secreto' => $secreto];
     }
 
+    /**
+     * App móvil: el enlace se ata al **teléfono** que lo pidió, no a una sesión
+     * de navegador. La app genera un secreto, lo guarda y manda solo su SHA-256
+     * (`verificador`); esa es directamente la huella. Al canjear, trae el
+     * secreto y `coincideLaHuella()` compara igual que en la web. Mismo
+     * principio que PKCE: un enlace reenviado no sirve en otro teléfono.
+     */
+    public static function emitirParaApp(User $usuario, ?string $ip, string $verificador): string
+    {
+        static::where('user_id', $usuario->id)->whereNull('usado_en')->delete();
+
+        $token = Str::random(48);
+
+        static::create([
+            'user_id'   => $usuario->id,
+            'token'     => static::hashear($token),
+            'huella'    => strtolower($verificador),
+            'ip'        => $ip,
+            'expira_en' => now()->addMinutes(self::MINUTOS_DE_VIDA),
+        ]);
+
+        return $token;
+    }
+
     public function vigente(): bool
     {
         return $this->usado_en === null && $this->expira_en->isFuture();

@@ -12,6 +12,8 @@ use App\Models\Comunicado;
 use App\Models\EventoAutenticacion;
 use App\Models\IdentidadSocial;
 use App\Models\User;
+use App\Servicios\Acceso\IdentidadDeProveedor;
+use App\Servicios\Acceso\PerfilExterno;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -125,7 +127,18 @@ class OAuthController extends Controller
             );
         }
 
-        $usuario = $this->resolverUsuario($proveedor, $externo, $correo);
+        $bruto = (array) ($externo->user ?? []);
+
+        $usuario = app(IdentidadDeProveedor::class)->resolver($proveedor, new PerfilExterno(
+            id: (string) $externo->getId(),
+            correo: $correo,
+            nombre: $externo->getName(),
+            avatar: $externo->getAvatar(),
+            // Google entrega `email_verified` en el token; Socialite lo deja en
+            // `user`. Ante la duda se responde **no**: es la respuesta segura.
+            correoVerificado: ($bruto['email_verified'] ?? false) === true
+                || ($bruto['verified_email'] ?? false) === true,
+        ));
 
         if ($usuario === null) {
             return redirect()->route('login')->with(
@@ -146,130 +159,6 @@ class OAuthController extends Controller
         $request->session()->regenerate(true);
 
         return $this->alPortal($usuario);
-    }
-
-    /**
-     * Devuelve la cuenta con la que iniciar sesión, o `null` si no se puede
-     * vincular con seguridad.
-     */
-    private function resolverUsuario(string $proveedor, object $externo, string $correo): ?User
-    {
-        $idExterno = (string) $externo->getId();
-
-        // 1. Esta identidad ya estaba vinculada: es la vía normal.
-        $identidad = IdentidadSocial::where('proveedor', $proveedor)
-            ->where('proveedor_id', $idExterno)
-            ->first();
-
-        if ($identidad) {
-            $identidad->update([
-                'correo'           => $correo,
-                'avatar'           => $externo->getAvatar(),
-                'ultimo_acceso_en' => now(),
-            ]);
-
-            return $identidad->usuario;
-        }
-
-        $verificado = $this->correoVerificadoPorElProveedor($externo);
-        $existente  = User::where('email', $correo)->first();
-
-        // 2. Ya hay una cuenta con ese correo: se vincula, **solo** si el
-        //    proveedor afirma que el correo está verificado. Sin esa
-        //    comprobación, registrar una cuenta de Google con el correo de
-        //    otra persona seria suficiente para quedarse con su cuenta.
-        if ($existente) {
-            if (! $verificado) {
-                return null;
-            }
-
-            $this->vincular($existente, $proveedor, $idExterno, $correo, $externo->getAvatar());
-
-            return $existente;
-        }
-
-        // 3. Nadie con ese correo: se crea la cuenta.
-        return $this->crearDesdeProveedor($proveedor, $idExterno, $correo, $externo, $verificado);
-    }
-
-    /**
-     * Google entrega `email_verified` en el token; Socialite lo deja en `user`.
-     * Ante la duda se responde **no**: es la respuesta segura.
-     */
-    private function correoVerificadoPorElProveedor(object $externo): bool
-    {
-        $bruto = (array) ($externo->user ?? []);
-
-        return ($bruto['email_verified'] ?? false) === true
-            || ($bruto['verified_email'] ?? false) === true;
-    }
-
-    private function vincular(
-        User $usuario,
-        string $proveedor,
-        string $idExterno,
-        string $correo,
-        ?string $avatar,
-    ): void {
-        // `create` y no `updateOrCreate`: el unico compuesto de la tabla es lo
-        // que impide que dos cuentas reclamen la misma identidad, y quiero que
-        // salte si algo intenta saltarselo.
-        IdentidadSocial::create([
-            'user_id'          => $usuario->id,
-            'proveedor'        => $proveedor,
-            'proveedor_id'     => $idExterno,
-            'correo'           => $correo,
-            'avatar'           => $avatar,
-            'ultimo_acceso_en' => now(),
-        ]);
-
-        EventoAutenticacion::registrar(
-            EventoAuth::VinculoSocial,
-            $usuario,
-            contexto: ['proveedor' => $proveedor],
-        );
-    }
-
-    private function crearDesdeProveedor(
-        string $proveedor,
-        string $idExterno,
-        string $correo,
-        object $externo,
-        bool $verificado,
-    ): User {
-        return DB::transaction(function () use ($proveedor, $idExterno, $correo, $externo, $verificado) {
-            $usuario = new User();
-
-            $usuario->fill([
-                'name'  => (string) ($externo->getName() ?: Str::before($correo, '@')),
-                'email' => $correo,
-            ]);
-
-            $usuario->forceFill([
-                'tipo'          => RolUsuario::Miembro->value,
-                'estado_cuenta' => EstadoCuenta::Pendiente->value,
-                'face_id_ok'    => false,
-                // Quien entra con Google queda verificado: Google ya comprobó
-                // esa dirección. Si el proveedor no lo afirma, no se da por
-                // hecho.
-                'email_verified_at' => $verificado ? now() : null,
-                // Sin contraseña. Se le ofrece ponerla desde el perfil, sin
-                // obligarlo; mientras tanto su acceso es la identidad externa.
-                'password' => null,
-            ])->save();
-
-            Comunicado::create([
-                'user_id' => $usuario->id,
-                'titulo'  => '¡Bienvenido a Nódico, ' . explode(' ', $usuario->name)[0] . '!',
-                'mensaje' => 'Entraste con tu cuenta de ' . ucfirst($proveedor) . '. Cuando contrates un plan o pases por recepción, activamos tu membresía y el registro de Face ID.',
-                'tipo'    => 'bienvenida',
-                'leido'   => false,
-            ]);
-
-            $this->vincular($usuario, $proveedor, $idExterno, $correo, $externo->getAvatar());
-
-            return $usuario;
-        });
     }
 
     /**

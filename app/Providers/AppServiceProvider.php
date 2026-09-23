@@ -36,10 +36,50 @@ class AppServiceProvider extends ServiceProvider
         $this->limitarElAcceso();
         $this->marcarLosCorreosDeAcceso();
         $this->llevarACadaQuienASuPortal();
+        $this->prepararLaAppMovil();
 
         Event::subscribe(RegistrarEventosDeAuth::class);
 
         Vite::prefetch(concurrency: 3);
+    }
+
+    /**
+     * App móvil (docs/API-MOVIL.md §4.4 y §4.5).
+     *
+     * **Caducidad por inactividad**, no absoluta: el token de miembro muere a
+     * los 60 días sin usarse y el de reportes a los 15. Quien abre la app tres
+     * veces por semana no vuelve a iniciar sesión nunca; un teléfono olvidado
+     * en un cajón pierde el acceso solo. Sanctum actualiza `last_used_at` en
+     * cada petición, así que basta con mirarlo aquí.
+     *
+     * **Límites por token**, no por IP: todo el coworking sale por la misma IP
+     * y no puede ser que la app de uno frene la de los demás.
+     */
+    private function prepararLaAppMovil(): void
+    {
+        \Laravel\Sanctum\Sanctum::authenticateAccessTokensUsing(
+            function (\Laravel\Sanctum\PersonalAccessToken $token, bool $valido): bool {
+                if (! $valido) {
+                    return false;
+                }
+
+                $cara = in_array('reportes', (array) $token->abilities, true) ? 'reportes' : 'miembro';
+                $dias = (int) config("nodico.app_movil.dias_inactividad.{$cara}", 60);
+                $ref  = $token->last_used_at ?? $token->created_at;
+
+                return $ref !== null && $ref->gt(now()->subDays($dias));
+            }
+        );
+
+        $quien = fn (Request $request) => 'token:' . ($request->user()?->currentAccessToken()?->id ?? $request->ip());
+
+        RateLimiter::for('movil', fn (Request $request) => $request->isMethod('GET')
+            ? Limit::perMinute(120)->by($quien($request))
+            : Limit::perMinute(30)->by($quien($request)));
+
+        RateLimiter::for('movil-reserva', fn (Request $request) => Limit::perMinute(10)->by($quien($request)));
+
+        RateLimiter::for('movil-descargas', fn (Request $request) => Limit::perMinute(20)->by($quien($request)));
     }
 
     /**

@@ -37,7 +37,9 @@ class EstadoDeEspacios
     /** @return array<int, array<string, mixed>> el estado de cada espacio del tablero. */
     public function paraTablero(?CarbonImmutable $ahora = null): array
     {
-        $ahora = $ahora ?? CarbonImmutable::now();
+        // Hora de pared de Mérida: el horario, las reservas y los bloqueos
+        // están escritos en ella (ver Reserva::zonaDelCalendario).
+        $ahora = ($ahora ?? CarbonImmutable::now())->setTimezone(Reserva::zonaDelCalendario());
         $hoy   = $ahora->startOfDay();
 
         $espacios = Espacio::query()
@@ -79,7 +81,9 @@ class EstadoDeEspacios
      */
     public function agendaDe(Espacio $espacio, ?CarbonImmutable $ahora = null): array
     {
-        $ahora = $ahora ?? CarbonImmutable::now();
+        // Hora de pared de Mérida: el horario, las reservas y los bloqueos
+        // están escritos en ella (ver Reserva::zonaDelCalendario).
+        $ahora = ($ahora ?? CarbonImmutable::now())->setTimezone(Reserva::zonaDelCalendario());
         $hoy   = $ahora->startOfDay();
         $franja = $this->calendario->franjaDelDia($espacio, $hoy);
 
@@ -209,8 +213,8 @@ class EstadoDeEspacios
 
     private function vigenteAhora(string $inicio, string $fin, CarbonImmutable $hoy, CarbonImmutable $ahora): bool
     {
-        $ini = CarbonImmutable::parse($hoy->toDateString() . ' ' . substr($inicio, 0, 5));
-        $end = CarbonImmutable::parse($hoy->toDateString() . ' ' . substr($fin, 0, 5));
+        $ini = CarbonImmutable::parse($hoy->toDateString() . ' ' . substr($inicio, 0, 5), Reserva::zonaDelCalendario());
+        $end = CarbonImmutable::parse($hoy->toDateString() . ' ' . substr($fin, 0, 5), Reserva::zonaDelCalendario());
 
         return $ini->lte($ahora) && $end->gt($ahora);
     }

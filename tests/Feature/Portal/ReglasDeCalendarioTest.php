@@ -145,7 +145,7 @@ class ReglasDeCalendarioTest extends TestCase
         $validador = app(ValidadorDeReserva::class);
         $sala      = Espacio::factory()->salaJuntas()->create();
 
-        $lunes = CarbonImmutable::parse($this->lunes());
+        $lunes = CarbonImmutable::parse($this->lunes(), 'America/Merida');
         $ahora = $lunes->setTime(10, 0);
 
         // Como miembro, para dentro de 5 minutos: demasiado justo.

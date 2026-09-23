@@ -103,7 +103,7 @@ class AsesoriasController extends Controller
             'tema_id'             => ['required', 'integer', 'exists:temas_asesoria,id'],
             'detalle'             => ['nullable', 'string', 'max:500'],
             'asesor_preferido_id' => ['nullable', 'integer', 'exists:asesores,id'],
-            'dia_preferido'       => ['required', 'date', 'after_or_equal:today'],
+            'dia_preferido'       => ['required', 'date', 'after_or_equal:' . \App\Models\Reserva::hoyYmd()],
             'horario_preferido'   => ['required', 'string', 'max:120'],
             'horas'               => ['nullable', 'numeric', 'min:0.5', 'max:8'],
         ], [
@@ -130,6 +130,7 @@ class AsesoriasController extends Controller
             horarioPreferido: $datos['horario_preferido'],
             horas: (float) ($datos['horas'] ?? 1),
             asesorPreferidoId: $datos['asesor_preferido_id'] ?? null,
+            solicitante: $request->user(),
         );
 
         return back()->with(

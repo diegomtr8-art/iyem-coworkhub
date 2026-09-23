@@ -36,11 +36,49 @@ class LoginRequest extends FormRequest
      */
     public function authenticate(): void
     {
+        $this->comprobar(fn () => Auth::attempt($this->only('email', 'password'), $this->boolean('remember')));
+    }
+
+    /**
+     * App móvil: las mismas defensas —retraso creciente, hash señuelo,
+     * bitácora— pero sin abrir sesión web, que en la API no existe. Devuelve la
+     * cuenta si la contraseña es correcta.
+     *
+     * @throws ValidationException
+     */
+    public function usuarioSinSesion(): User
+    {
+        $proveedor   = Auth::guard('web')->getProvider();
+        $credenciales = $this->only('email', 'password');
+        $usuario     = null;
+
+        $this->comprobar(function () use ($proveedor, $credenciales, &$usuario) {
+            $candidato = $proveedor->retrieveByCredentials($credenciales);
+
+            if ($candidato && $proveedor->validateCredentials($candidato, $credenciales)) {
+                $usuario = $candidato;
+
+                return true;
+            }
+
+            return false;
+        });
+
+        return $usuario;
+    }
+
+    /**
+     * @param  callable(): bool  $intento
+     *
+     * @throws ValidationException
+     */
+    private function comprobar(callable $intento): void
+    {
         $control = app(ControlDeIntentos::class);
 
         $this->asegurarQueNoHayEspera($control);
 
-        if (Auth::attempt($this->only('email', 'password'), $this->boolean('remember'))) {
+        if ($intento()) {
             $control->limpiar($this->correo());
 
             return;

@@ -5,7 +5,7 @@ import {
   LayoutDashboard, Users, CalendarDays, Clock, Receipt,
   Megaphone, BarChart3, Building2, Tag, LogOut, Menu, X, Home, UserCheck, PartyPopper,
   ScrollText, ShieldCheck, ShieldAlert, Lightbulb, Newspaper, Wallet, DoorOpen,
-  Monitor as MonitorIcon
+  Monitor as MonitorIcon, QrCode
 } from 'lucide-vue-next'
 import { Toaster } from 'vue-sonner'
 import BuscadorMiembro from '@/Components/Panel/BuscadorMiembro.vue'
@@ -47,7 +47,8 @@ const grupos = computed(() => [
       { label: 'Hoy',          href: route('dashboard'),      icon: LayoutDashboard, active: 'dashboard', ver: puede('operar-checkins') },
       { label: 'Check-in',     href: route('checkins.index'), icon: Clock,           active: 'checkins*', ver: puede('operar-checkins') },
       { label: 'Day-pass interior', href: route('daypass.index'), icon: UserCheck,   active: 'daypass*',  ver: puede('operar-checkins') },
-      { label: 'Accesos',      href: route('accesos.index'),  icon: DoorOpen,        active: 'accesos.*', ver: puede('operar-checkins') },
+      { label: 'Accesos',      href: route('accesos.index'),  icon: DoorOpen,        active: 'accesos.index', ver: puede('operar-checkins') },
+      { label: 'Credencial',   href: route('accesos.credencial'), icon: QrCode,      active: 'accesos.credencial*', ver: puede('operar-checkins') },
       { label: 'Personas',     href: route('personas.index'), icon: Users,           active: 'personas*', ver: puede('operar-checkins') },
       { label: 'Agenda',       href: route('agenda.index'),   icon: CalendarDays,    active: 'agenda*',   ver: puede('gestionar-reservas') },
       { label: 'Miembros',     href: route('miembros.index'), icon: Users,           active: 'miembros*', ver: puede('ver-miembros') },

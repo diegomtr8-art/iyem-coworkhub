@@ -50,6 +50,18 @@ Route::post('/contacto',   [ContactoController::class, 'store'])
 Route::get('/aviso-de-privacidad', [WelcomeController::class, 'privacidad'])->name('privacidad');
 Route::get('/terminos',            [WelcomeController::class, 'terminos'])->name('terminos');
 
+// App móvil — el enlace mágico pedido desde la app. Los clientes de correo no
+// dejan pulsar un esquema propio (`nodico://`), así que el correo trae esta URL
+// y aquí se salta a la app. El token solo lo puede canjear el teléfono que
+// guarda el secreto (ver EnlaceMagico::emitirParaApp).
+Route::get('/app/enlace/{token}', function (string $token) {
+    $base = (string) config('nodico.app_movil.url_enlace');
+
+    return response()
+        ->view('app-enlace', ['destino' => $base . (str_contains($base, '?') ? '&' : '?') . 'token=' . $token])
+        ->header('Referrer-Policy', 'no-referrer');
+})->where('token', '[A-Za-z0-9]{48}')->middleware('throttle:30,1')->name('app.enlace');
+
 // Tablero público de ocupación (Fase 6): sin sesión, con token de solo lectura
 // en la URL. Con límite de peticiones; el JSON no lleva datos de personas.
 Route::prefix('tablero')->group(function () {
@@ -225,6 +237,11 @@ Route::middleware(['auth', 'verified', 'portal:operativo', 'no.suspendida', 'con
         Route::post('accesos/vincular', [AccesosPanelController::class, 'vincular'])->name('accesos.vincular');
         Route::post('accesos/abrir-puerta', [AccesosPanelController::class, 'abrirPuerta'])->name('accesos.abrir');
         Route::post('accesos/reconectar', [AccesosPanelController::class, 'reconectar'])->name('accesos.reconectar');
+
+        // App móvil — validar la credencial QR del miembro en recepción.
+        Route::get('accesos/credencial', [\App\Http\Controllers\CredencialPanelController::class, 'mostrar'])->name('accesos.credencial');
+        Route::post('accesos/credencial', [\App\Http\Controllers\CredencialPanelController::class, 'validar'])
+            ->middleware('throttle:120,1')->name('accesos.credencial.validar');
 
         // Los tres listados: miembros, empleados y servicio social.
         Route::get('accesos/personas', [PersonasAccesoController::class, 'index'])->name('personas.index');

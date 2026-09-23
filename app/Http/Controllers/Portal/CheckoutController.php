@@ -10,7 +10,7 @@ use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
-use Laravel\Cashier\Cashier;
+use App\Servicios\Pagos\CobroConTarjeta;
 
 /**
  * Fase 4.A — el cobro ocurre **dentro** de Nódico, con Stripe Elements.
@@ -56,34 +56,13 @@ class CheckoutController extends Controller
             ]);
         }
 
-        $usuario = $request->user();
-        $usuario->createOrGetStripeCustomer();
-
-        if ($plan->cobro_recurrente) {
-            // Suscripción: se guarda el método con un SetupIntent y luego se crea
-            // la suscripción en el servidor (procesarSuscripcion).
-            $intent = $usuario->createSetupIntent();
-        } else {
-            // Pago único: un PaymentIntent por el importe, con la metadata que el
-            // webhook usará para saber a quién y qué plan activar.
-            $intent = $usuario->stripe()->paymentIntents->create([
-                'amount'   => (int) round($plan->precio * 100),
-                'currency' => config('cashier.currency', 'mxn'),
-                'customer' => $usuario->stripe_id,
-                'automatic_payment_methods' => ['enabled' => true],
-                'metadata' => [
-                    'plan_id' => (string) $plan->id,
-                    'user_id' => (string) $usuario->id,
-                    'tipo'    => 'pago_unico_nodico',
-                ],
-            ]);
-        }
+        $intent = $this->cobro()->preparar($request->user(), $plan, exigirPrecio: false);
 
         return Inertia::render('Portal/Pago', [
             'plan'           => $datosPlan,
             'modo'           => $modo,
             'vistaPrevia'    => false,
-            'clientSecret'   => $intent->client_secret,
+            'clientSecret'   => $intent['client_secret'],
             'stripeKey'      => config('cashier.key'),
             'volverA'        => route('portal.suscripcion'),
         ]);
@@ -96,23 +75,20 @@ class CheckoutController extends Controller
      */
     public function procesarSuscripcion(Request $request, Plane $plan): RedirectResponse
     {
-        $this->verificarConfigurado($plan);
-
         $datos = $request->validate([
             'payment_method' => ['required', 'string'],
         ]);
 
-        $usuario = $request->user();
+        $pendiente = $this->cobro()->suscribir($request->user(), $plan, $datos['payment_method']);
 
-        try {
-            $usuario->newSubscription('default', $plan->stripe_price_id)
-                ->create($datos['payment_method']);
-        } catch (\Laravel\Cashier\Exceptions\IncompletePayment $e) {
+        if ($pendiente !== null) {
             // El banco pide autenticación (3-D Secure): se manda a la pantalla de
             // Cashier que la resuelve, y luego a «confirmando».
+            $intentId = \Illuminate\Support\Str::before($pendiente, '_secret_');
+
             return redirect()->route(
                 'cashier.payment',
-                [$e->payment->id, 'redirect' => route('portal.pago.confirmando')]
+                [$intentId, 'redirect' => route('portal.pago.confirmando')]
             );
         }
 
@@ -131,33 +107,18 @@ class CheckoutController extends Controller
     /** Estado de la membresía, para que la página de confirmación deje de esperar. */
     public function estado(Request $request)
     {
-        $activa = $request->user()->suscripciones()
-            ->where('estatus', 'Activa')
-            ->where('fecha_fin', '>=', now()->toDateString())
-            ->exists();
+        $activa = $this->cobro()->membresiaActiva($request->user());
 
         return response()->json(['activa' => $activa]);
     }
 
-    /**
-     * Un plan sin precio de Stripe no se puede cobrar dentro del sitio. Hasta que
-     * se configure, el sitio cae al enlace de pago de respaldo (`stripe_url`).
-     */
-    private function verificarConfigurado(Plane $plan): void
-    {
-        $faltaPrecio = $plan->cobro_recurrente && ! $plan->stripe_price_id;
-
-        if ($faltaPrecio || ! $this->hayClavesDeStripe()) {
-            throw ValidationException::withMessages([
-                'plan' => 'El cobro en línea todavía no está disponible para este plan. '
-                    . 'Escríbenos y lo activamos.',
-            ]);
-        }
-    }
-
-    /** Hay claves de Stripe si están tanto la publishable como la secreta. */
     private function hayClavesDeStripe(): bool
     {
-        return (bool) config('cashier.key') && (bool) config('cashier.secret');
+        return $this->cobro()->disponible();
+    }
+
+    private function cobro(): CobroConTarjeta
+    {
+        return app(CobroConTarjeta::class);
     }
 }

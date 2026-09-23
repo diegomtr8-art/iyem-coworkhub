@@ -3,6 +3,7 @@
 namespace App\Servicios\Reservas;
 
 use App\Models\Espacio;
+use App\Models\Reserva;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
 
@@ -41,6 +42,9 @@ class Disponibilidad
     public function delDia(Espacio $espacio, CarbonImmutable $dia, ?CarbonImmutable $ahora = null): array
     {
         $ahora  = $ahora ?? CarbonImmutable::now();
+        // Los bloques son hora de Mérida (ver Reserva::zonaDelCalendario): así
+        // «pasado» y «demasiado pronto» se comparan contra el instante real.
+        $dia    = CarbonImmutable::parse($dia->toDateString(), Reserva::zonaDelCalendario());
         $franja = $this->calendario->franjaDelDia($espacio, $dia);
 
         if ($franja === null) {
@@ -113,6 +117,8 @@ class Disponibilidad
         ?CarbonImmutable $ahora = null,
     ): array {
         $ahora = $ahora ?? CarbonImmutable::now();
+        $desde = CarbonImmutable::parse($desde->toDateString(), Reserva::zonaDelCalendario());
+        $hasta = CarbonImmutable::parse($hasta->toDateString(), Reserva::zonaDelCalendario());
 
         // Una sola consulta para todo el periodo, en vez de una por día.
         $ocupadosPorDia = DB::table('bloques_reserva')

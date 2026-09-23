@@ -203,6 +203,11 @@ Route::middleware('auth')->group(function () {
         Route::delete('seguridad/dispositivos/{dispositivo}', [SeguridadController::class, 'olvidarDispositivo'])
             ->name('seguridad.olvidar-dispositivo');
 
+        // App móvil — cerrar la sesión de un teléfono perdido.
+        Route::delete('seguridad/telefonos/{token}', [SeguridadController::class, 'cerrarTelefono'])
+            ->whereNumber('token')
+            ->name('seguridad.cerrar-telefono');
+
         // C — Pedir el cambio de correo. Detrás de `password.confirm` como el
         // resto de lo delicado: el correo es la llave de recuperación.
         Route::post('seguridad/correo', [CambioDeCorreoController::class, 'solicitar'])

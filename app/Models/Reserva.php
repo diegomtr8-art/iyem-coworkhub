@@ -113,15 +113,52 @@ class Reserva extends Model
     public function inicioEnCalendario(): CarbonImmutable
     {
         return CarbonImmutable::parse(
-            $this->fecha->toDateString() . ' ' . substr($this->hora_inicio, 0, 5)
+            $this->fecha->toDateString() . ' ' . substr($this->hora_inicio, 0, 5),
+            self::zonaDelCalendario(),
         );
     }
 
     public function finEnCalendario(): CarbonImmutable
     {
         return CarbonImmutable::parse(
-            $this->fecha->toDateString() . ' ' . substr($this->hora_fin, 0, 5)
+            $this->fecha->toDateString() . ' ' . substr($this->hora_fin, 0, 5),
+            self::zonaDelCalendario(),
         );
+    }
+
+    /**
+     * La zona en la que están escritas `fecha`, `hora_inicio` y `hora_fin`: la
+     * hora de pared de Nódico en Mérida, no UTC.
+     *
+     * Antes se interpretaban en la zona de la aplicación (UTC), y como `now()`
+     * es un instante real, todo lo que compara «cuánto falta» se corría seis
+     * horas: a las 13:00 de Mérida los huecos de la tarde salían como pasados,
+     * el no-show de una reserva de las 10:00 se marcaba de madrugada y la regla
+     * de las 2 h para devolver horas cortaba a las 2:00 en vez de a las 8:00.
+     */
+    public static function zonaDelCalendario(): string
+    {
+        return (string) config('nodico.zona_horaria', 'America/Merida');
+    }
+
+    /**
+     * El día de hoy **en Mérida**, a medianoche.
+     *
+     * `today()` cuenta el día en la zona de la aplicación (UTC): entre las 18:00
+     * y las 24:00 de Mérida ya es «mañana», y las reservas de esa noche salían
+     * como pasadas, no se podía reservar para esa tarde y el calendario empezaba
+     * al día siguiente. Todo lo que decide qué día es hoy para el calendario,
+     * las membresías y las asesorías pasa por aquí.
+     */
+    public static function hoy(): CarbonImmutable
+    {
+        return CarbonImmutable::now(self::zonaDelCalendario())->startOfDay();
+    }
+
+    /** `hoy()` como `Y-m-d`, para consultas y reglas de validación. */
+    public static function hoyYmd(): string
+    {
+        return self::hoy()->toDateString();
     }
 
     /**

@@ -35,7 +35,7 @@ class DashboardController extends Controller
         $proxima = $usuario->reservas()
             ->with('espacio')
             ->confirmadas()
-            ->where('fecha', '>=', today())
+            ->where('fecha', '>=', \App\Models\Reserva::hoyYmd())
             ->orderBy('fecha')
             ->orderBy('hora_inicio')
             ->get()
@@ -84,8 +84,8 @@ class DashboardController extends Controller
                 : 0,
 
             'avisos' => AnuncioCoworking::where('activo', true)
-                ->where('fecha_inicio', '<=', today())
-                ->where(fn ($q) => $q->whereNull('fecha_fin')->orWhere('fecha_fin', '>=', today()))
+                ->where('fecha_inicio', '<=', \App\Models\Reserva::hoyYmd())
+                ->where(fn ($q) => $q->whereNull('fecha_fin')->orWhere('fecha_fin', '>=', \App\Models\Reserva::hoyYmd()))
                 ->orderByDesc('fecha_inicio')
                 ->limit(3)
                 ->get(['id', 'titulo', 'contenido', 'tipo', 'fecha_inicio']),

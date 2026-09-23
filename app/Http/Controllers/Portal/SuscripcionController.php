@@ -2,14 +2,13 @@
 
 namespace App\Http\Controllers\Portal;
 
-use App\Enums\BolsaDeHoras;
-use App\Enums\EstadoCuenta;
 use App\Http\Controllers\Controller;
 use App\Http\Controllers\Portal\Concerns\ResuelveLaMembresia;
 use App\Models\Plane;
 use App\Models\Suscripcion;
-use App\Models\User;
 use App\Servicios\Horas\ResumenDeBolsas;
+use App\Servicios\Membresias\DescripcionDelPlan;
+use App\Servicios\Membresias\GestorDeAcompanante;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
@@ -53,7 +52,10 @@ class SuscripcionController extends Controller
             'medidores' => $suscripcion ? $this->resumen->soloIncluidas($suscripcion) : [],
 
             // Nodo Match: el acompañante.
-            'acompanante' => $suscripcion && ($suscripcion->plan?->personas ?? 1) > 1 ? [
+            // Solo el titular gestiona al acompañante; el acompañante ve la
+            // membresía compartida, pero no este bloque (22/09/2026).
+            'acompanante' => $suscripcion && ($suscripcion->plan?->personas ?? 1) > 1
+                && $suscripcion->user_id === $usuario->id ? [
                 'admitido'     => true,
                 'usuario'      => $suscripcion->companion?->only(['id', 'name', 'email']),
                 'face_id_ok'   => (bool) $suscripcion->companion_face_id_ok,
@@ -139,138 +141,55 @@ class SuscripcionController extends Controller
     }
 
     /**
-     * Nodo Match — asignar al acompañante por su correo.
-     *
-     * Solo un plan de dos personas (personas > 1) vigente lo admite. El
-     * acompañante tiene que ser una cuenta **registrada, con el correo verificado
-     * y sin suspender** (decisión de Diego, 31/08/2026): no necesita membresía
-     * propia —para eso es acompañante—, pero sí una cuenta real, porque comparte
-     * el acceso y la bolsa de horas. Si no la hay, se rechaza con el aviso que
-     * pide registrarse primero. El Face ID sigue registrándose en recepción.
+     * Nodo Match — asignar al acompañante por su correo. Las reglas viven en
+     * `GestorDeAcompanante`, que también usa la app.
      */
     public function asignarAcompanante(Request $request): RedirectResponse
     {
-        $usuario     = $request->user();
-        $suscripcion = $this->membresiaVigente($usuario);
+        $datos = $request->validate(['email' => ['required', 'email']]);
 
-        if (! $suscripcion || ($suscripcion->plan?->personas ?? 1) <= 1) {
-            return back()->with('error', 'Tu plan no admite acompañante.');
-        }
+        return $this->comoAviso(function () use ($request, $datos) {
+            $companion = app(GestorDeAcompanante::class)->asignar($request->user(), $datos['email']);
 
-        $datos  = $request->validate(['email' => ['required', 'email']]);
-        $correo = mb_strtolower(trim($datos['email']));
-
-        $companion = User::whereRaw('LOWER(email) = ?', [$correo])->first();
-
-        // La regla del acompañante «con correo activo».
-        if (! $companion || ! $companion->hasVerifiedEmail() || $companion->estado === EstadoCuenta::Suspendida) {
-            throw ValidationException::withMessages([
-                'email' => 'No puede asignarse el Match: no hay una cuenta activa con ese correo. '
-                    . 'Pídele a esa persona que se registre en Nódico y verifique su correo primero.',
-            ]);
-        }
-
-        if ($companion->id === $usuario->id) {
-            throw ValidationException::withMessages([
-                'email' => 'No puedes asignarte a ti mismo como acompañante.',
-            ]);
-        }
-
-        // Nadie acompaña dos Match a la vez: la bolsa es compartida y el aforo real.
-        $yaEsAcompanante = Suscripcion::where('companion_user_id', $companion->id)
-            ->where('estatus', 'Activa')
-            ->whereDate('fecha_fin', '>=', now()->toDateString())
-            ->whereKeyNot($suscripcion->id)
-            ->exists();
-
-        if ($yaEsAcompanante) {
-            throw ValidationException::withMessages([
-                'email' => 'Esa persona ya es acompañante de otra membresía Match activa.',
-            ]);
-        }
-
-        // Cambiar de acompañante reinicia el Face ID: el nuevo tiene que registrarlo.
-        $suscripcion->update([
-            'companion_user_id'    => $companion->id,
-            'companion_face_id_ok' => false,
-        ]);
-
-        return back()->with(
-            'success',
-            "Listo: {$companion->name} quedó como tu acompañante. Falta que pase por recepción a registrar su Face ID.",
-        );
+            return back()->with(
+                'success',
+                "Listo: {$companion->name} quedó como tu acompañante. Falta que pase por recepción a registrar su Face ID.",
+            );
+        });
     }
 
     /** Nodo Match — quitar al acompañante. */
     public function quitarAcompanante(Request $request): RedirectResponse
     {
-        $usuario     = $request->user();
-        $suscripcion = $this->membresiaVigente($usuario);
+        return $this->comoAviso(function () use ($request) {
+            app(GestorDeAcompanante::class)->quitar($request->user());
 
-        if (! $suscripcion || ($suscripcion->plan?->personas ?? 1) <= 1) {
-            return back()->with('error', 'Tu plan no admite acompañante.');
-        }
-
-        $suscripcion->update(['companion_user_id' => null, 'companion_face_id_ok' => false]);
-
-        return back()->with('info', 'Quitamos al acompañante de tu membresía.');
+            return back()->with('info', 'Quitamos al acompañante de tu membresía.');
+        });
     }
 
     /**
-     * El plan con lo que incluye ya desglosado en frases.
-     *
-     * Se arma en el servidor porque las reglas de qué significa `null` en cada
-     * campo viven en `BolsaDeHoras` (ver `Plane`), y traducirlas en el front
-     * sería una segunda copia de esa semántica.
+     * Los errores generales del gestor (plan sin acompañante, no eres el
+     * titular) se enseñan como aviso de la página, como siempre; los del campo
+     * de correo, junto al campo.
      */
+    private function comoAviso(callable $accion): RedirectResponse
+    {
+        try {
+            return $accion();
+        } catch (ValidationException $e) {
+            $general = $e->errors()['general'][0] ?? null;
+
+            if ($general === null) {
+                throw $e;
+            }
+
+            return back()->with('error', $general);
+        }
+    }
+
     private function planParaLaVista(?Plane $plan): ?array
     {
-        if (! $plan) {
-            return null;
-        }
-
-        $incluye = [];
-
-        $incluye[] = $plan->esIlimitado()
-            ? 'Acceso ilimitado al coworking'
-            : $plan->dias_cowork_mes . ' día' . ($plan->dias_cowork_mes === 1 ? '' : 's') . ' de coworking';
-
-        foreach ([BolsaDeHoras::Sala, BolsaDeHoras::Contenido, BolsaDeHoras::Asesoria] as $bolsa) {
-            $cupo = $bolsa->cupo($plan);
-
-            if ($cupo === null) {
-                continue;
-            }
-
-            $tope  = $bolsa->topeDiario($plan);
-            $texto = rtrim(rtrim(number_format($cupo, 2, '.', ''), '0'), '.')
-                . ' h de ' . mb_strtolower($bolsa->etiqueta())
-                . ($plan->tieneCiclosMensuales() ? ' al mes' : '');
-
-            if ($tope !== null) {
-                $texto .= ' (máximo ' . rtrim(rtrim(number_format($tope, 2, '.', ''), '0'), '.') . ' h al día)';
-            }
-
-            $incluye[] = $texto;
-        }
-
-        if (($plan->personas ?? 1) > 1) {
-            $incluye[] = 'Para ' . $plan->personas . ' personas, con bolsa de horas compartida';
-        }
-
-        return [
-            'id'            => $plan->id,
-            'nombre'        => $plan->nombre,
-            'subtitulo'     => $plan->subtitulo,
-            'precio'        => (float) $plan->precio,
-            'periodo_label' => $plan->periodo_label,
-            'color'         => $plan->color,
-            'personas'      => $plan->personas ?? 1,
-            'stripe_url'    => $plan->stripe_url,
-            'incluye'       => $incluye,
-
-            // Los beneficios editoriales del sitio público, si los tiene.
-            'beneficios'    => $plan->beneficios ?? [],
-        ];
+        return app(DescripcionDelPlan::class)->para($plan);
     }
 }

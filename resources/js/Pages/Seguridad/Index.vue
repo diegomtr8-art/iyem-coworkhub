@@ -63,7 +63,22 @@ const props = defineProps<{
   metodosDeAcceso: number
   dosFactores: DosFactores
   dispositivosConfiables: Dispositivo[]
+  telefonos: Telefono[]
 }>()
+
+// App móvil — teléfonos con sesión abierta. Cerrar uno revoca su token: sirve
+// para desconectar un teléfono perdido desde cualquier computadora.
+interface Telefono {
+  id: number
+  nombre: string
+  plataforma: string | null
+  ultimoUso: string | null
+  desde: string | null
+}
+
+function cerrarTelefono(id: number) {
+  router.delete(route('seguridad.cerrar-telefono', { token: id }), { preserveScroll: true })
+}
 
 const page = usePage()
 const usuario = computed(() => (page.props.auth as any)?.user ?? null)
@@ -307,6 +322,42 @@ const columnasBitacora: Columna[] = [
 
           <li v-if="!sesiones.length" class="px-5 py-6 text-sm text-gray-500">
             No hay sesiones registradas.
+          </li>
+        </ul>
+      </section>
+
+      <!-- App móvil -->
+      <section class="rounded-2xl border border-gray-200 bg-white">
+        <header class="flex items-center gap-2 border-b border-gray-100 px-5 py-4">
+          <Smartphone class="h-5 w-5 text-gray-400" aria-hidden="true" />
+          <h2 class="font-semibold text-gray-900">Teléfonos con la app</h2>
+        </header>
+
+        <ul class="divide-y divide-gray-100">
+          <li
+            v-for="tel in telefonos"
+            :key="tel.id"
+            class="flex flex-wrap items-center justify-between gap-3 px-5 py-4"
+          >
+            <div class="min-w-0">
+              <p class="font-medium text-gray-900">{{ tel.nombre }}</p>
+              <p class="mt-0.5 truncate text-sm text-gray-500">
+                {{ tel.plataforma === 'ios' ? 'iPhone' : tel.plataforma === 'android' ? 'Android' : 'Teléfono' }}
+                · último uso {{ tel.ultimoUso || 'nunca' }} · desde {{ tel.desde || '—' }}
+              </p>
+            </div>
+
+            <button
+              type="button"
+              class="min-h-[44px] px-3 text-sm font-semibold text-red-600 transition hover:text-red-800"
+              @click="cerrarTelefono(tel.id)"
+            >
+              Cerrar sesión en este teléfono
+            </button>
+          </li>
+
+          <li v-if="!telefonos.length" class="px-5 py-6 text-sm text-gray-500">
+            No has entrado desde la app en ningún teléfono.
           </li>
         </ul>
       </section>

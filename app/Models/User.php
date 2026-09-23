@@ -12,11 +12,12 @@ use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Laravel\Cashier\Billable;
+use Laravel\Sanctum\HasApiTokens;
 use Throwable;
 
 class User extends Authenticatable implements MustVerifyEmail
 {
-    use Billable, HasFactory, Notifiable;
+    use Billable, HasApiTokens, HasFactory, Notifiable;
 
     /**
      * A.4 — `tipo` y `estado_cuenta` **no** van aqui.
@@ -35,7 +36,7 @@ class User extends Authenticatable implements MustVerifyEmail
 
     protected $hidden = [
         'password', 'remember_token', 'verificacion_nonce', 'dos_factores_secreto',
-        'email_nuevo_token',
+        'email_nuevo_token', 'credencial_codigo', 'credencial_hash',
     ];
 
     protected function casts(): array
@@ -52,6 +53,11 @@ class User extends Authenticatable implements MustVerifyEmail
             'notif_reservas'             => 'boolean',
             'notif_membresia'            => 'boolean',
             'notif_comunidad'            => 'boolean',
+            // App móvil: el código de la credencial QR. Cifrado porque hay que
+            // devolverlo a la app; se busca por `credencial_hash`.
+            'credencial_codigo'          => 'encrypted',
+            'credencial_emitida_en'      => 'datetime',
+            'credencial_valida_hasta'    => 'datetime',
         ];
     }
 
@@ -354,4 +360,5 @@ class User extends Authenticatable implements MustVerifyEmail
      */
     public function datosFiscales()   { return $this->hasOne(DatosFiscales::class); }
     public function ordenesPago()     { return $this->hasMany(OrdenPago::class); }
+    public function dispositivosPush() { return $this->hasMany(DispositivoPush::class); }
 }
