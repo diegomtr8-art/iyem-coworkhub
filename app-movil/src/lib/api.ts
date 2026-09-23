@@ -11,7 +11,9 @@ import { almacen } from './almacen';
  * `fetch` por su cuenta.
  */
 
-export const URL_API = (process.env.EXPO_PUBLIC_API_URL ?? 'http://192.168.10.6:8010/api/v1').replace(/\/+$/, '');
+// Sin variable, el servidor de pruebas con HTTPS; nunca la IP de una red local,
+// que en un build publicado no existe y además va en claro.
+export const URL_API = (process.env.EXPO_PUBLIC_API_URL ?? 'https://prueba.nodico.com.mx/api/v1').replace(/\/+$/, '');
 
 /** La web de Nódico: la misma base sin `/api/v1`. Para lo que se hace en el navegador. */
 export const URL_WEB = URL_API.replace(/\/api\/v\d+$/, '');
