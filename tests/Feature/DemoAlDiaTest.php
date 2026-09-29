@@ -78,6 +78,30 @@ class DemoAlDiaTest extends TestCase
         $this->assertNotEmpty($dias, 'Tras resembrar, pro.demo vuelve a tener días en el calendario.');
     }
 
+    /**
+     * Regresión del servidor de pruebas (29-sep-2026): `admin.demo` confirmó
+     * una orden de pago y `ordenes_pago.confirmada_por_user_id` (RESTRICT)
+     * impidió borrarlo; el despliegue se detuvo. La orden tiene que sobrevivir.
+     */
+    public function test_resiembra_aunque_una_cuenta_demo_haya_confirmado_una_orden(): void
+    {
+        Artisan::call('nodico:demo-al-dia');
+        $admin = User::where('email', 'admin.demo@nodico.com.mx')->firstOrFail();
+        $miembro = User::factory()->miembro()->create();
+        $plan = \App\Models\Plane::firstOrFail();
+        $orden = \App\Models\OrdenPago::create([
+            'user_id' => $miembro->id, 'plan_id' => $plan->id, 'referencia' => 'NDC-PRUEBA', 'referencia_normalizada' => 'NDCPRUEBA', 'vence_el' => now()->addWeek(),
+            'monto' => $plan->precio, 'metodo' => 'efectivo', 'estado_pago' => 'confirmada',
+            'confirmada_por_user_id' => $admin->id, 'confirmada_en' => now(),
+        ]);
+
+        $this->artisan('nodico:demo-al-dia', ['--forzar' => true])->assertSuccessful();
+
+        $this->assertNotSame($admin->id, $this->idDelAdminDemo(), 'El demo se rehízo.');
+        $this->assertNull($orden->refresh()->confirmada_por_user_id);
+        $this->assertSame($miembro->id, $orden->user_id, 'La orden del miembro sigue ahí.');
+    }
+
     public function test_no_corre_en_produccion(): void
     {
         $this->app['env'] = 'production';
