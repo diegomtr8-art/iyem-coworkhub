@@ -83,6 +83,17 @@ class ReservaOperativa
             ]);
         }
 
+        // «Activa» no basta: nada cambia el estatus al pasar la fecha de fin.
+        // Sin esto, recepción descontaba horas de una membresía vencida en un
+        // ciclo que ya no existe.
+        if (! $suscripcion->cubreElDia($fecha)) {
+            throw ValidationException::withMessages([
+                'fecha' => 'La membresía de ' . $miembro->name . ' termina el '
+                    . $suscripcion->fecha_fin->translatedFormat('j \d\e F')
+                    . ' y la reserva es para después. Renueva la membresía antes de reservar.',
+            ]);
+        }
+
         $bolsa = $espacio->bolsa();
         $horas = Reserva::calcularHoras($horaInicio, $horaFin);
 

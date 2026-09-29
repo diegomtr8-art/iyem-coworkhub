@@ -55,6 +55,16 @@ class AjusteManual
             ]);
         }
 
+        // Las horas de una membresía vencida ya no se usan: ajustarlas solo
+        // escribe en un ciclo que no existe.
+        if ($suscripcion->vencida()) {
+            throw ValidationException::withMessages([
+                'horas' => 'Esta membresía venció el '
+                    . $suscripcion->fecha_fin->translatedFormat('j \d\e F')
+                    . '. Los ajustes se hacen sobre la membresía vigente.',
+            ]);
+        }
+
         if (! $bolsa->incluidaEn($suscripcion->plan)) {
             throw ValidationException::withMessages([
                 'bolsa' => "El plan {$suscripcion->plan?->nombre} no incluye {$bolsa->etiqueta()}.",
