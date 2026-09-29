@@ -19,6 +19,8 @@ final class Comun
                 'aparece' => 'El bloque con las publicaciones de Instagram, en la portada y en Comunidad. La cuenta se cambia en Datos generales → Redes sociales.',
                 'ancla'   => null,
                 'campos'  => [
+                    'visible_inicio' => Campo::booleano('Mostrar en la portada', true),
+                    'visible_comunidad' => Campo::booleano('Mostrar en Comunidad', true),
                     'titulo' => Campo::texto('Título', 50, 'Lo que pasa en Nódico'),
                 ],
             ],
@@ -78,6 +80,7 @@ final class Comun
                 'aparece' => 'Franja «Con el respaldo de» de la portada y del pie de todas las páginas.',
                 'ancla'   => null,
                 'campos'  => [
+                    'visible' => Campo::booleano('Mostrar la franja en la portada', true, 'Solo la franja de la portada. Los logos del pie de página se quedan siempre.'),
                     'etiqueta' => Campo::texto('Encabezado', 40, 'Con el respaldo de'),
                     'iyem_nombre' => Campo::texto('IYEM · nombre', 80, 'Instituto Yucateco de Emprendedores',
                         'Es el texto alternativo del logo: lo que lee un lector de pantalla.'),

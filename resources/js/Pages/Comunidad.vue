@@ -200,10 +200,10 @@ const fechaLarga = (valor: string) =>
     </section>
 
     <!-- Instagram -->
-    <InstagramSection :handle="nodico.instagram" tono="oscuro" />
+    <InstagramSection v-if="($page.props as any).comun.instagram.visible_comunidad" :handle="nodico.instagram" tono="oscuro" />
 
     <!-- Teaser de salones -->
-    <section class="bg-nodo-400 py-16 lg:py-20">
+    <section v-if="contenido.teaser.visible" class="bg-nodo-400 py-16 lg:py-20">
       <div class="mx-auto max-w-7xl px-5 sm:px-8">
         <div class="flex flex-col gap-8 lg:flex-row lg:items-center lg:justify-between">
           <div>

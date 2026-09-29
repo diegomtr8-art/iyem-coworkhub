@@ -57,6 +57,7 @@ final class Nosotros
                 'aparece' => 'Las tarjetas con icono al final de la página.',
                 'ancla'   => null,
                 'campos'  => [
+                    'visible' => Campo::booleano('Mostrar esta sección', true, 'Apagada, Nosotros termina en la Visión.'),
                     'titulo' => Campo::texto('Título de la sección', 60, 'Lo que nos mueve'),
                     // 3 o 6: hay seis iconos, uno por posición (decisión 2), y la
                     // retícula es de tres columnas.

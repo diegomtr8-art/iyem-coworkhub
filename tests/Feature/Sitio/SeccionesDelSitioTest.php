@@ -261,12 +261,14 @@ class SeccionesDelSitioTest extends TestCase
     {
         $this->actingAs(User::factory()->admin()->create())
             ->get(route('pagina-web.editar', 'nosotros'))
-            ->assertInertia(fn (AssertableInertia $page) => $page
-                ->where('secciones.3.campos.1.tipo', 'lista')
-                ->where('secciones.3.campos.1.minimo', 3)
-                ->where('secciones.3.campos.1.maximo', 6)
-                ->where('secciones.3.campos.1.multiplo', 3)
-                ->where('secciones.3.campos.1.campos.0.maximo', 40));
+            ->assertInertia(function (AssertableInertia $page) {
+                $valores = collect($page->toArray()['props']['secciones'])->firstWhere('clave', 'nosotros.valores');
+                $lista = collect($valores['campos'])->firstWhere('nombre', 'elementos');
+
+                $this->assertSame('lista', $lista['tipo']);
+                $this->assertSame([3, 6, 3], [$lista['minimo'], $lista['maximo'], $lista['multiplo']]);
+                $this->assertSame(40, $lista['campos'][0]['maximo']);
+            });
     }
 
     // --- 4.4 · Imágenes -------------------------------------------------------
@@ -399,6 +401,57 @@ class SeccionesDelSitioTest extends TestCase
             ])->assertForbidden();
 
         $this->assertSame(0, \App\Models\ImagenSitio::count());
+    }
+
+    // --- 4.5 · Encender y apagar secciones ---------------------------------------
+
+    public function test_las_secciones_que_se_pueden_apagar_empiezan_encendidas(): void
+    {
+        $this->get('/')->assertInertia(fn (AssertableInertia $page) => $page
+            ->where('contenido.espacios.visible', true)
+            ->where('contenido.beneficios.visible', true)
+            ->where('contenido.daypass.visible', true)
+            ->where('contenido.salones.visible', true)
+            ->where('comun.aliados.visible', true)
+            ->where('comun.instagram.visible_inicio', true)
+            ->where('comun.instagram.visible_comunidad', true));
+
+        $this->get('/nosotros')->assertInertia(fn (AssertableInertia $page) => $page->where('contenido.valores.visible', true));
+        $this->get('/eventos')->assertInertia(fn (AssertableInertia $page) => $page->where('contenido.coffee.visible', true));
+        $this->get('/actividades')->assertInertia(fn (AssertableInertia $page) => $page->where('contenido.teaser.visible', true));
+    }
+
+    public function test_apagar_una_seccion_la_quita_sin_tocar_su_contenido(): void
+    {
+        $this->sitio()->guardar('inicio.daypass', ['visible' => false]);
+
+        $this->get('/')->assertInertia(fn (AssertableInertia $page) => $page
+            ->where('contenido.daypass.visible', false)
+            // El texto se conserva: al volver a encenderla sale igual.
+            ->where('contenido.daypass.titulo', '¿Eres emprendedor o artesano del interior del estado?'));
+    }
+
+    public function test_instagram_se_apaga_por_separado_en_cada_pagina(): void
+    {
+        $this->sitio()->guardar('comun.instagram', ['visible_inicio' => false]);
+
+        $this->get('/actividades')->assertInertia(fn (AssertableInertia $page) => $page
+            ->where('comun.instagram.visible_inicio', false)
+            ->where('comun.instagram.visible_comunidad', true));
+    }
+
+    public function test_las_secciones_que_sostienen_la_pagina_no_se_pueden_apagar(): void
+    {
+        // Decisión 1: portada, servicios, membresías, «Hablemos» y portadas, siempre.
+        foreach (['inicio.hero', 'inicio.servicios', 'inicio.membresias', 'comun.hablemos',
+                  'nosotros.portada', 'membresias.portada', 'salones.portada', 'comunidad.portada'] as $clave) {
+            $this->assertArrayNotHasKey('visible', \App\Servicios\Sitio\CatalogoDelSitio::campos($clave), $clave);
+        }
+    }
+
+    public function test_un_interruptor_solo_acepta_si_o_no(): void
+    {
+        $this->rechaza('inicio.daypass', ['visible' => 'quizá'], 'visible');
     }
 
     public function test_cada_pagina_del_panel_se_abre(): void

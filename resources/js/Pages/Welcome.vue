@@ -212,7 +212,7 @@ const fichaSalon = computed(() => {
     </section>
 
     <!-- Espacios — qué puedes reservar, con foto de cada uno -->
-    <section class="bg-cream-50 py-20 lg:py-28">
+    <section v-if="contenido.espacios.visible" class="bg-cream-50 py-20 lg:py-28">
       <div class="mx-auto max-w-7xl px-5 sm:px-8">
         <ScrollReveal>
           <SectionHeading
@@ -271,7 +271,7 @@ const fichaSalon = computed(() => {
     </section>
 
     <!-- 4.4 · Beneficios — paneles expansibles -->
-    <section class="bg-tinta py-20 lg:py-28">
+    <section v-if="contenido.beneficios.visible" class="bg-tinta py-20 lg:py-28">
       <div class="mx-auto max-w-7xl px-5 sm:px-8">
         <ScrollReveal>
           <SectionHeading
@@ -312,7 +312,7 @@ const fichaSalon = computed(() => {
     </section>
 
     <!-- 4.6 · Day-pass — sello giratorio, parallax y bloque estampado -->
-    <section class="overflow-hidden bg-nodo-400 py-20 lg:py-24">
+    <section v-if="contenido.daypass.visible" class="overflow-hidden bg-nodo-400 py-20 lg:py-24">
       <div class="mx-auto grid max-w-7xl items-center gap-14 px-5 sm:px-8 lg:grid-cols-2 lg:gap-20">
         <ScrollReveal from="left">
           <div ref="fotoDaypass" class="relative">
@@ -366,7 +366,7 @@ const fichaSalon = computed(() => {
 
     <!-- ═══ SALONES — Fase 4.G.5: más altura y aire para que la foto respire
          en 1366 y 1920 px (antes quedaba aplastada) ═══ -->
-    <section class="relative isolate flex min-h-[560px] items-center overflow-hidden bg-tinta lg:min-h-[680px]">
+    <section v-if="contenido.salones.visible" class="relative isolate flex min-h-[560px] items-center overflow-hidden bg-tinta lg:min-h-[680px]">
       <img
         :src="contenido.salones.imagen.src"
         :srcset="contenido.salones.imagen.srcset ?? undefined"
@@ -405,7 +405,7 @@ const fichaSalon = computed(() => {
     </section>
 
     <!-- Aliados -->
-    <section class="bg-cream-50 py-16 lg:py-20">
+    <section v-if="$page.props.comun.aliados.visible" class="bg-cream-50 py-16 lg:py-20">
       <div class="mx-auto max-w-7xl px-5 sm:px-8">
         <ScrollReveal>
           <p class="etiqueta-tecnica mb-10 text-center text-dark/70">
@@ -417,7 +417,7 @@ const fichaSalon = computed(() => {
     </section>
 
     <!-- Instagram -->
-    <InstagramSection :handle="nodico.instagram" />
+    <InstagramSection v-if="$page.props.comun.instagram.visible_inicio" :handle="nodico.instagram" />
 
     <ContactSection />
   </PublicLayout>

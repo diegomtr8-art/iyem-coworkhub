@@ -58,6 +58,7 @@ final class Inicio
                 'aparece' => 'Las cuatro tarjetas con foto de lo que se puede reservar.',
                 'ancla'   => null,
                 'campos'  => [
+                    'visible' => Campo::booleano('Mostrar esta sección', true, 'Apagada, la portada pasa de Servicios a Beneficios.'),
                     'titulo'      => Campo::texto('Título de la sección', 60, 'Lo que puedes reservar'),
                     'descripcion' => Campo::parrafo('Texto bajo el título', 200, 'Tu membresía incluye horas para usarlos. Reservas desde tu portal o desde la app.'),
                     // De dos en dos: la retícula es de dos columnas.
@@ -86,6 +87,7 @@ final class Inicio
                 'aparece' => 'Los paneles que se abren sobre fondo oscuro.',
                 'ancla'   => null,
                 'campos'  => [
+                    'visible' => Campo::booleano('Mostrar esta sección', true, 'Apagada, la portada pasa de Espacios a Membresías.'),
                     'titulo' => Campo::texto('Título de la sección', 60, 'Y otras cosas que solo pasan aquí'),
                     // El color de cada panel es de la paleta y va por posición.
                     'elementos' => Campo::lista('Beneficios', [
@@ -125,6 +127,7 @@ final class Inicio
                 'aparece' => 'La banda amarilla con el sello giratorio, para emprendedores del interior del estado.',
                 'ancla'   => null,
                 'campos'  => [
+                    'visible' => Campo::booleano('Mostrar esta sección', true, 'Apagada, desaparece la banda amarilla del day-pass gratuito.'),
                     'etiqueta' => Campo::texto('Etiqueta', 40, 'Day-pass emprendedor'),
                     'titulo'   => Campo::texto('Titular', 70, '¿Eres emprendedor o artesano del interior del estado?'),
                     'sello'    => Campo::texto('Frase destacada', 50, 'Tu day-pass siempre es gratuito.', 'Va en el recuadro negro, ligeramente girado.'),
@@ -141,6 +144,7 @@ final class Inicio
                 'aparece' => 'La banda con la foto del salón. La ficha (medidas, capacidad, precio) se cambia en Configurar → Espacios.',
                 'ancla'   => null,
                 'campos'  => [
+                    'visible' => Campo::booleano('Mostrar esta sección', true, 'Apagada, la portada ya no invita a los salones antes de Aliados.'),
                     'titulo'      => Campo::texto('Título de la sección', 60, 'Espacios listos para tu evento'),
                     'descripcion' => Campo::parrafo('Texto bajo el título', 200,
                         'Talleres, conferencias o reuniones. Modernos, cómodos y equipados para que cada idea cobre vida.'),

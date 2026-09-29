@@ -152,7 +152,7 @@ const ficha = (salon: Salon) => [
     </section>
 
     <!-- Coffee break -->
-    <section class="relative isolate overflow-hidden bg-tinta">
+    <section v-if="contenido.coffee.visible" class="relative isolate overflow-hidden bg-tinta">
       <img
         :src="contenido.coffee.imagen.src"
         :srcset="contenido.coffee.imagen.srcset ?? undefined"

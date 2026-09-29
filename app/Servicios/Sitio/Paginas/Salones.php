@@ -44,6 +44,7 @@ final class Salones
                 'aparece' => 'La banda oscura con los precios del coffee break. Los precios se cambian en la configuración del cotizador, no aquí.',
                 'ancla'   => null,
                 'campos'  => [
+                    'visible' => Campo::booleano('Mostrar esta sección', true, 'Apagada, no se ofrece el coffee break en la página.'),
                     'titulo' => Campo::texto('Título', 60, 'Coffee break para tu evento'),
                     'imagen' => Campo::imagen('Foto de fondo', 'ancha', Fotos::coffee(),
                         'Va casi cubierta por una capa oscura.', decorativa: true),

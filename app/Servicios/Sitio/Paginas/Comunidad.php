@@ -55,6 +55,7 @@ final class Comunidad
                 'aparece' => 'La banda amarilla antes de «Hablemos».',
                 'ancla'   => null,
                 'campos'  => [
+                    'visible' => Campo::booleano('Mostrar esta sección', true, 'Apagada, desaparece la banda amarilla que invita a los salones.'),
                     'titulo' => Campo::texto('Titular', 50, '¿Organizas un evento?'),
                     'texto'  => Campo::parrafo('Texto', 200,
                         'Nuestros salones tienen capacidad para 120 personas, con proyector, sonido y mobiliario incluido.',

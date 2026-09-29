@@ -128,7 +128,7 @@ const valores = computed(() =>
     </section>
 
     <!-- Valores -->
-    <section class="bg-cream-50 py-20 lg:py-28">
+    <section v-if="contenido.valores.visible" class="bg-cream-50 py-20 lg:py-28">
       <div class="mx-auto max-w-7xl px-5 sm:px-8">
         <ScrollReveal>
           <SectionHeading etiqueta="Valores" :titulo="contenido.valores.titulo" align="center" tamano="lg" />
