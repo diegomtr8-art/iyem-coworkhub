@@ -1,7 +1,8 @@
 # Módulo «Página Web» — Fase 0: inventario y alcance
 
 > Rama `feature/cms-pagina-web`, a partir de `fb1a0c4` (29-sep-2026).
-> Estado: **propuesta, pendiente de visto bueno.** Todavía no hay código.
+> Estado: **aprobado por Diego el 29-sep-2026** con las decisiones de la sección 4.
+> El bug 1.1 y la sala de juntas ya están corregidos en `4ae69ec`.
 
 Este documento fija **qué** se va a poder editar desde el panel antes de construir
 **cómo**. Un módulo de contenido que cubre medio sitio es peor que ninguno: nadie
@@ -107,7 +108,7 @@ se duplica) · **?** = a medio camino, **necesita tu decisión** (sección 4).
 |---|---|---|---|
 | Correo de contacto | `.env` `NODICO_CONTACTO_EMAIL` | **E** | También es el destinatario del formulario «Hablemos». Hay que validar que sea un correo. |
 | Teléfono visible y teléfono E.164 | `.env` | **E** | Un solo campo: el E.164 se deriva, no se pide aparte. |
-| Dirección larga y corta | `.env` | **E** | El JSON-LD sigue usando la dirección postal estructurada (ver ?5). |
+| Dirección larga y corta | `.env` | **E** | El JSON-LD usa la dirección postal estructurada de `negocio` (2.9). |
 | URL de «Cómo llegar» | `.env` | **E** | Solo `https://`. |
 | Embed del mapa | `.env` | **C** | Es una URL de iframe y afecta a la CSP. Un campo libre aquí es una forma de meter cualquier iframe en todas las páginas. |
 | Horario (texto) y detalle | `.env` / config | **E** | Solo el texto que se ve. El horario que valida reservas (`operacion.*`) sigue siendo **C**. |
@@ -209,16 +210,28 @@ se duplica) · **?** = a medio camino, **necesita tu decisión** (sección 4).
 | Títulos, subtítulos y etiquetas de los formularios | **F** | Son instrucciones de la interfaz, no contenido. |
 | Cifras de «prueba social» | **F** | Se calculan (`CompartirMarcaDeAcceso`). |
 
-### 2.9 Fuera del alcance
+### 2.9 SEO y datos estructurados (dentro, por decisión 5)
 
-- **SEO por página** (`nodico.seo_paginas`) y **JSON-LD**: ?5.
+| Elemento | Hoy | Col. | Nota |
+|---|---|---|---|
+| Título y descripción de cada página (7 rutas) | `nodico.seo_paginas` | **E** | Tope: título 60 y descripción 160 caracteres, que es lo que Google enseña. La pantalla muestra la vista previa del resultado de búsqueda y de la tarjeta de WhatsApp. |
+| Imagen social de cada página | `/img/og/*.jpg` | **E** | 1200×630, **JPG** (WhatsApp y LinkedIn no leen WebP). Es el único hueco que no se convierte a WebP. |
+| Sufijo del título («Nódico») | config | **F** | Es la marca. |
+| JSON-LD: descripción del negocio | escrito a mano en `fichaNegocio()` | **E** | |
+| JSON-LD: dirección postal (calle, localidad, región, CP) | escrito a mano | **E** | Una sola fuente también para el `address` de los eventos en Comunidad (1.2). |
+| JSON-LD: coordenadas | escrito a mano | **E** | Se validan como número en rango y dentro de Yucatán, para que un dígito de más no mande a Nódico al mar. |
+| JSON-LD: horario de apertura | escrito a mano | **C** | Sale de `nodico.operacion` (días, apertura, cierre), que es la regla del motor de reservas. Una sola fuente. |
+| JSON-LD: redes (`sameAs`), correo, teléfono | config | **E** | Salen de `contacto` y `redes`; no se piden dos veces. |
+| Host canónico, `robots` | config/entorno | **C** | |
+
+### 2.10 Fuera del alcance
+
 - **Textos legales** (`resources/legal/*.md`): los revisa jurídico y quedan en
   git con historial. Quedan fuera.
 - **Planes, salones, espacios, eventos, emprendedores, anuncios**: ya tienen su
   módulo. Cada pantalla del CMS enlaza al módulo que corresponde.
 - **Colores, tipografías, orden de secciones, maquetación, iconos de `lucide`**:
   fijos.
-- **Imágenes OG** (`/img/og/*.jpg`, 1200×630): van con el SEO (?5).
 
 ---
 
@@ -266,6 +279,9 @@ comun.instagram     { titulo, visible_inicio, visible_comunidad }
 comun.hablemos      { etiqueta, titulo, texto }
 comun.pie           { llamado_titulo, llamado_texto, marca, facturacion, leyenda }
 acceso              { imagen_fondo }
+
+seo.<ruta>          { titulo, descripcion, imagen }      # home, nosotros, membresias, eventos, actividades, privacidad, terminos
+negocio             { descripcion, calle, localidad, region, codigo_postal, latitud, longitud }
 ```
 
 `imagen` nunca es una ruta libre. Es una referencia `{ id, alt }` a una imagen
@@ -284,49 +300,31 @@ de cada entorno.
 
 ---
 
-## 4. Decisiones que necesito de ti antes de la Fase 1
+## 4. Decisiones tomadas (Diego, 29-sep-2026)
 
-1. **Encender y apagar secciones.** Propongo que se puedan apagar: Espacios,
-   Beneficios, Day-pass, teaser de Salones, Aliados, Instagram, teaser de
-   Comunidad, Valores y Coffee break. Que **no** se puedan apagar: hero,
-   Servicios, Membresías, «Hablemos» y las portadas de cada página, porque sin
-   ellas la página no se sostiene. ¿De acuerdo?
-2. **Iconos de Servicios y Valores** (PNG/WebP propios, monocromos). Cambiarlos
-   exige un icono en el mismo estilo, y el panel no puede garantizarlo.
-   Propuesta: **fijos**. Si se añade un servicio nuevo, lo hace el diseño.
-3. **Aliados.** Propuesta: editar **nombre y enlace** de los tres actuales, pero
-   **no** añadir ni quitar aliados ni cambiar logos. Cada logo se ajusta a mano
-   (altura óptica, fondo transparente, recorte a tinta), y un logo subido tal
-   cual rompe la franja.
-4. **Una foto compartida en varios sitios** (`mision`, `comunidad-fondo`,
-   `salon-detalle`, `nosotros-hero`). Propuesta: en el CMS **cada hueco es
-   independiente** y parte con la misma foto de hoy como respaldo. Cambiar la
-   foto de Misión no debería cambiar sin avisar un panel de Beneficios del
-   inicio.
-5. **SEO por página y JSON-LD.** Propuesta: fuera de esta primera entrega. Un
-   título SEO mal puesto no se ve en la página, pero se hereda en Google y en
-   cada enlace compartido por WhatsApp. Si lo quieres dentro, va en una fase
-   aparte con vista previa de la tarjeta.
-6. **Frases de las pantallas de acceso.** Propuesta: fijas. Son diez, cada una
-   pensada para su pantalla, y nadie de coordinación va a buscarlas ahí. Solo la
-   foto de fondo es **E**.
-7. **Cantidad de elementos en las listas.** Propuesta: Servicios, 6 fijos
-   (2 + 4). Espacios, de 2 a 6 (grid de dos columnas, siempre en pares).
-   Beneficios, de 3 a 6. Valores, de 3 a 9 (múltiplos de 3 en escritorio).
-   Incluido, de 2 a 8. Pasos, 3 fijos. Fuera de esos rangos se rompe la
-   maquetación.
-8. **El bug 1.1**: ¿lo arreglo ya, en un `fix` aparte con los textos originales?
-   ¿Y en qué rama: `feature/pagos-bbva`, que es la que está en pruebas, o
-   directamente en esta?
-9. **Salas de juntas**: ¿«1 disponible»?
-
----
+1. **Secciones que se pueden apagar:** Espacios, Beneficios, Day-pass, teaser de
+   Salones, Aliados, Instagram, teaser de Comunidad, Valores y Coffee break.
+   No se pueden apagar: hero, Servicios, Membresías, «Hablemos» ni las portadas.
+2. **Iconos de Servicios y Valores:** fijos.
+3. **Aliados:** se editan nombre y enlace de los tres actuales. No se añaden ni
+   se quitan aliados, y los logos no se cambian.
+4. **Fotos compartidas:** cada hueco es independiente y parte de la foto de hoy
+   como respaldo.
+5. **SEO y JSON-LD: dentro** (2.9), con vista previa de la tarjeta.
+6. **Frases de las pantallas de acceso:** fijas. Solo la foto de fondo es
+   editable.
+7. **Cantidad de elementos:** Servicios 6 fijos (2 + 4); Espacios de 2 a 6, en
+   pares; Beneficios de 3 a 6; Valores de 3 a 9; Incluido de 2 a 8; Pasos 3
+   fijos.
+8. **Bug 1.1:** corregido en esta rama (`4ae69ec`), con la prueba
+   `EncabezadosDeSeccionTest` para que no se repita.
+9. **Sala de juntas:** «1 disponible» (`4ae69ec`).
 
 ## 5. Lo que quedará fuera (resumen)
 
 - Constructor de páginas, bloques móviles, HTML libre, tipografías y colores.
 - Precios y capacidades (viven en Planes, Espacios y `config`).
 - Embeds de terceros como URL libre (mapa, Luma): solo por `.env`.
-- Textos legales, SEO y JSON-LD (salvo que decidas lo contrario en ?5).
+- Textos legales.
 - Menús, etiquetas de formularios e instrucciones de la interfaz.
 - Añadir aliados o iconos nuevos.
