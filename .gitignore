@@ -17,6 +17,10 @@
 /public/build
 /public/hot
 /public/storage
+# Imágenes que sube la coordinación desde «Página Web». Viven en el servidor,
+# no en el repositorio: ver docs/CMS-PAGINA-WEB.md y docs/DEPLOY.md.
+/public/medios/
+/medios/
 /storage/*.key
 /storage/pail
 /vendor

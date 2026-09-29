@@ -245,6 +245,51 @@ Hostinger deshabilita `exec()`. Si llega a hacer falta, crear el enlace a mano:
 ln -s ../storage/app/public public_html/public/storage
 ```
 
+**Ojo: aunque exista, ese enlace no sirve nada.** Queda en
+`public_html/public/storage`, y el document root es `public_html/`. La URL
+`/storage/…` cae en `public_html/storage/`, que es el `storage/` de la
+aplicación, blindado (→ 403). Comprobado el 29-sep-2026. Nada que se guarde en
+el disco `public` se puede servir por HTTP en este servidor.
+
+## Imágenes subidas desde el panel («Página Web») — no las pises
+
+Las fotos que sube la coordinación desde el módulo «Página Web» **no están en el
+repositorio**. Viven solo en el servidor, en:
+
+```
+public_html/medios/            ← disco `medios` (config/filesystems.php)
+    .htaccess                  ← solo sirve .webp y .jpg; lo reescribe la app si falta
+    sitio/<uuid>/<ancho>.webp  ← un juego por imagen subida
+```
+
+`deploy_prueba.py` **no sincroniza esa carpeta**: `DIRS_ASSETS` solo lleva
+`build`, `img`, `fonts` e `icons`, y «Sueltos de `public/`» solo copia archivos,
+no carpetas. Además la sincronización solo añade y sobrescribe; nunca borra.
+Para que siga así:
+
+- **No añadas `public/medios` a `DIRS_ASSETS`**, ni ninguna sincronización que
+  borre en el destino (`rsync --delete` o similar) sobre `public_html/`. Con eso
+  desaparece el trabajo de la coordinación, sin aviso y sin copia en git.
+- **No copies las fotos subidas a `public/img/`** para «tenerlas en el repo».
+  El contenido apunta a ellas por id, no por ruta.
+- Antes de un despliegue que toque la estructura de carpetas, respalda
+  `public_html/medios/` junto con la base: sin la base, los archivos no se
+  pueden asociar a su hueco, y sin los archivos la base apunta a fotos que no
+  existen.
+
+El disco resuelve la carpeta por sí solo: si hay un `index.php` en la raíz del
+proyecto (el layout plano de Hostinger), usa `base_path('medios')`; si no (en
+local), `public/medios`. `NODICO_MEDIOS_RAIZ` en el `.env` lo fuerza si alguna
+vez hace falta.
+
+Para comprobar un servidor sin entrar al panel:
+
+```bash
+php artisan nodico:subir-imagen /ruta/a/foto.jpg tarjeta   # imprime las URLs
+curl -sI https://prueba.nodico.com.mx/medios/sitio/<uuid>/1600.webp   # 200, image/webp
+curl -sI https://prueba.nodico.com.mx/medios/.htaccess                 # 403
+```
+
 **Imágenes o iconos rotos tras un deploy de frontend.** Los estáticos nuevos no
 se subieron a la raíz de `public_html/`. Comprobar con
 `ls public_html/img/nodico | head` y volver a correr `deploy_prueba.py`.

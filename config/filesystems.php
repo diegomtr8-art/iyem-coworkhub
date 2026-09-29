@@ -47,6 +47,32 @@ return [
             'report' => false,
         ],
 
+        /*
+        | Imágenes subidas desde el módulo «Página Web» (docs/CMS-PAGINA-WEB.md).
+        |
+        | Tienen que caer en la carpeta que sirve el navegador, y esa carpeta no
+        | es la misma en todos lados: en local es `public/`, pero en Hostinger
+        | el document root es la raíz del proyecto (`public_html/`, con su
+        | propio index.php) y `public_path()` apunta a `public_html/public`,
+        | que no se sirve. Por eso el disco `public` + `storage:link` no
+        | funciona allí: `/storage` cae en el storage/ de la aplicación (403).
+        |
+        | Un index.php en la raíz del proyecto es la marca de ese layout plano.
+        | `NODICO_MEDIOS_RAIZ` lo fuerza si algún día hace falta.
+        |
+        | `deploy_prueba.py` no sincroniza esta carpeta, así que un despliegue
+        | nunca pisa lo que subió la coordinación. Ver docs/DEPLOY.md.
+        */
+        'medios' => [
+            'driver' => 'local',
+            'root' => env('NODICO_MEDIOS_RAIZ')
+                ?: (file_exists(base_path('index.php')) ? base_path('medios') : public_path('medios')),
+            'url' => '/medios',
+            'visibility' => 'public',
+            'throw' => true,
+            'report' => false,
+        ],
+
         's3' => [
             'driver' => 's3',
             'key' => env('AWS_ACCESS_KEY_ID'),
