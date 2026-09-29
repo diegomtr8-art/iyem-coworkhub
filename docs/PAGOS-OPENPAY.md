@@ -8,6 +8,48 @@
 
 ---
 
+## Estado de la implementación (29-sep-2026)
+
+El instituto abrió una cuenta de **Openpay** (sandbox con Clientes,
+Suscripciones, Tarjetas y Webhooks), así que la duda de la sección siguiente
+quedó resuelta: se usa Openpay. Plan acordado con Diego:
+
+| Paso | Qué | Estado |
+|---|---|---|
+| 1 | Pasarela Openpay: cobro con la tarjeta tecleada en Nódico (openpay.js + antifraude), 3-D Secure si el antifraude lo pide | **Hecho** |
+| 2 | Cliente de Openpay por miembro; tarjeta guardada **en Openpay** en planes que se renuevan | **Hecho** |
+| 3 | Suscripciones: planes en Openpay, alta al pagar, protección contra duplicados, cancelar/reactivar | Pendiente |
+| 4 | Webhooks: Basic Auth + consulta del cargo antes de activar; renovación y rechazo automáticos | Pendiente |
+| 5 | Revisión periódica de suscripciones canceladas por Openpay al agotar reintentos | Pendiente |
+| 6 | App: la página de pago de Nódico dentro de la app | Pendiente (hoy abre el formulario de Openpay) |
+| 7 | Pruebas en sandbox, incluida una renovación | Pendiente |
+
+**Decisión de reintentos (Diego, 29-sep-2026):** 2 reintentos y la suscripción
+queda `unpaid` (se reactiva cambiando la tarjeta); la membresía se suspende en
+el primer rechazo, como hoy (`config/pagos.php` → `openpay.reintentos`,
+`openpay.estado_tras_reintentos`).
+
+**Cómo quedó el código** (Openpay y Ecommerce BBVA son la misma plataforma y
+comparten código):
+
+- `PAGOS_PASARELA=openpay` inyecta `PasarelaOpenpay('openpay')`; `bbva` la
+  misma clase con las llaves y direcciones de BBVA. Stripe queda intacto.
+- `Openpay/ClienteOpenpay`: HTTP sin SDK; cargos a nivel comercio o cliente,
+  clientes (con recuperación por `external_id` si responde 2003) y tarjetas con
+  token.
+- `clientes_pasarela`: el cliente de cada miembro por pasarela y la tarjeta
+  guardada (solo su id, marca, últimos 4 y vencimiento; la tarjeta vive en
+  Openpay). `external_id = nodico-{entorno}-{usuario}` porque varios entornos
+  comparten el sandbox.
+- **3-D Secure** (`OPENPAY_3DS`): `si_hace_falta` cobra sin autenticación y,
+  si el antifraude rechaza por riesgo (3005), reintenta con 3-D Secure, la
+  misma tarjeta y un `order_id` nuevo; `siempre` lo pide en todos.
+- La confirmación no cambió: `ConfirmadorDeCargo` consulta el cargo (por la
+  ruta del cliente si es de un cliente) y compara importe, `order_id` y moneda.
+- Pruebas: `tests/Feature/Pagos/PagoOpenpayTest.php`.
+
+---
+
 ## ⚠️ Antes que nada: hay dos productos de BBVA, y solo uno sirve para esto
 
 La dirección que da el encargo, `https://bbva-docs.openpay.mx/`, **no es la

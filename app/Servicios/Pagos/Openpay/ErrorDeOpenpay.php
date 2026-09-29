@@ -1,19 +1,20 @@
 <?php
 
-namespace App\Servicios\Pagos\Bbva;
+namespace App\Servicios\Pagos\Openpay;
 
 use Illuminate\Http\Client\Response;
 use RuntimeException;
 
 /**
- * Una respuesta de error de la API de BBVA, con su objeto de error
- * (https://docs.ecommercebbva.com/#objeto-error): `category`, `error_code`,
+ * Una respuesta de error de la API de Openpay (o de Ecommerce BBVA, la misma
+ * plataforma), con su objeto de error
+ * (https://documents.openpay.mx/docs/api/index.html#objeto-error): `category`, `error_code`,
  * `description`, `http_code`, `request_id`.
  *
  * El mensaje de la excepción es técnico (para la bitácora). Lo que se le dice
- * a la persona sale de `MensajesDeBbva`.
+ * a la persona sale de `MensajesDeOpenpay`.
  */
-class ErrorDeBbva extends RuntimeException
+class ErrorDeOpenpay extends RuntimeException
 {
     public function __construct(
         public readonly ?int $codigo,
@@ -23,7 +24,7 @@ class ErrorDeBbva extends RuntimeException
         public readonly ?string $requestId = null,
     ) {
         parent::__construct(sprintf(
-            'BBVA respondió %s (código %s): %s',
+            'Openpay respondió %s (código %s): %s',
             $http ?? '¿?',
             $codigo ?? '¿?',
             $descripcion ?? 'sin descripción',
@@ -45,7 +46,7 @@ class ErrorDeBbva extends RuntimeException
 
     public static function sinConexion(string $detalle): self
     {
-        return new self(null, "Sin conexión con BBVA: {$detalle}", null);
+        return new self(null, "Sin conexión con Openpay: {$detalle}", null);
     }
 
     /** Para la bitácora: nunca incluye llaves. */

@@ -6,7 +6,7 @@ use App\Enums\EstadoFacturaOrden;
 use App\Enums\EstadoPagoOrden;
 use App\Enums\MetodoReferencia;
 use App\Exceptions\ErrorDeApi;
-use App\Http\Controllers\RegresoBbvaAppController;
+use App\Http\Controllers\RegresoDelBancoAppController;
 use App\Models\CargoPasarela;
 use App\Models\Factura;
 use App\Models\OrdenPago;
@@ -80,7 +80,7 @@ class PagosController extends ControladorMovil
      * - Stripe: los datos para la hoja de pago nativa (`client_secret`).
      * - BBVA: `modo: redireccion` y la `url` del formulario del banco, que la
      *   app abre en el navegador del sistema; BBVA regresa a
-     *   `pago/bbva/regreso-app`, que devuelve a la app por `vuelta`.
+     *   `pago/banco/regreso-app`, que devuelve a la app por `vuelta`.
      */
     public function prepararTarjeta(Request $request): JsonResponse
     {
@@ -94,7 +94,7 @@ class PagosController extends ControladorMovil
 
         if (($intent['modo'] ?? null) === 'redireccion') {
             CargoPasarela::whereKey($intent['cargo_id'])
-                ->update(['url_vuelta' => RegresoBbvaAppController::vueltaValida($datos['vuelta'] ?? null)]);
+                ->update(['url_vuelta' => RegresoDelBancoAppController::vueltaValida($datos['vuelta'] ?? null)]);
         }
 
         return $this->datos([

@@ -6,7 +6,7 @@ use App\Models\CargoPasarela;
 use App\Models\Plane;
 use App\Models\User;
 use App\Servicios\Pagos\Contratos\PasarelaDePagos;
-use App\Servicios\Pagos\PasarelaBbva;
+use App\Servicios\Pagos\PasarelaOpenpay;
 use App\Servicios\Pagos\PasarelaStripe;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\Request;
@@ -99,7 +99,7 @@ class PagoBbvaTest extends TestCase
 
     public function test_el_ajuste_decide_que_pasarela_se_inyecta(): void
     {
-        $this->assertInstanceOf(PasarelaBbva::class, app(PasarelaDePagos::class));
+        $this->assertInstanceOf(PasarelaOpenpay::class, app(PasarelaDePagos::class));
 
         config(['pagos.pasarela' => 'stripe']);
         $this->assertInstanceOf(PasarelaStripe::class, app(PasarelaDePagos::class));
@@ -243,7 +243,7 @@ class PagoBbvaTest extends TestCase
         $this->fingirConsulta($cargo, 'completed');
 
         $this->actingAs($miembro)
-            ->get(route('portal.pago.bbva.regreso', ['id' => $cargo->transaccion_id]))
+            ->get(route('portal.pago.banco.regreso', ['id' => $cargo->transaccion_id]))
             ->assertRedirect(route('portal.pago.confirmando', ['cargo' => $cargo->id]));
 
         $this->assertDatabaseHas('suscripciones', ['user_id' => $miembro->id, 'plan_id' => $plan->id, 'estatus' => 'Activa']);
@@ -260,8 +260,8 @@ class PagoBbvaTest extends TestCase
         $this->fingirConsulta($cargo, 'completed');
 
         // Regreso del banco, recarga de la página y el proceso programado.
-        $this->actingAs($miembro)->get(route('portal.pago.bbva.regreso', ['id' => $cargo->transaccion_id]));
-        $this->actingAs($miembro)->get(route('portal.pago.bbva.regreso', ['id' => $cargo->transaccion_id]));
+        $this->actingAs($miembro)->get(route('portal.pago.banco.regreso', ['id' => $cargo->transaccion_id]));
+        $this->actingAs($miembro)->get(route('portal.pago.banco.regreso', ['id' => $cargo->transaccion_id]));
         CargoPasarela::whereKey($cargo->id)->update(['estado' => CargoPasarela::PENDIENTE]);
         $this->artisan('nodico:confirmar-cargos')->assertSuccessful();
 
@@ -276,7 +276,7 @@ class PagoBbvaTest extends TestCase
         $cargo = $this->cargoPendiente($miembro, $plan);
         $this->fingirConsulta($cargo, 'failed', ['error_message' => 'Tarjeta declinada']);
 
-        $this->actingAs($miembro)->get(route('portal.pago.bbva.regreso', ['id' => $cargo->transaccion_id]));
+        $this->actingAs($miembro)->get(route('portal.pago.banco.regreso', ['id' => $cargo->transaccion_id]));
 
         $this->assertSame(0, $miembro->suscripciones()->count());
         $this->assertSame(CargoPasarela::FALLIDO, $cargo->refresh()->estado);
@@ -294,7 +294,7 @@ class PagoBbvaTest extends TestCase
         $cargo = $this->cargoPendiente($miembro, $plan);
         $this->fingirConsulta($cargo, 'charge_pending');
 
-        $this->actingAs($miembro)->get(route('portal.pago.bbva.regreso', ['id' => $cargo->transaccion_id]));
+        $this->actingAs($miembro)->get(route('portal.pago.banco.regreso', ['id' => $cargo->transaccion_id]));
 
         $this->assertSame(0, $miembro->suscripciones()->count());
         $this->assertSame(CargoPasarela::PENDIENTE, $cargo->refresh()->estado);
@@ -306,7 +306,7 @@ class PagoBbvaTest extends TestCase
         $miembro = User::factory()->miembro()->create();
 
         $this->actingAs($miembro)
-            ->get(route('portal.pago.bbva.regreso', ['id' => 'trinventado']))
+            ->get(route('portal.pago.banco.regreso', ['id' => 'trinventado']))
             ->assertRedirect(route('portal.suscripcion'));
 
         $this->assertSame(0, $miembro->suscripciones()->count());
@@ -322,7 +322,7 @@ class PagoBbvaTest extends TestCase
         $this->fingirConsulta($cargo, 'completed');
 
         $this->actingAs($intruso)
-            ->get(route('portal.pago.bbva.regreso', ['id' => $cargo->transaccion_id]))
+            ->get(route('portal.pago.banco.regreso', ['id' => $cargo->transaccion_id]))
             ->assertRedirect(route('portal.suscripcion'));
 
         $this->assertSame(0, $intruso->suscripciones()->count());
@@ -340,7 +340,7 @@ class PagoBbvaTest extends TestCase
         $cargo = $this->cargoPendiente($miembro, $plan);
         $this->fingirConsulta($cargo, 'completed', ['amount' => 79]);
 
-        $this->actingAs($miembro)->get(route('portal.pago.bbva.regreso', ['id' => $cargo->transaccion_id]));
+        $this->actingAs($miembro)->get(route('portal.pago.banco.regreso', ['id' => $cargo->transaccion_id]));
 
         $this->assertSame(0, $miembro->suscripciones()->count());
         $this->assertSame(CargoPasarela::EN_REVISION, $cargo->refresh()->estado);
@@ -399,7 +399,7 @@ class PagoBbvaTest extends TestCase
     {
         Http::fake();
 
-        $this->get(route('pago.bbva.regreso-app', ['id' => 'trinventado']))
+        $this->get(route('pago.banco.regreso-app', ['id' => 'trinventado']))
             ->assertRedirect('nodico://regreso-banco?error=desconocido');
 
         Http::assertNothingSent();
@@ -414,7 +414,7 @@ class PagoBbvaTest extends TestCase
         $cargo->update(['origen' => 'app', 'url_vuelta' => 'https://malicioso.example/robar']);
         $this->fingirConsulta($cargo, 'completed');
 
-        $this->get(route('pago.bbva.regreso-app', ['id' => $cargo->transaccion_id]))
+        $this->get(route('pago.banco.regreso-app', ['id' => $cargo->transaccion_id]))
             ->assertRedirect('nodico://regreso-banco?cargo='.$cargo->id);
 
         $this->assertSame(1, $miembro->suscripciones()->count());
@@ -440,7 +440,7 @@ class PagoBbvaTest extends TestCase
         $this->assertSame('app', $cargo->origen);
         $this->assertSame('exp://192.168.1.5:8081/--/pago/confirmando', $cargo->url_vuelta);
         Http::assertSent(fn (Request $p) => $p->method() === 'POST'
-            && $p['redirect_url'] === route('pago.bbva.regreso-app'));
+            && $p['redirect_url'] === route('pago.banco.regreso-app'));
 
         $this->api('GET', 'pagos/tarjeta/estado?cargo_id='.$cargo->id, [], $token)
             ->assertJsonPath('data.activa', false);

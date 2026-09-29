@@ -5,10 +5,10 @@ namespace App\Http\Controllers\Portal;
 use App\Http\Controllers\Controller;
 use App\Models\CargoPasarela;
 use App\Models\Plane;
-use App\Servicios\Pagos\Bbva\ConfirmadorDeCargo;
-use App\Servicios\Pagos\Bbva\ErrorDeBbva;
+use App\Servicios\Pagos\Openpay\ConfirmadorDeCargo;
+use App\Servicios\Pagos\Openpay\ErrorDeOpenpay;
 use App\Servicios\Pagos\Contratos\PasarelaDePagos;
-use App\Servicios\Pagos\PasarelaBbva;
+use App\Servicios\Pagos\PasarelaOpenpay;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -23,13 +23,14 @@ use Symfony\Component\HttpFoundation\Response as RespuestaHttp;
  *
  * - **Stripe:** el campo de tarjeta es un iframe de Stripe (Elements) montado
  *   en nuestra página; aquí solo se prepara el intent.
- * - **BBVA:** la tarjeta se teclea en el formulario del banco. Aquí se crea el
+ * - **Openpay / Ecommerce BBVA:** la tarjeta se teclea en Nódico (openpay.js,
+ *   token) o en el formulario de la pasarela. Aquí se crea el
  *   cargo, se manda a la persona allá y se la recibe de vuelta.
  *
  * En los dos casos, el número, el CVC y la fecha **nunca tocan este servidor**,
  * y la activación de la membresía **no** ocurre aquí por lo que diga el
  * navegador: la confirma el proveedor (webhook de Stripe, o la consulta del
- * cargo a la API de BBVA).
+ * cargo a la API de la pasarela).
  */
 class CheckoutController extends Controller
 {
@@ -58,10 +59,11 @@ class CheckoutController extends Controller
             'volverA'      => route('portal.suscripcion'),
             'clientSecret' => null,
             'stripeKey'    => null,
-            // BBVA: `token` = la tarjeta se teclea aquí (openpay.js);
+            // Openpay/BBVA: `token` = la tarjeta se teclea aquí (openpay.js);
             // `vpos` = en el formulario del banco.
-            'captura'      => $this->pasarela instanceof PasarelaBbva && $this->pasarela->capturaEnNodico() ? 'token' : 'vpos',
-            'openpay'      => $this->pasarela instanceof PasarelaBbva ? $this->pasarela->datosParaElNavegador() : null,
+            'captura'      => $this->pasarela instanceof PasarelaOpenpay && $this->pasarela->capturaEnNodico() ? 'token' : 'vpos',
+            'openpay'      => $this->pasarela instanceof PasarelaOpenpay ? $this->pasarela->datosParaElNavegador() : null,
+            'guardaTarjeta' => $this->pasarela instanceof PasarelaOpenpay && $this->pasarela->guardaTarjeta($plan),
         ];
 
         // Sin llaves todavía, la pantalla se muestra en **vista previa**: se ve
@@ -71,7 +73,7 @@ class CheckoutController extends Controller
             return Inertia::render('Portal/Pago', [...$comunes, 'vistaPrevia' => true]);
         }
 
-        // BBVA: el cargo se crea al pulsar «Pagar» (`iniciar`), no al ver la
+        // Openpay/BBVA: el cargo se crea al pulsar «Pagar», no al ver la
         // página: recargarla no debe crear cargos.
         if ($this->pasarela->nombre() !== 'stripe') {
             return Inertia::render('Portal/Pago', [...$comunes, 'vistaPrevia' => false]);
@@ -88,7 +90,7 @@ class CheckoutController extends Controller
     }
 
     /**
-     * BBVA: crea el cargo y manda a la persona al formulario del banco. Si ya
+     * Formulario de la pasarela: crea el cargo y manda a la persona allá. Si ya
      * hay uno reciente del mismo plan esperando, la manda a ese mismo.
      */
     public function iniciar(Request $request, Plane $plan): RespuestaHttp
@@ -102,14 +104,14 @@ class CheckoutController extends Controller
     }
 
     /**
-     * BBVA con la tarjeta tecleada en Nódico: openpay.js ya la cambió por un
+     * Tarjeta tecleada en Nódico: openpay.js ya la cambió por un
      * token en el navegador; aquí solo llegan el token y el identificador del
      * dispositivo (antifraude). Si el banco pide 3-D Secure, se manda a su
      * página; si no, directo a «confirmando», que consulta el cargo.
      */
     public function cobrarConToken(Request $request, Plane $plan): RespuestaHttp
     {
-        abort_unless($this->pasarela instanceof PasarelaBbva && $this->pasarela->capturaEnNodico(), 404);
+        abort_unless($this->pasarela instanceof PasarelaOpenpay && $this->pasarela->capturaEnNodico(), 404);
 
         $datos = $request->validate([
             'token_id'          => ['required', 'string', 'max:64', 'regex:/^[A-Za-z0-9_-]+$/'],
@@ -155,22 +157,23 @@ class CheckoutController extends Controller
     }
 
     /**
-     * BBVA regresa aquí con `?id={transacción}`. El id es una **pista**, no una
+     * La pasarela (tras el 3-D Secure o su formulario) regresa aquí con
+     * `?id={transacción}`. El id es una **pista**, no una
      * prueba: solo se acepta si es de un cargo que Nódico creó para esta
      * persona, y lo que se hace depende de lo que responda la API al
      * consultarlo. Nunca se activa nada por haber llegado a esta URL.
      */
-    public function regresoBbva(Request $request, ConfirmadorDeCargo $confirmador): RedirectResponse
+    public function regresoDelBanco(Request $request, ConfirmadorDeCargo $confirmador): RedirectResponse
     {
         $id = (string) $request->query('id', '');
 
         $cargo = $id !== '' ? CargoPasarela::where('user_id', $request->user()->id)
-            ->where('pasarela', 'bbva')
+            ->whereIn('pasarela', ['openpay', 'bbva'])
             ->where('transaccion_id', $id)
             ->first() : null;
 
         if (! $cargo) {
-            Log::warning('BBVA: regreso con un id que no es de un cargo de esta persona.', [
+            Log::warning('Pasarela: regreso con un id que no es de un cargo de esta persona.', [
                 'usuario' => $request->user()->id, 'id' => Str::limit($id, 60),
             ]);
 
@@ -180,10 +183,10 @@ class CheckoutController extends Controller
 
         try {
             $confirmador->confirmar($cargo);
-        } catch (ErrorDeBbva $e) {
+        } catch (ErrorDeOpenpay $e) {
             // La pantalla «confirmando» vuelve a preguntar; y si no, el proceso
             // programado.
-            Log::warning('BBVA: no se pudo consultar el cargo al regresar.', ['cargo' => $cargo->id, ...$e->contexto()]);
+            Log::warning('Pasarela: no se pudo consultar el cargo al regresar.', ['cargo' => $cargo->id, ...$e->contexto()]);
         }
 
         return redirect()->route('portal.pago.confirmando', ['cargo' => $cargo->id]);
