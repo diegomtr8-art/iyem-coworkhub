@@ -8,6 +8,7 @@ use App\Models\Plane;
 use App\Servicios\Pagos\Bbva\ConfirmadorDeCargo;
 use App\Servicios\Pagos\Bbva\ErrorDeBbva;
 use App\Servicios\Pagos\Contratos\PasarelaDePagos;
+use App\Servicios\Pagos\PasarelaBbva;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -57,6 +58,10 @@ class CheckoutController extends Controller
             'volverA'      => route('portal.suscripcion'),
             'clientSecret' => null,
             'stripeKey'    => null,
+            // BBVA: `token` = la tarjeta se teclea aquí (openpay.js);
+            // `vpos` = en el formulario del banco.
+            'captura'      => $this->pasarela instanceof PasarelaBbva && $this->pasarela->capturaEnNodico() ? 'token' : 'vpos',
+            'openpay'      => $this->pasarela instanceof PasarelaBbva ? $this->pasarela->datosParaElNavegador() : null,
         ];
 
         // Sin llaves todavía, la pantalla se muestra en **vista previa**: se ve
@@ -94,6 +99,32 @@ class CheckoutController extends Controller
 
         // Redirección fuera del sitio: Inertia necesita `location`, no un 302.
         return Inertia::location($cobro['url']);
+    }
+
+    /**
+     * BBVA con la tarjeta tecleada en Nódico: openpay.js ya la cambió por un
+     * token en el navegador; aquí solo llegan el token y el identificador del
+     * dispositivo (antifraude). Si el banco pide 3-D Secure, se manda a su
+     * página; si no, directo a «confirmando», que consulta el cargo.
+     */
+    public function cobrarConToken(Request $request, Plane $plan): RespuestaHttp
+    {
+        abort_unless($this->pasarela instanceof PasarelaBbva && $this->pasarela->capturaEnNodico(), 404);
+
+        $datos = $request->validate([
+            'token_id'          => ['required', 'string', 'max:64', 'regex:/^[A-Za-z0-9_-]+$/'],
+            'device_session_id' => ['required', 'string', 'max:255'],
+        ], [
+            'device_session_id.required' => 'No pudimos verificar tu dispositivo. Recarga la página y vuelve a intentarlo.',
+        ]);
+
+        $cobro = $this->pasarela->cobrarConToken($request->user(), $plan, $datos['token_id'], $datos['device_session_id']);
+
+        if ($cobro['modo'] === 'redireccion') {
+            return Inertia::location($cobro['url']);
+        }
+
+        return redirect()->route('portal.pago.confirmando', ['cargo' => $cobro['cargo_id']]);
     }
 
     /**

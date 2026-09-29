@@ -34,6 +34,11 @@ class CabecerasDeSeguridad
         'stripe_js'      => ['https://js.stripe.com'],
         'stripe_frames'  => ['https://js.stripe.com', 'https://hooks.stripe.com'],
         'stripe_connect' => ['https://api.stripe.com'],
+        // Migración a BBVA — openpay.js (tokens de tarjeta y antifraude). BBVA
+        // corre sobre la plataforma de Openpay: el script y los tokens salen de
+        // sus dominios, no de los de ecommercebbva.com.
+        'openpay_js'      => ['https://js.openpay.mx', 'https://*.openpay.mx'],
+        'openpay_connect' => ['https://*.openpay.mx', 'https://*.ecommercebbva.com'],
     ];
 
     public function handle(Request $request, Closure $next): Response
@@ -76,15 +81,15 @@ class CabecerasDeSeguridad
 
     private function politica(string $nonce): string
     {
-        $marcos  = array_merge(self::ORIGENES['youtube'], self::ORIGENES['luma'], self::ORIGENES['maps'], self::ORIGENES['instagram'], self::ORIGENES['stripe_frames']);
-        $imagenes = array_merge(self::ORIGENES['youtube'], self::ORIGENES['instagram'], self::ORIGENES['maps']);
+        $marcos  = array_merge(self::ORIGENES['youtube'], self::ORIGENES['luma'], self::ORIGENES['maps'], self::ORIGENES['instagram'], self::ORIGENES['stripe_frames'], self::ORIGENES['openpay_js']);
+        $imagenes = array_merge(self::ORIGENES['youtube'], self::ORIGENES['instagram'], self::ORIGENES['maps'], self::ORIGENES['openpay_js']);
 
         $directivas = [
             "default-src 'self'",
             // `unsafe-inline` va **detrás** del nonce a propósito: los navegadores
             // modernos lo ignoran cuando hay nonce, y los viejos que no entienden
             // nonce se quedan con él en vez de romper la página.
-            "script-src 'self' 'nonce-{$nonce}' 'unsafe-inline' " . implode(' ', array_merge(self::ORIGENES['youtube'], self::ORIGENES['luma'], self::ORIGENES['stripe_js'])),
+            "script-src 'self' 'nonce-{$nonce}' 'unsafe-inline' " . implode(' ', array_merge(self::ORIGENES['youtube'], self::ORIGENES['luma'], self::ORIGENES['stripe_js'], self::ORIGENES['openpay_js'])),
             // Tailwind y los estilos en línea de los componentes obligan a
             // `unsafe-inline` en estilos. Es un riesgo bajo comparado con el de
             // scripts, y quitarlo exigiría reescribir el front entero.
@@ -92,7 +97,7 @@ class CabecerasDeSeguridad
             'font-src \'self\' data: ' . implode(' ', self::ORIGENES['fuentes']),
             "img-src 'self' data: blob: " . implode(' ', $imagenes),
             "frame-src 'self' " . implode(' ', $marcos),
-            "connect-src 'self' " . implode(' ', array_merge(self::ORIGENES['maps'], self::ORIGENES['stripe_connect'])),
+            "connect-src 'self' " . implode(' ', array_merge(self::ORIGENES['maps'], self::ORIGENES['stripe_connect'], self::ORIGENES['openpay_connect'])),
             "media-src 'self'",
             "object-src 'none'",
             "base-uri 'self'",

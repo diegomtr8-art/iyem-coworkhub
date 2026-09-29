@@ -71,10 +71,85 @@ class PasarelaBbva implements PasarelaDePagos
         return false;
     }
 
-    /** Con el formulario del banco no hace falta ninguna llave en el navegador. */
+    /**
+     * Con el formulario del banco no hace falta ninguna llave en el navegador.
+     * Con la captura en Nódico, la pública: solo sirve para crear tokens.
+     */
     public function llavePublica(): ?string
     {
-        return null;
+        return $this->capturaEnNodico() ? (string) config('pagos.bbva.llave_publica') : null;
+    }
+
+    /**
+     * La tarjeta se teclea en la página de Nódico (openpay.js → token) en vez
+     * de en el formulario del banco. Sin llave pública no se puede: se usa el
+     * formulario del banco.
+     */
+    public function capturaEnNodico(): bool
+    {
+        return config('pagos.bbva.captura') === 'token' && filled(config('pagos.bbva.llave_publica'));
+    }
+
+    /**
+     * Lo que openpay.js necesita en el navegador. Nada secreto: el id de
+     * comercio y la llave pública son, por diseño, visibles.
+     *
+     * @return array{merchant_id: string, llave_publica: string, sandbox: bool}|null
+     */
+    public function datosParaElNavegador(): ?array
+    {
+        if (! $this->capturaEnNodico()) {
+            return null;
+        }
+
+        return [
+            'merchant_id'   => (string) config('pagos.bbva.merchant_id'),
+            'llave_publica' => (string) config('pagos.bbva.llave_publica'),
+            'sandbox'       => $this->bbva->enSandbox(),
+        ];
+    }
+
+    /**
+     * Cobro con la tarjeta capturada en Nódico: openpay.js ya la cambió por un
+     * token en el navegador, y aquí se cobra con él. El número nunca llega a
+     * este servidor.
+     *
+     * Ojo: la documentación de Ecommerce BBVA no describe los tokens (es el
+     * «cargo sin VPOS», que requiere autorización del ejecutivo). Los campos
+     * `source_id` y `device_session_id` son los de Openpay, la plataforma
+     * sobre la que corre BBVA. Si el comercio no lo tiene habilitado, BBVA
+     * lo rechaza y la persona recibe un mensaje claro; ver docs/PAGOS-BBVA.md.
+     *
+     * Devuelve `redireccion` si el banco pide 3-D Secure (la autenticación es
+     * siempre del banco emisor) o `confirmando` si el cargo ya se resolvió.
+     *
+     * @return array{modo: string, cargo_id: int, url?: string}
+     *
+     * @throws ValidationException
+     */
+    public function cobrarConToken(User $usuario, Plane $plan, string $token, string $deviceSessionId): array
+    {
+        if (! $this->disponiblePara($plan) || ! $this->capturaEnNodico()) {
+            throw ValidationException::withMessages([
+                'plan' => 'El pago con tarjeta todavía no está disponible. Puedes pagar por referencia.',
+            ]);
+        }
+
+        return Cache::lock("bbva:preparar:{$usuario->id}", 20)->block(10, function () use ($usuario, $plan, $token, $deviceSessionId) {
+            $this->rechazarSiRecienPagado($usuario, $plan);
+
+            // Un cargo del mismo plan esperando el 3-D Secure: se termina ese,
+            // no se cobra otro con la tarjeta nueva.
+            if ($retomado = $this->retomarPendiente($usuario, $plan, 'web')) {
+                return $retomado;
+            }
+
+            return $this->crearCargo($usuario, $plan, 'web', [
+                'method'            => 'card',
+                'source_id'         => $token,
+                'device_session_id' => $deviceSessionId,
+            ]);
+        });
     }
 
     /**
@@ -258,11 +333,13 @@ class PasarelaBbva implements PasarelaDePagos
     }
 
     /**
-     * @return array{modo: string, url: string, cargo_id: int}
+     * @param  array<string, string>  $conTarjeta  vacío = formulario del banco (VPOS);
+     *                                             con `source_id` = token de openpay.js.
+     * @return array{modo: string, cargo_id: int, url?: string}
      *
      * @throws ValidationException
      */
-    private function crearCargo(User $usuario, Plane $plan, string $origen): array
+    private function crearCargo(User $usuario, Plane $plan, string $origen, array $conTarjeta = []): array
     {
         $ip = $this->ipDelCliente();
 
@@ -293,6 +370,7 @@ class PasarelaBbva implements PasarelaDePagos
                     ? route('pago.bbva.regreso-app')
                     : route('portal.pago.bbva.regreso'),
                 'customer'         => $this->cliente($usuario),
+                ...$conTarjeta,
             ], $ip);
         } catch (ErrorDeBbva $e) {
             $cargo->update([
@@ -307,8 +385,11 @@ class PasarelaBbva implements PasarelaDePagos
 
         $transaccion = $respuesta['id'] ?? null;
         $url = $respuesta['payment_method']['url'] ?? null;
+        $estado = strtolower((string) ($respuesta['status'] ?? ''));
 
-        if (! $transaccion || ! $url) {
+        // Con el formulario del banco siempre hay URL; con token, solo si el
+        // banco pide 3-D Secure.
+        if (! $transaccion || (! $url && ! $conTarjeta)) {
             $cargo->update(['estado' => CargoPasarela::FALLIDO, 'error_mensaje' => 'Respuesta sin id o sin URL de pago.']);
             Log::error('BBVA: el cargo se creó sin id o sin URL de pago.', ['cargo' => $cargo->id, 'respuesta' => $respuesta]);
 
@@ -318,15 +399,31 @@ class PasarelaBbva implements PasarelaDePagos
         $cargo->update([
             'transaccion_id'  => $transaccion,
             'estado'          => CargoPasarela::PENDIENTE,
-            'estado_pasarela' => strtolower((string) ($respuesta['status'] ?? '')),
+            'estado_pasarela' => $estado,
             'url_pago'        => $url,
         ]);
 
         Log::info('BBVA: cargo creado.', [
-            'cargo' => $cargo->id, 'transaccion' => $transaccion, 'plan' => $plan->id, 'importe' => $cargo->importe,
+            'cargo' => $cargo->id, 'transaccion' => $transaccion, 'plan' => $plan->id,
+            'importe' => $cargo->importe, 'captura' => $conTarjeta ? 'token' : 'vpos', 'estado_bbva' => $estado,
         ]);
 
-        return ['modo' => 'redireccion', 'url' => $url, 'cargo_id' => $cargo->id];
+        if ($url) {
+            return ['modo' => 'redireccion', 'url' => $url, 'cargo_id' => $cargo->id];
+        }
+
+        // Sin 3-D Secure el cargo ya se resolvió. Aun así, lo que diga la
+        // respuesta de creación no activa nada: se consulta, como siempre.
+        $this->consultarSinRomper($cargo);
+
+        if ($cargo->estado === CargoPasarela::FALLIDO) {
+            throw ValidationException::withMessages(['plan' => MensajesDeBbva::paraCargoFallido(
+                $cargo->error_mensaje,
+                is_numeric($cargo->error_codigo) ? (int) $cargo->error_codigo : null,
+            )]);
+        }
+
+        return ['modo' => 'confirmando', 'cargo_id' => $cargo->id];
     }
 
     /**

@@ -5,6 +5,7 @@ import { ShieldCheck, Lock, Landmark } from 'lucide-vue-next'
 import PortalLayout from '@/Layouts/PortalLayout.vue'
 import EncabezadoPortal from '@/Components/Portal/EncabezadoPortal.vue'
 import TarjetaPortal from '@/Components/Portal/TarjetaPortal.vue'
+import FormularioTarjetaBbva from '@/Components/Portal/FormularioTarjetaBbva.vue'
 
 const props = withDefaults(defineProps<{
   plan: { id: number; nombre: string; precio: number; periodo_label: string; recurrente: boolean; renueva_sola: boolean; color: string }
@@ -18,8 +19,14 @@ const props = withDefaults(defineProps<{
   /** Sin llaves de la pasarela: se ve el flujo, pero la tarjeta y el cobro
    *  están deshabilitados, con su motivo, hasta configurarlas. */
   vistaPrevia?: boolean
+  /** BBVA: `token` = la tarjeta se teclea aquí (openpay.js); `vpos` = en el formulario del banco. */
+  captura?: 'token' | 'vpos'
+  /** Lo que openpay.js necesita. Nada secreto: id de comercio y llave pública. */
+  openpay?: { merchant_id: string; llave_publica: string; sandbox: boolean } | null
 }>(), {
   vistaPrevia: false,
+  captura: 'vpos',
+  openpay: null,
 })
 
 const esBbva = props.pasarela === 'bbva'
@@ -191,6 +198,11 @@ async function pagar() {
           </button>
         </template>
 
+        <!-- ── Pago real con BBVA: la tarjeta se teclea aquí (openpay.js) ── -->
+        <template v-else-if="esBbva && captura === 'token' && openpay">
+          <FormularioTarjetaBbva :plan-id="plan.id" :importe="precio(plan.precio)" :openpay="openpay" />
+        </template>
+
         <!-- ── Pago real con BBVA: formulario del banco ── -->
         <template v-else-if="esBbva">
           <div class="flex items-start gap-3 border-2 border-dark/10 bg-cream-50 p-4">
@@ -235,7 +247,8 @@ async function pagar() {
 
         <p class="mt-4 flex items-center justify-center gap-2 font-body text-xs text-dark/50">
           <ShieldCheck :size="14" aria-hidden="true" />
-          El pago lo procesa {{ etiqueta }}. Tu tarjeta nunca toca los servidores de Nódico.
+          <template v-if="esBbva && captura === 'token'">Los datos de tu tarjeta van directo a BBVA; nunca tocan los servidores de Nódico.</template>
+          <template v-else>El pago lo procesa {{ etiqueta }}. Tu tarjeta nunca toca los servidores de Nódico.</template>
         </p>
       </TarjetaPortal>
 

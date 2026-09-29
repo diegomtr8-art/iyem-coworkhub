@@ -350,6 +350,9 @@ Route::middleware(['auth', 'verified', 'portal:miembro', 'no.suspendida', 'conse
     Route::post('contratar/{plan}/tarjeta/banco', [CheckoutController::class, 'iniciar'])
         ->middleware('throttle:10,1')
         ->name('contratar.tarjeta.iniciar');
+    Route::post('contratar/{plan}/tarjeta/token', [CheckoutController::class, 'cobrarConToken'])
+        ->middleware('throttle:10,1')
+        ->name('contratar.tarjeta.token');
     Route::get('pago/bbva/regreso', [CheckoutController::class, 'regresoBbva'])
         ->middleware('throttle:30,1')
         ->name('pago.bbva.regreso');

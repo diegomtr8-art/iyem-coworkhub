@@ -454,4 +454,130 @@ class PagoBbvaTest extends TestCase
         $this->apiIdempotente('pagos/tarjeta/suscribir', ['plan_id' => $plan->id, 'setup_intent_id' => 'seti_x'], $token)
             ->assertStatus(409);
     }
+
+    // ── Tarjeta tecleada en Nódico (token de openpay.js) ────────────────────
+
+    private function conCapturaEnNodico(): void
+    {
+        config(['pagos.bbva.captura' => 'token', 'pagos.bbva.llave_publica' => 'pk_prueba_inventada']);
+    }
+
+    /** BBVA al cobrar con token: aprobado sin 3-D Secure, o pidiendo 3-D Secure. */
+    private function fingirCobroConToken(string $transaccion, string $estado, ?string $url3ds = null): void
+    {
+        Http::fake([
+            self::BASE.'charges' => fn (Request $p) => Http::response(array_filter([
+                'id'             => $transaccion,
+                'status'         => $estado,
+                'amount'         => $p['amount'],
+                'order_id'       => $p['order_id'],
+                'currency'       => 'MXN',
+                'payment_method' => $url3ds ? ['type' => 'redirect', 'url' => $url3ds] : null,
+            ])),
+            self::BASE.'charges/'.$transaccion => fn () => Http::response([
+                'id'       => $transaccion,
+                'status'   => $estado,
+                'amount'   => CargoPasarela::where('transaccion_id', $transaccion)->value('importe'),
+                'order_id' => CargoPasarela::where('transaccion_id', $transaccion)->value('order_id'),
+                'currency' => 'MXN',
+                'card'     => ['brand' => 'visa', 'card_number' => '411111XXXXXX1111'],
+            ]),
+        ]);
+    }
+
+    public function test_con_captura_en_nodico_la_pantalla_recibe_solo_datos_publicos(): void
+    {
+        $this->conCapturaEnNodico();
+        $plan = Plane::factory()->dayPass()->create();
+
+        $respuesta = $this->actingAs(User::factory()->miembro()->create())
+            ->get(route('portal.contratar.tarjeta', $plan))
+            ->assertOk()
+            ->assertInertia(fn ($p) => $p->component('Portal/Pago')
+                ->where('captura', 'token')
+                ->where('openpay.merchant_id', 'mtest')
+                ->where('openpay.llave_publica', 'pk_prueba_inventada')
+                ->where('openpay.sandbox', true));
+
+        // La llave privada no llega al navegador por ningún lado.
+        $this->assertStringNotContainsString('sk_prueba_inventada', $respuesta->getContent());
+    }
+
+    public function test_el_cobro_con_token_manda_el_token_y_el_dispositivo_con_el_importe_en_pesos(): void
+    {
+        $this->conCapturaEnNodico();
+        $this->fingirCobroConToken('trtoken1', 'completed');
+        $plan = Plane::factory()->nodoPro()->create();
+        $miembro = User::factory()->miembro()->create();
+
+        $this->actingAs($miembro)
+            ->post(route('portal.contratar.tarjeta.token', $plan), ['token_id' => 'tokabc123', 'device_session_id' => 'dispositivo123'])
+            ->assertRedirect(route('portal.pago.confirmando', ['cargo' => CargoPasarela::sole()->id]));
+
+        Http::assertSent(fn (Request $p) => $p->method() === 'POST'
+            && $p['method'] === 'card'
+            && $p['source_id'] === 'tokabc123'
+            && $p['device_session_id'] === 'dispositivo123'
+            && $p['amount'] == 599
+            && $p['affiliation_bbva'] === '781500'
+            && ! isset($p['card']));
+
+        // Aprobado sin 3-D Secure: se activa, pero por la consulta del cargo.
+        Http::assertSent(fn (Request $p) => $p->method() === 'GET' && str_ends_with($p->url(), 'charges/trtoken1'));
+        $this->assertDatabaseHas('suscripciones', ['user_id' => $miembro->id, 'plan_id' => $plan->id, 'estatus' => 'Activa']);
+    }
+
+    public function test_si_el_banco_pide_3ds_se_manda_a_su_pagina_sin_activar_nada(): void
+    {
+        $this->conCapturaEnNodico();
+        $url3ds = 'https://sandbox-api.openpay.mx/v1/mtest/charges/trtoken2/redirect/';
+        $this->fingirCobroConToken('trtoken2', 'charge_pending', $url3ds);
+        $plan = Plane::factory()->dayPass()->create();
+        $miembro = User::factory()->miembro()->create();
+
+        $this->actingAs($miembro)
+            ->post(route('portal.contratar.tarjeta.token', $plan), ['token_id' => 'tokabc', 'device_session_id' => 'disp'], ['X-Inertia' => 'true'])
+            ->assertStatus(409)
+            ->assertHeader('X-Inertia-Location', $url3ds);
+
+        $this->assertSame(0, $miembro->suscripciones()->count());
+        $this->assertSame(CargoPasarela::PENDIENTE, CargoPasarela::sole()->estado);
+    }
+
+    public function test_una_tarjeta_rechazada_con_token_se_explica_en_espanol(): void
+    {
+        $this->conCapturaEnNodico();
+        Http::fake([self::BASE.'charges' => Http::response([
+            'category' => 'gateway', 'error_code' => 3003, 'description' => 'The card does not have sufficient funds', 'http_code' => 402,
+        ], 402)]);
+        $plan = Plane::factory()->dayPass()->create();
+
+        $this->actingAs(User::factory()->miembro()->create())
+            ->from(route('portal.contratar.tarjeta', $plan))
+            ->post(route('portal.contratar.tarjeta.token', $plan), ['token_id' => 'tokabc', 'device_session_id' => 'disp'])
+            ->assertSessionHasErrors(['plan' => 'La tarjeta no tiene saldo suficiente. Prueba con otra.']);
+    }
+
+    public function test_sin_el_dispositivo_del_antifraude_no_se_cobra(): void
+    {
+        $this->conCapturaEnNodico();
+        Http::fake();
+        $plan = Plane::factory()->dayPass()->create();
+
+        $this->actingAs(User::factory()->miembro()->create())
+            ->from(route('portal.contratar.tarjeta', $plan))
+            ->post(route('portal.contratar.tarjeta.token', $plan), ['token_id' => 'tokabc'])
+            ->assertSessionHasErrors('device_session_id');
+
+        Http::assertNothingSent();
+    }
+
+    public function test_con_el_formulario_del_banco_la_ruta_del_token_no_existe(): void
+    {
+        $plan = Plane::factory()->dayPass()->create();
+
+        $this->actingAs(User::factory()->miembro()->create())
+            ->post(route('portal.contratar.tarjeta.token', $plan), ['token_id' => 'tokabc', 'device_session_id' => 'disp'])
+            ->assertNotFound();
+    }
 }

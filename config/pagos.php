@@ -24,6 +24,17 @@ return [
     'bbva' => [
         'merchant_id'  => env('BBVA_MERCHANT_ID'),
         'llave_privada' => env('BBVA_LLAVE_PRIVADA'),
+        // La única que puede llegar al navegador: solo sirve para crear tokens
+        // de tarjeta con openpay.js (captura `token`).
+        'llave_publica' => env('BBVA_LLAVE_PUBLICA'),
+
+        // Dónde teclea la persona su tarjeta:
+        //  - `token`: en la página de Nódico. openpay.js manda los datos
+        //    directo a BBVA y devuelve un token; Nódico cobra con él. Es el
+        //    «cargo sin VPOS», que BBVA exige autorizar con el ejecutivo.
+        //  - `vpos`: en el formulario del banco (redirección). Lo que todo
+        //    comercio tiene de fábrica.
+        'captura' => env('BBVA_CAPTURA', 'vpos'),
         // Número de afiliación: la documentación lo pide en cada cargo
         // (`affiliation_bbva`, requerido). Lo da el ejecutivo de cuenta.
         'afiliacion'   => env('BBVA_AFILIACION'),

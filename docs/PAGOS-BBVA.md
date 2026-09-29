@@ -58,6 +58,38 @@ Llaves API**, y van solo al `.env`.
   válido.
 - **Contacto técnico que muestra el panel:** plataformas.especiales.mx@bbva.com.
 
+## La tarjeta tecleada en Nódico (captura `token`)
+
+A petición de Diego, para que la persona no salga a una página externa como con
+Stripe. Se activa con `BBVA_CAPTURA=token` y `BBVA_LLAVE_PUBLICA`. Sin ellas se
+usa el formulario del banco.
+
+- **Por qué no se puede meter el formulario del banco en un iframe:** su página
+  responde con `Content-Security-Policy: frame-ancestors https://*.openpay.mx`,
+  así que el navegador lo bloquea fuera de `openpay.mx` (comprobado el
+  29-sep-2026).
+- **Cómo funciona:** `FormularioTarjetaBbva.vue` carga `openpay.v1.min.js` y
+  `openpay-data.v1.min.js` de `js.openpay.mx`. Con el id de comercio y la llave
+  pública crea un **token** en el navegador y obtiene el `device_session_id`
+  del antifraude. A Nódico solo viajan esos dos datos: los campos no tienen
+  `name` ni están en un `<form>`. El servidor cobra con `method: card`,
+  `source_id: <token>`, `device_session_id`, `affiliation_bbva` y el importe en
+  pesos (`PasarelaBbva::cobrarConToken`).
+- **3-D Secure:** si el banco lo pide, la respuesta trae `payment_method.url` y
+  se manda a la persona a la página de **su banco**. Esa autenticación es
+  siempre del emisor y no se puede evitar. Si no lo pide, el cargo se consulta
+  en el momento y se va directo a «confirmando».
+- **La confirmación no cambia:** solo `GET /charges/{id}`, con las mismas
+  comprobaciones de importe, `order_id` y dueño.
+- **Lo que no está documentado:** la documentación de Ecommerce BBVA no describe
+  los tokens. Es el «cargo sin VPOS» que el ejecutivo debe autorizar, y los
+  campos (`source_id`, `device_session_id`) son los de Openpay. El sandbox sí
+  expone `POST /tokens` con la llave pública (comprobado sin enviar datos de
+  tarjeta). Si el comercio no lo tiene autorizado, el cobro fallará con un
+  error de BBVA y la persona verá un mensaje en español.
+- **App móvil:** sigue con el formulario del banco en el navegador del
+  teléfono; openpay.js es para web.
+
 ## Lo que ya está construido (29-sep-2026)
 
 Se eligió convivir con **un interruptor** (`PAGOS_PASARELA=stripe|bbva`): una
