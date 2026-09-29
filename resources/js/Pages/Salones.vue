@@ -138,6 +138,8 @@ const ficha = (salon: Salon) => [
 
         <ScrollReveal v-if="!salones?.length" class="mt-14">
           <SectionHeading
+            titulo="Salones en actualización"
+            descripcion="Estamos preparando la información de nuestros salones. Escríbenos y te compartimos disponibilidad y precios."
             align="center"
           />
         </ScrollReveal>
@@ -165,6 +167,7 @@ const ficha = (salon: Salon) => [
           <ScrollReveal from="left">
             <SectionHeading
               etiqueta="Servicio adicional"
+              titulo="Coffee break para tu evento"
               tono="claro"
               tamano="lg"
             />
