@@ -32,8 +32,14 @@ class HandleInertiaRequests extends Middleware
                 'info'        => $request->session()->get('info'),
                 'warning'     => $request->session()->get('warning'),
                 'contacto_ok' => $request->session()->get('contacto_ok'),
+                // «Página Web»: sección cuyo borrador se acaba de preparar.
+                'vistaPrevia' => $request->session()->get('vistaPrevia'),
             ],
             'isStaging' => app()->environment('staging'),
+
+            // La página pública está mostrando borradores del módulo «Página
+            // Web» a quien los edita: el sitio lo avisa con una franja.
+            'vistaPrevia' => app(ContenidoDelSitio::class)->enVistaPrevia(),
 
             // Fase 3.1 - Contadores del menu del panel operativo. Es lo que
             // pone el punto de aviso junto a "Asesorias" sin obligar a entrar

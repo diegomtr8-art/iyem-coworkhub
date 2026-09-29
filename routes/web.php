@@ -15,6 +15,7 @@ use App\Http\Controllers\DatosPersonalesController;
 use App\Http\Controllers\EmprendedoresController;
 use App\Http\Controllers\EspaciosController;
 use App\Http\Controllers\EventosController;
+use App\Http\Controllers\PaginaWebController;
 use App\Http\Controllers\CajaOrdenesController;
 use App\Http\Controllers\FacturasController;
 use App\Http\Controllers\MiembrosController;
@@ -299,6 +300,17 @@ Route::middleware(['auth', 'verified', 'portal:operativo', 'no.suspendida', 'con
         Route::post('admin/emprendedores', [EmprendedoresController::class, 'guardar'])->name('emprendedores.store');
         Route::patch('admin/emprendedores/{emprendedor}', [EmprendedoresController::class, 'guardar'])->name('emprendedores.update');
         Route::post('admin/emprendedores/{emprendedor}/fijar', [EmprendedoresController::class, 'fijar'])->name('emprendedores.fijar');
+    });
+
+    // Módulo «Página Web»: textos, enlaces y datos de contacto del sitio
+    // público (docs/CMS-PAGINA-WEB.md). Solo administración.
+    Route::middleware('can:gestionar-sitio')->prefix('pagina-web')->name('pagina-web.')->group(function () {
+        Route::get('/', [PaginaWebController::class, 'index'])->name('index');
+        Route::get('{pagina}', [PaginaWebController::class, 'editar'])->name('editar');
+        Route::put('secciones/{seccion}', [PaginaWebController::class, 'guardar'])->name('guardar');
+        Route::post('secciones/{seccion}/vista-previa', [PaginaWebController::class, 'vistaPrevia'])->name('vista-previa');
+        Route::post('secciones/{seccion}/deshacer', [PaginaWebController::class, 'deshacer'])->name('deshacer');
+        Route::post('secciones/{seccion}/restablecer', [PaginaWebController::class, 'restablecer'])->name('restablecer');
     });
 
     Route::middleware('can:ver-reportes')->group(function () {

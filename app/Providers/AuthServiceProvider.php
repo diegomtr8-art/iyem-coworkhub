@@ -46,6 +46,9 @@ class AuthServiceProvider extends ServiceProvider
         // Fase 3: el catalogo de asesores y los dias festivos son
         // configuracion, no operacion. Y ajustar horas mueve saldo.
         'gestionar-catalogos',
+        // Módulo «Página Web»: cambia lo que ve todo el mundo en el sitio
+        // público. Ni recepción ni caja (docs/CMS-PAGINA-WEB.md).
+        'gestionar-sitio',
     ];
 
     /** Caja: cobra y confirma pagos en el mostrador; nada mas. */
