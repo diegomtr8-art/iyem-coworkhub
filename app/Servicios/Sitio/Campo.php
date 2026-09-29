@@ -87,8 +87,19 @@ final class Campo
      * @param  array<string, array>  $campos
      * @param  array<int, array<string, mixed>>  $respaldo
      */
-    public static function lista(string $etiqueta, array $campos, int $minimo, int $maximo, array $respaldo, ?string $ayuda = null, ?string $elemento = null): array
+    public static function lista(string $etiqueta, array $campos, int $minimo, int $maximo, array $respaldo, ?string $ayuda = null, ?string $elemento = null, int $multiplo = 1): array
     {
+        $reglas = ['required', 'array', "min:{$minimo}", "max:{$maximo}"];
+
+        // Retículas de 2 o 3 columnas: con un elemento suelto queda un hueco.
+        if ($multiplo > 1) {
+            $reglas[] = function (string $atributo, mixed $valor, Closure $falla) use ($multiplo): void {
+                if (is_array($valor) && count($valor) % $multiplo !== 0) {
+                    $falla("Tienen que ser múltiplos de {$multiplo}: con otro número la retícula queda con un hueco.");
+                }
+            };
+        }
+
         return [
             'etiqueta' => $etiqueta,
             'tipo'     => 'lista',
@@ -97,7 +108,8 @@ final class Campo
             'campos'   => $campos,
             'minimo'   => $minimo,
             'maximo'   => $maximo,
-            'reglas'   => ['required', 'array', "min:{$minimo}", "max:{$maximo}"],
+            'multiplo' => $multiplo,
+            'reglas'   => $reglas,
             'respaldo' => fn () => $respaldo,
         ];
     }

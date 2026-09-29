@@ -42,6 +42,14 @@ final class Membresias
                     'titulo'      => Campo::texto('Título de la sección', 60, 'Da igual el plan que elijas'),
                     'descripcion' => Campo::parrafo('Texto bajo el título', 200,
                         'Hay cosas que no dependen de la membresía: vienen con el simple hecho de ser parte de Nódico.'),
+                    'elementos' => Campo::lista('Lo que incluye', [
+                        'texto' => Campo::texto('Texto', 60, ''),
+                    ], 2, 8, [
+                        ['texto' => 'Acceso a la comunidad emprendedora de Nódico'],
+                        ['texto' => 'Agua y café durante tu estancia'],
+                        ['texto' => 'Wifi con 200 MB de velocidad'],
+                        ['texto' => 'Espacio pet friendly'],
+                    ], elemento: 'Punto'),
                 ],
             ],
             'membresias.pasos' => [
@@ -51,6 +59,15 @@ final class Membresias
                 'ancla'   => null,
                 'campos'  => [
                     'titulo' => Campo::texto('Título de la sección', 60, 'De la compra al escritorio'),
+                    // Tres fijos: cada paso tiene su icono.
+                    'elementos' => Campo::lista('Pasos', [
+                        'titulo' => Campo::texto('Paso', 40, ''),
+                        'texto'  => Campo::parrafo('Explicación', 160, ''),
+                    ], 3, 3, [
+                        ['titulo' => 'Elige y paga en línea', 'texto' => 'El cobro se procesa por Stripe. Nódico no almacena datos de tarjeta.'],
+                        ['titulo' => 'Registra tu acceso', 'texto' => 'Pasa a recepción para dar de alta tu Face ID y activar la membresía.'],
+                        ['titulo' => 'Usa el espacio', 'texto' => 'Reserva salas y estudio de contenido desde la plataforma, según tu plan.'],
+                    ], 'El primer paso menciona Stripe: revísalo si el cobro pasa a otra pasarela.', 'Paso'),
                     'nota'   => Campo::parrafo('Nota al pie', 240,
                         '¿Eres emprendedor o artesano del interior del estado? Tu day-pass siempre es gratuito: escríbenos y te damos acceso sin costo.',
                         'Línea pequeña bajo los tres pasos. Vacía no se muestra.', requerido: false),

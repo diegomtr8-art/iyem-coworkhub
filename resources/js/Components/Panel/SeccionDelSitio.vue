@@ -7,20 +7,12 @@
  * Cada sección se guarda por separado y de forma explícita: tocar el teléfono
  * no publica a medias el texto de otra sección.
  */
+import CampoDelSitio, { type Campo } from '@/Components/Panel/CampoDelSitio.vue'
 import Estado from '@/Components/Panel/Estado.vue'
 import Panel from '@/Components/Panel/Panel.vue'
 import { router, useForm } from '@inertiajs/vue3'
 import { Eye, ExternalLink, RotateCcw, Save, Undo2 } from 'lucide-vue-next'
 import { computed, ref, watch } from 'vue'
-
-type Campo = {
-  nombre: string
-  etiqueta: string
-  tipo: 'texto' | 'parrafo' | 'email' | 'telefono' | 'url' | 'usuario' | 'youtube' | 'numero'
-  ayuda: string | null
-  maximo: number | null
-  requerido: boolean
-}
 
 type Seccion = {
   clave: string
@@ -29,7 +21,8 @@ type Seccion = {
   enSitio: string
   vistaPrevia: string
   personalizada: boolean
-  valores: Record<string, string | null>
+  valores: Record<string, any>
+  presentada: Record<string, any>
   ultimoCambio: { por: string; cuando: string } | null
   puedeDeshacer: boolean
   campos: Campo[]
@@ -38,8 +31,11 @@ type Seccion = {
 const props = defineProps<{ seccion: Seccion }>()
 const emit = defineEmits<{ sucia: [clave: string, sucia: boolean] }>()
 
-const form = useForm<Record<string, string>>(
-  Object.fromEntries(props.seccion.campos.map((c) => [c.nombre, props.seccion.valores[c.nombre] ?? ''])),
+/** Copia honda: las listas y las fotos son objetos, y el formulario no debe tocar las props. */
+const copia = (v: any) => (v === null || v === undefined ? '' : JSON.parse(JSON.stringify(v)))
+
+const form = useForm<Record<string, any>>(
+  Object.fromEntries(props.seccion.campos.map((c) => [c.nombre, copia(props.seccion.valores[c.nombre])])),
 )
 
 watch(() => form.isDirty, (sucia) => emit('sucia', props.seccion.clave, sucia), { immediate: true })
@@ -47,12 +43,10 @@ watch(() => form.isDirty, (sucia) => emit('sucia', props.seccion.clave, sucia), 
 /** Tras guardar, deshacer o restablecer, el servidor manda los valores nuevos: son la nueva base. */
 watch(() => props.seccion.valores, (valores) => {
   if (form.isDirty) return
-  props.seccion.campos.forEach((c) => (form[c.nombre] = valores[c.nombre] ?? ''))
+  props.seccion.campos.forEach((c) => (form[c.nombre] = copia(valores[c.nombre])))
   form.defaults()
 }, { deep: true })
 
-const tiposInput: Record<string, string> = { email: 'email', telefono: 'tel', url: 'url', texto: 'text', usuario: 'text', youtube: 'text', numero: 'text' }
-const modosTeclado: Record<string, string> = { email: 'email', telefono: 'tel', url: 'url', texto: 'text', usuario: 'text', youtube: 'text', numero: 'decimal' }
 
 // preserveState: sin él, Inertia vuelve a montar la pantalla tras cada envío y
 // se pierde lo que se esté escribiendo, en esta sección (vista previa) o en otra
@@ -102,8 +96,6 @@ const cuando = computed(() => props.seccion.ultimoCambio
   ? new Date(props.seccion.ultimoCambio.cuando).toLocaleString('es-MX', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
   : null)
 
-const idCampo = (c: Campo) => `${props.seccion.clave}-${c.nombre}`
-const largo = (c: Campo) => String(form[c.nombre] ?? '').length
 </script>
 
 <template>
@@ -125,51 +117,13 @@ const largo = (c: Campo) => String(form[c.nombre] ?? '').length
 
     <form class="divide-y divide-dark/10" novalidate @submit.prevent="guardar">
       <div v-for="campo in seccion.campos" :key="campo.nombre" class="px-4 py-4">
-        <div class="flex items-baseline justify-between gap-3">
-          <label :for="idCampo(campo)" class="font-display text-sm font-bold text-dark">
-            {{ campo.etiqueta }}<span v-if="campo.requerido" class="text-dark/70" aria-hidden="true"> *</span>
-          </label>
-          <span
-            v-if="campo.maximo"
-            class="font-mono text-[0.6875rem]"
-            :class="largo(campo) > campo.maximo ? 'text-red-700' : 'text-dark/70'"
-            aria-hidden="true"
-          >{{ largo(campo) }}/{{ campo.maximo }}</span>
-        </div>
-
-        <textarea
-          v-if="campo.tipo === 'parrafo'"
-          :id="idCampo(campo)"
+        <CampoDelSitio
           v-model="form[campo.nombre]"
-          rows="3"
-          :required="campo.requerido"
-          :aria-invalid="Boolean(form.errors[campo.nombre])"
-          :aria-describedby="`${idCampo(campo)}-ayuda ${idCampo(campo)}-error`"
-          class="mt-2 w-full resize-y border border-dark/25 bg-white px-3 py-2.5 text-base text-dark focus:border-dark focus:outline-none focus:ring-2 focus:ring-nodo-400"
+          :campo="campo"
+          :errores="form.errors as Record<string, string>"
+          :vista="seccion.presentada[campo.nombre]"
+          :id-base="seccion.clave.replace('.', '-')"
         />
-        <div v-else class="mt-2 flex items-stretch">
-          <span
-            v-if="campo.tipo === 'usuario'"
-            class="flex items-center border border-r-0 border-dark/25 bg-cream-50 px-3 font-mono text-sm text-dark/70"
-            aria-hidden="true"
-          >@</span>
-          <input
-            :id="idCampo(campo)"
-            v-model="form[campo.nombre]"
-            :type="tiposInput[campo.tipo]"
-            :inputmode="modosTeclado[campo.tipo]"
-            :autocomplete="campo.tipo === 'email' ? 'email' : 'off'"
-            :required="campo.requerido"
-            :aria-invalid="Boolean(form.errors[campo.nombre])"
-            :aria-describedby="`${idCampo(campo)}-ayuda ${idCampo(campo)}-error`"
-            class="min-h-[44px] w-full min-w-0 border border-dark/25 bg-white px-3 text-base text-dark focus:border-dark focus:outline-none focus:ring-2 focus:ring-nodo-400"
-          />
-        </div>
-
-        <p v-if="campo.ayuda" :id="`${idCampo(campo)}-ayuda`" class="mt-1.5 text-xs text-dark/70">{{ campo.ayuda }}</p>
-        <p v-if="form.errors[campo.nombre]" :id="`${idCampo(campo)}-error`" class="mt-1.5 text-sm font-medium text-red-700" role="alert">
-          {{ form.errors[campo.nombre] }}
-        </p>
       </div>
 
       <!-- Acciones principales: guardar va primero y es el único botón lleno.

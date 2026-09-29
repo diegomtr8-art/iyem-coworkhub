@@ -31,18 +31,18 @@ const ofertas = computed(() => ({
   })),
 }))
 
-const incluidoEnTodas = [
-  'Acceso a la comunidad emprendedora de Nódico',
-  'Agua y café durante tu estancia',
-  'Wifi con 200 MB de velocidad',
-  'Espacio pet friendly',
-]
+/** Siempre incluido (membresias.incluido), del módulo «Página Web». */
+const incluidoEnTodas = computed(() =>
+  (props.contenido.incluido.elementos as Array<{ texto: string }>).map((i) => i.texto),
+)
 
-const comoFunciona = [
-  { icono: CreditCard, titulo: 'Elige y paga en línea', texto: 'El cobro se procesa por Stripe. Nódico no almacena datos de tarjeta.' },
-  { icono: Users, titulo: 'Registra tu acceso', texto: 'Pasa a recepción para dar de alta tu Face ID y activar la membresía.' },
-  { icono: ShieldCheck, titulo: 'Usa el espacio', texto: 'Reserva salas y estudio de contenido desde la plataforma, según tu plan.' },
-]
+/** Cómo funciona (membresias.pasos): el texto del módulo, el icono por posición. */
+const ICONOS_PASOS = [CreditCard, Users, ShieldCheck]
+
+const comoFunciona = computed(() =>
+  (props.contenido.pasos.elementos as Array<{ titulo: string; texto: string }>)
+    .map((p, i) => ({ ...p, icono: ICONOS_PASOS[i] })),
+)
 </script>
 
 <template>

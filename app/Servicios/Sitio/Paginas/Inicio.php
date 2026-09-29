@@ -31,6 +31,19 @@ final class Inicio
                 'ancla'   => null,
                 'campos'  => [
                     'titulo' => Campo::texto('Título de la sección', 60, 'Todo incluido en tu membresía'),
+                    // Seis fijos: el mosaico es 2 grandes con foto + 4 compactos,
+                    // y cada posición tiene su icono (decisión 2).
+                    'elementos' => Campo::lista('Servicios', [
+                        'titulo'      => Campo::texto('Título', 60, ''),
+                        'descripcion' => Campo::parrafo('Descripción', 160, ''),
+                    ], 6, 6, [
+                        ['titulo' => 'Espacio colaborativo de trabajo', 'descripcion' => 'Escritorios en área abierta, con lugar para ti y para quien venga contigo.'],
+                        ['titulo' => 'Sala profesional de creación de contenido', 'descripcion' => 'Estudio equipado para grabar tu podcast, tus reels o tus fotos de producto.'],
+                        ['titulo' => 'Wifi con 200 MB de velocidad', 'descripcion' => 'Suficiente para videollamadas, subir contenido y trabajar sin pausas.'],
+                        ['titulo' => 'Recepción de paquetería', 'descripcion' => 'Recibimos tus envíos aunque no estés; te avisamos en cuanto llegan.'],
+                        ['titulo' => 'Hasta 5 invitados gratuitos al mes', 'descripcion' => 'Trae a tu equipo o a un cliente sin costo adicional.'],
+                        ['titulo' => 'Café y agua todo el día', 'descripcion' => 'Barra libre mientras trabajas. Sin fichas ni límites.'],
+                    ], 'Los dos primeros son las tarjetas grandes con foto; los otros cuatro, las compactas. Cada posición tiene su icono.', 'Servicio'),
                 ],
             ],
             'inicio.espacios' => [
@@ -41,6 +54,22 @@ final class Inicio
                 'campos'  => [
                     'titulo'      => Campo::texto('Título de la sección', 60, 'Lo que puedes reservar'),
                     'descripcion' => Campo::parrafo('Texto bajo el título', 200, 'Tu membresía incluye horas para usarlos. Reservas desde tu portal o desde la app.'),
+                    // Número fijo hasta que cada tarjeta tenga su propia foto (4.4).
+                    'elementos' => Campo::lista('Espacios', [
+                        'nombre'      => Campo::texto('Nombre', 40, ''),
+                        'cantidad'    => Campo::texto('Cantidad', 30, '', 'La etiqueta sobre la foto: «4 disponibles», «Cabina de podcast»…'),
+                        'capacidad'   => Campo::texto('Capacidad', 30, ''),
+                        'descripcion' => Campo::parrafo('Descripción', 160, ''),
+                    ], 4, 4, [
+                        ['nombre' => 'Cubículos privados', 'cantidad' => '4 disponibles', 'capacidad' => 'Hasta 4 personas',
+                            'descripcion' => 'Para concentrarte, tomar una llamada o trabajar sin interrupciones.'],
+                        ['nombre' => 'Sala de juntas', 'cantidad' => '1 disponible', 'capacidad' => 'Hasta 12 personas',
+                            'descripcion' => 'Con pantalla, proyector y videoconferencia para recibir a tu equipo o a un cliente.'],
+                        ['nombre' => 'Sala de creación de contenido', 'cantidad' => 'Cabina de podcast', 'capacidad' => 'Hasta 4 personas',
+                            'descripcion' => 'Micrófonos, insonorización, aro de luz y fondo verde para grabar podcast o reels.'],
+                        ['nombre' => 'Sala de fotografía', 'cantidad' => 'Estudio equipado', 'capacidad' => 'Hasta 6 personas',
+                            'descripcion' => 'Luces profesionales y fondos removibles para fotografiar tu producto.'],
+                    ], 'Los nombres y capacidades deberían coincidir con Configurar → Espacios.', 'Espacio'),
                 ],
             ],
             'inicio.beneficios' => [
@@ -50,6 +79,24 @@ final class Inicio
                 'ancla'   => null,
                 'campos'  => [
                     'titulo' => Campo::texto('Título de la sección', 60, 'Y otras cosas que solo pasan aquí'),
+                    // Número fijo hasta que cada panel tenga su propia foto (4.4).
+                    // El color de cada panel es de la paleta y va por posición.
+                    'elementos' => Campo::lista('Beneficios', [
+                        'titulo'       => Campo::texto('Título', 60, ''),
+                        'titulo_corto' => Campo::texto('Título corto', 20, '', 'Se lee en vertical cuando el panel está cerrado.'),
+                        'descripcion'  => Campo::parrafo('Descripción', 160, ''),
+                    ], 5, 5, [
+                        ['titulo' => 'Descuentos en Tienda Herencia Viva', 'titulo_corto' => 'Descuentos',
+                            'descripcion' => 'Precio preferente en artesanía yucateca, para ti y para los regalos de tu negocio.'],
+                        ['titulo' => 'Directorio de miembros Nódico', 'titulo_corto' => 'Directorio',
+                            'descripcion' => 'Tu proyecto visible ante toda la comunidad, y la comunidad disponible para ti.'],
+                        ['titulo' => 'Acceso preferente a eventos y talleres', 'titulo_corto' => 'Eventos y talleres',
+                            'descripcion' => 'Te avisamos antes y apartas lugar antes de que se abra al público.'],
+                        ['titulo' => 'Conexión con el ecosistema emprendedor', 'titulo_corto' => 'Ecosistema',
+                            'descripcion' => 'Programas del IYEM, CANIETI y la red de incubación, a un paso de tu escritorio.'],
+                        ['titulo' => 'Espacio pet friendly', 'titulo_corto' => 'Pet friendly',
+                            'descripcion' => 'Tu perro también tiene lugar aquí. Sin permisos ni explicaciones.'],
+                    ], elemento: 'Beneficio'),
                 ],
             ],
             'inicio.membresias' => [

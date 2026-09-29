@@ -5,48 +5,28 @@ import Meta from '@/Components/Public/Meta.vue'
 import ScrollReveal from '@/Components/Public/ScrollReveal.vue'
 import SectionHeading from '@/Components/Public/SectionHeading.vue'
 import PublicLayout from '@/Layouts/PublicLayout.vue'
+import { computed } from 'vue'
 
 /** Secciones del módulo «Página Web», ya con su respaldo. */
-defineProps<{ contenido: Record<string, any> }>()
+const props = defineProps<{ contenido: Record<string, any> }>()
 
 /**
- * Descripciones redactadas para esta versión: el original de Odoo solo tenía
- * los nombres sueltos. PENDIENTE de validación por Nódico.
- * «Democratización del acceso a espacios de calidad» era un título de tres
- * líneas; se acorta a «Democratización del acceso» y lo demás pasa al cuerpo.
+ * Valores (nosotros.valores): el texto sale del módulo «Página Web»; el icono
+ * es diseño y va por posición (decisión 2). Por eso la lista es de 3 o 6.
  */
-const valores = [
-  {
-    icono: '/img/nodico/valor-creatividad.webp',
-    titulo: 'Creatividad',
-    descripcion: 'Espacios y encuentros pensados para que las ideas nuevas tengan dónde aparecer.',
-  },
-  {
-    icono: '/img/nodico/valor-colaboracion.webp',
-    titulo: 'Colaboración',
-    descripcion: 'Lo que uno sabe le sirve al de al lado. Aquí eso se provoca a propósito.',
-  },
-  {
-    icono: '/img/nodico/valor-innovacion.webp',
-    titulo: 'Innovación',
-    descripcion: 'Probar, equivocarse y volver a probar, con la comunidad como red de apoyo.',
-  },
-  {
-    icono: '/img/nodico/valor-diversidad-inclusion.webp',
-    titulo: 'Diversidad e inclusión',
-    descripcion: 'Cabe todo el mundo: cualquier edad, cualquier sector, cualquier punto de partida.',
-  },
-  {
-    icono: '/img/nodico/valor-democratizacion.webp',
-    titulo: 'Democratización del acceso',
-    descripcion: 'Un espacio de calidad no debería ser un privilegio. Por eso los precios son los que son.',
-  },
-  {
-    icono: '/img/nodico/valor-comunidad.webp',
-    titulo: 'Comunidad',
-    descripcion: 'Más que compartir escritorio: compartir contactos, clientes y camino.',
-  },
+const ICONOS_VALORES = [
+  '/img/nodico/valor-creatividad.webp',
+  '/img/nodico/valor-colaboracion.webp',
+  '/img/nodico/valor-innovacion.webp',
+  '/img/nodico/valor-diversidad-inclusion.webp',
+  '/img/nodico/valor-democratizacion.webp',
+  '/img/nodico/valor-comunidad.webp',
 ]
+
+const valores = computed(() =>
+  (props.contenido.valores.elementos as Array<{ titulo: string; descripcion: string }>)
+    .map((v, i) => ({ ...v, icono: ICONOS_VALORES[i] })),
+)
 </script>
 
 <template>

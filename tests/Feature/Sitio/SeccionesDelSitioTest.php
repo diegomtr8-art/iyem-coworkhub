@@ -190,6 +190,85 @@ class SeccionesDelSitioTest extends TestCase
             ->where('coffee.1.desde_pax', 100));
     }
 
+    // --- 4.3 · Listas ---------------------------------------------------------
+
+    private function valores(int $cuantos): array
+    {
+        return array_map(fn ($n) => ['titulo' => "Valor {$n}", 'descripcion' => "Texto {$n}"], range(1, $cuantos));
+    }
+
+    public function test_las_listas_llegan_con_su_respaldo(): void
+    {
+        $this->get('/')->assertInertia(fn (AssertableInertia $page) => $page
+            ->has('contenido.servicios.elementos', 6)
+            ->where('contenido.servicios.elementos.1.titulo', 'Sala profesional de creación de contenido')
+            ->where('contenido.espacios.elementos.1.cantidad', '1 disponible')
+            ->where('contenido.beneficios.elementos.0.titulo_corto', 'Descuentos'));
+
+        $this->get('/membresias')->assertInertia(fn (AssertableInertia $page) => $page
+            ->has('contenido.incluido.elementos', 4)
+            ->has('contenido.pasos.elementos', 3));
+    }
+
+    public function test_una_lista_respeta_sus_limites_y_su_multiplo(): void
+    {
+        $this->rechaza('nosotros.valores', ['elementos' => $this->valores(2)], 'elementos');
+        $this->rechaza('nosotros.valores', ['elementos' => $this->valores(5)], 'elementos');
+        $this->rechaza('nosotros.valores', ['elementos' => $this->valores(9)], 'elementos');
+        $this->rechaza('inicio.servicios', ['elementos' => array_slice($this->valores(6), 0, 5)], 'elementos');
+
+        $this->sitio()->guardar('nosotros.valores', ['elementos' => $this->valores(3)]);
+
+        $this->get('/nosotros')->assertInertia(fn (AssertableInertia $page) => $page
+            ->has('contenido.valores.elementos', 3)
+            ->where('contenido.valores.elementos.2.titulo', 'Valor 3'));
+    }
+
+    public function test_cada_elemento_se_valida_y_el_error_dice_cual(): void
+    {
+        $elementos = $this->valores(3);
+        $elementos[1]['titulo'] = str_repeat('x', 41);
+
+        $this->rechaza('nosotros.valores', ['elementos' => $elementos], 'elementos.1.titulo');
+    }
+
+    public function test_lo_que_no_es_del_catalogo_no_se_guarda_dentro_de_un_elemento(): void
+    {
+        $elementos = $this->valores(3);
+        $elementos[0]['icono'] = '/img/otro-icono.webp';
+        $elementos[0]['html'] = '<script>alert(1)</script>';
+
+        $this->sitio()->guardar('nosotros.valores', ['elementos' => $elementos]);
+
+        $guardado = \App\Models\Ajuste::where('clave', 'nosotros.valores')->value('valor');
+        $this->assertSame(['titulo' => 'Valor 1', 'descripcion' => 'Texto 1'], $guardado['elementos'][0]);
+    }
+
+    public function test_una_lista_corrupta_se_sirve_entera_desde_el_respaldo(): void
+    {
+        // Un elemento roto no deja una lista a medias: vuelve la lista entera.
+        \App\Models\Ajuste::guardar('nosotros.valores', [
+            'titulo'    => 'Lo que nos mueve',
+            'elementos' => [['titulo' => 'Solo uno', 'descripcion' => 'Y sin compañeros']],
+        ]);
+
+        $this->get('/nosotros')->assertOk()->assertInertia(fn (AssertableInertia $page) => $page
+            ->has('contenido.valores.elementos', 6)
+            ->where('contenido.valores.elementos.0.titulo', 'Creatividad'));
+    }
+
+    public function test_el_panel_describe_las_listas_con_sus_limites(): void
+    {
+        $this->actingAs(User::factory()->admin()->create())
+            ->get(route('pagina-web.editar', 'nosotros'))
+            ->assertInertia(fn (AssertableInertia $page) => $page
+                ->where('secciones.3.campos.1.tipo', 'lista')
+                ->where('secciones.3.campos.1.minimo', 3)
+                ->where('secciones.3.campos.1.maximo', 6)
+                ->where('secciones.3.campos.1.multiplo', 3)
+                ->where('secciones.3.campos.1.campos.0.maximo', 40));
+    }
+
     public function test_cada_pagina_del_panel_se_abre(): void
     {
         $this->actingAs(User::factory()->admin()->create());

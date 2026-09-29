@@ -29,141 +29,68 @@ const nodico = computed(() => (page.props.nodico ?? {}) as any)
 /**
  * 4.3 — mosaico asimétrico. Los dos de más peso comercial ocupan celda grande
  * con foto; los otros cuatro van compactos.
- * Las descripciones las redacté yo: PENDIENTE de que Nódico las valide.
- */
-const servicios = [
-  {
-    icono: '/img/nodico/icono-espacio-colaborativo.webp',
-    titulo: 'Espacio colaborativo de trabajo',
-    descripcion: 'Escritorios en área abierta, con lugar para ti y para quien venga contigo.',
-    protagonista: true,
-    foto: '/img/nodico/mision.webp',
-  },
-  {
-    icono: '/img/nodico/icono-sala-contenido.webp',
-    titulo: 'Sala profesional de creación de contenido',
-    descripcion: 'Estudio equipado para grabar tu podcast, tus reels o tus fotos de producto.',
-    protagonista: true,
-    // Antes apuntaba a vision.webp, que es el área de trabajo abierta: la tarjeta
-    // prometía un estudio y enseñaba un coworking. Ahora es la cabina de verdad.
-    foto: '/img/nodico/sala-contenido.webp',
-  },
-  {
-    icono: '/img/nodico/icono-wifi.webp',
-    titulo: 'Wifi con 200 MB de velocidad',
-    descripcion: 'Suficiente para videollamadas, subir contenido y trabajar sin pausas.',
-  },
-  {
-    icono: '/img/nodico/icono-paqueteria.webp',
-    titulo: 'Recepción de paquetería',
-    descripcion: 'Recibimos tus envíos aunque no estés; te avisamos en cuanto llegan.',
-  },
-  {
-    icono: '/img/nodico/icono-invitados.webp',
-    titulo: 'Hasta 5 invitados gratuitos al mes',
-    descripcion: 'Trae a tu equipo o a un cliente sin costo adicional.',
-  },
-  {
-    icono: '/img/nodico/icono-cafe-agua.webp',
-    titulo: 'Café y agua todo el día',
-    descripcion: 'Barra libre mientras trabajas. Sin fichas ni límites.',
-  },
-]
-
-const protagonistas = computed(() => servicios.filter((x) => x.protagonista))
-const compactos = computed(() => servicios.filter((x) => !x.protagonista))
-
-/**
- * Espacios reservables. Los nombres y las capacidades son los mismos que siembra
- * `NodicoWebSeeder`: si allá cambian, aquí también. No se leen de la base a
- * propósito — esta sección es la portada pública y no debe caerse ni quedar a
- * medias si el catálogo está vacío.
  *
- * Las fotos son de cada espacio de verdad, no genéricas del coworking. Ese era
- * el problema que tenía la tarjeta de la sala de contenido.
- * Las descripciones las redacté yo: PENDIENTE de que Nódico las valide.
+ * El texto sale del módulo «Página Web» (inicio.servicios); icono, foto y
+ * tamaño de celda son diseño y van por posición (decisión 2).
  */
-const espacios = [
-  {
-    nombre: 'Cubículos privados',
-    cantidad: '4 disponibles',
-    capacidad: 'Hasta 4 personas',
-    descripcion: 'Para concentrarte, tomar una llamada o trabajar sin interrupciones.',
-    foto: '/img/nodico/espacio-cubiculos.webp',
-    fotoPequena: '/img/nodico/espacio-cubiculos-800.webp',
-    alt: 'Cubículo privado de Nódico con escritorio y sillas junto a una ventana',
-  },
-  {
-    nombre: 'Sala de juntas',
-    cantidad: '1 disponible',
-    capacidad: 'Hasta 12 personas',
-    descripcion: 'Con pantalla, proyector y videoconferencia para recibir a tu equipo o a un cliente.',
-    foto: '/img/nodico/espacio-salas-juntas.webp',
-    fotoPequena: '/img/nodico/espacio-salas-juntas-800.webp',
-    alt: 'Personas reunidas alrededor de la mesa de juntas de Nódico',
-  },
-  {
-    nombre: 'Sala de creación de contenido',
-    cantidad: 'Cabina de podcast',
-    capacidad: 'Hasta 4 personas',
-    descripcion: 'Micrófonos, insonorización, aro de luz y fondo verde para grabar podcast o reels.',
-    foto: '/img/nodico/espacio-contenido.webp',
-    fotoPequena: '/img/nodico/espacio-contenido-800.webp',
-    alt: 'Cabina de podcast de Nódico con micrófonos, paneles acústicos y aro de luz',
-  },
-  {
-    nombre: 'Sala de fotografía',
-    cantidad: 'Estudio equipado',
-    capacidad: 'Hasta 6 personas',
-    descripcion: 'Luces profesionales y fondos removibles para fotografiar tu producto.',
-    foto: '/img/nodico/espacio-fotografia.webp',
-    fotoPequena: '/img/nodico/espacio-fotografia-800.webp',
-    alt: 'Estudio de fotografía de Nódico con softboxes, aro de luz y fondo removible',
-  },
+const DISENO_SERVICIOS = [
+  { icono: '/img/nodico/icono-espacio-colaborativo.webp', protagonista: true, foto: '/img/nodico/mision.webp' },
+  // Antes apuntaba a vision.webp, que es el área de trabajo abierta: la tarjeta
+  // prometía un estudio y enseñaba un coworking. Ahora es la cabina de verdad.
+  { icono: '/img/nodico/icono-sala-contenido.webp', protagonista: true, foto: '/img/nodico/sala-contenido.webp' },
+  { icono: '/img/nodico/icono-wifi.webp' },
+  { icono: '/img/nodico/icono-paqueteria.webp' },
+  { icono: '/img/nodico/icono-invitados.webp' },
+  { icono: '/img/nodico/icono-cafe-agua.webp' },
 ]
 
+const servicios = computed(() =>
+  (props.contenido.servicios.elementos as Array<{ titulo: string; descripcion: string }>)
+    .map((texto, i) => ({ ...DISENO_SERVICIOS[i], ...texto })),
+)
+
+const protagonistas = computed(() => servicios.value.filter((x) => x.protagonista))
+const compactos = computed(() => servicios.value.filter((x) => !x.protagonista))
+
 /**
- * 4.4 — paneles expansibles. Descripciones redactadas por mí, PENDIENTES de
- * validación. Las fotos son del espacio, no de cada beneficio concreto: varios
- * son conceptos abstractos y no hay material específico.
+ * Espacios reservables (inicio.espacios). Las fotos son de cada espacio de
+ * verdad, no genéricas del coworking: ese era el problema que tenía la
+ * tarjeta de la sala de contenido. Van por posición hasta que cada tarjeta
+ * tenga su foto en el módulo.
  */
-const beneficios = [
-  {
-    titulo: 'Descuentos en Tienda Herencia Viva',
-    tituloCorto: 'Descuentos',
-    descripcion: 'Precio preferente en artesanía yucateca, para ti y para los regalos de tu negocio.',
-    foto: '/img/nodico/salon-detalle.webp',
-    acento: '#FFDD00',
-  },
-  {
-    titulo: 'Directorio de miembros Nódico',
-    tituloCorto: 'Directorio',
-    descripcion: 'Tu proyecto visible ante toda la comunidad, y la comunidad disponible para ti.',
-    foto: '/img/nodico/mision.webp',
-    acento: '#D6E265',
-  },
-  {
-    titulo: 'Acceso preferente a eventos y talleres',
-    tituloCorto: 'Eventos y talleres',
-    descripcion: 'Te avisamos antes y apartas lugar antes de que se abra al público.',
-    foto: '/img/nodico/comunidad-fondo.webp',
-    acento: '#EF7E88',
-  },
-  {
-    titulo: 'Conexión con el ecosistema emprendedor',
-    tituloCorto: 'Ecosistema',
-    descripcion: 'Programas del IYEM, CANIETI y la red de incubación, a un paso de tu escritorio.',
-    foto: '/img/nodico/salon-yucatan-emprende-1.webp',
-    acento: '#864B95',
-  },
-  {
-    titulo: 'Espacio pet friendly',
-    tituloCorto: 'Pet friendly',
-    descripcion: 'Tu perro también tiene lugar aquí. Sin permisos ni explicaciones.',
-    foto: '/img/nodico/nosotros-hero.webp',
-    acento: '#FFE124',
-  },
+const FOTOS_ESPACIOS = [
+  { foto: '/img/nodico/espacio-cubiculos.webp', fotoPequena: '/img/nodico/espacio-cubiculos-800.webp',
+    alt: 'Cubículo privado de Nódico con escritorio y sillas junto a una ventana' },
+  { foto: '/img/nodico/espacio-salas-juntas.webp', fotoPequena: '/img/nodico/espacio-salas-juntas-800.webp',
+    alt: 'Personas reunidas alrededor de la mesa de juntas de Nódico' },
+  { foto: '/img/nodico/espacio-contenido.webp', fotoPequena: '/img/nodico/espacio-contenido-800.webp',
+    alt: 'Cabina de podcast de Nódico con micrófonos, paneles acústicos y aro de luz' },
+  { foto: '/img/nodico/espacio-fotografia.webp', fotoPequena: '/img/nodico/espacio-fotografia-800.webp',
+    alt: 'Estudio de fotografía de Nódico con softboxes, aro de luz y fondo removible' },
 ]
+
+const espacios = computed(() =>
+  (props.contenido.espacios.elementos as Array<Record<string, string>>)
+    .map((texto, i) => ({ ...FOTOS_ESPACIOS[i], ...texto })),
+)
+
+/**
+ * 4.4 — paneles expansibles (inicio.beneficios). Las fotos son del espacio,
+ * no de cada beneficio concreto: varios son conceptos abstractos y no hay
+ * material específico. El color es de la paleta y va por posición.
+ */
+const DISENO_BENEFICIOS = [
+  { foto: '/img/nodico/salon-detalle.webp', acento: '#FFDD00' },
+  { foto: '/img/nodico/mision.webp', acento: '#D6E265' },
+  { foto: '/img/nodico/comunidad-fondo.webp', acento: '#EF7E88' },
+  { foto: '/img/nodico/salon-yucatan-emprende-1.webp', acento: '#864B95' },
+  { foto: '/img/nodico/nosotros-hero.webp', acento: '#FFE124' },
+]
+
+const beneficios = computed(() =>
+  (props.contenido.beneficios.elementos as Array<{ titulo: string; titulo_corto: string; descripcion: string }>)
+    .map((b, i) => ({ ...DISENO_BENEFICIOS[i % DISENO_BENEFICIOS.length], titulo: b.titulo, tituloCorto: b.titulo_corto, descripcion: b.descripcion })),
+)
 
 /** Si la BD viniera vacía, la portada sigue mostrando los cuatro planes reales. */
 const planesFallback = [

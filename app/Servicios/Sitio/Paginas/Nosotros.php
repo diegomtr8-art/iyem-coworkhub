@@ -54,6 +54,19 @@ final class Nosotros
                 'ancla'   => null,
                 'campos'  => [
                     'titulo' => Campo::texto('Título de la sección', 60, 'Lo que nos mueve'),
+                    // 3 o 6: hay seis iconos, uno por posición (decisión 2), y la
+                    // retícula es de tres columnas.
+                    'elementos' => Campo::lista('Valores', [
+                        'titulo'      => Campo::texto('Valor', 40, ''),
+                        'descripcion' => Campo::parrafo('Descripción', 160, ''),
+                    ], 3, 6, [
+                        ['titulo' => 'Creatividad', 'descripcion' => 'Espacios y encuentros pensados para que las ideas nuevas tengan dónde aparecer.'],
+                        ['titulo' => 'Colaboración', 'descripcion' => 'Lo que uno sabe le sirve al de al lado. Aquí eso se provoca a propósito.'],
+                        ['titulo' => 'Innovación', 'descripcion' => 'Probar, equivocarse y volver a probar, con la comunidad como red de apoyo.'],
+                        ['titulo' => 'Diversidad e inclusión', 'descripcion' => 'Cabe todo el mundo: cualquier edad, cualquier sector, cualquier punto de partida.'],
+                        ['titulo' => 'Democratización del acceso', 'descripcion' => 'Un espacio de calidad no debería ser un privilegio. Por eso los precios son los que son.'],
+                        ['titulo' => 'Comunidad', 'descripcion' => 'Más que compartir escritorio: compartir contactos, clientes y camino.'],
+                    ], 'Tres o seis: cada posición tiene su icono y van de tres en tres.', 'Valor', multiplo: 3),
                 ],
             ],
         ];
