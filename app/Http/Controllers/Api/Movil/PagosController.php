@@ -6,13 +6,16 @@ use App\Enums\EstadoFacturaOrden;
 use App\Enums\EstadoPagoOrden;
 use App\Enums\MetodoReferencia;
 use App\Exceptions\ErrorDeApi;
+use App\Http\Controllers\RegresoBbvaAppController;
+use App\Models\CargoPasarela;
 use App\Models\Factura;
 use App\Models\OrdenPago;
 use App\Models\Plane;
 use App\Servicios\Membresias\DescripcionDelPlan;
 use App\Servicios\Membresias\MembresiaDelMiembro;
-use App\Servicios\Pagos\CobroConTarjeta;
+use App\Servicios\Pagos\Contratos\PasarelaDePagos;
 use App\Servicios\Pagos\GeneradorDeReferencia;
+use App\Servicios\Pagos\PasarelaStripe;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -24,13 +27,14 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
  * Pagos, facturas y contratar desde la app (docs/API-MOVIL.md §6.7).
  *
  * Regla de siempre: **la app nunca activa nada**. La membresía la activa el
- * webhook de Stripe (tarjeta) o caja al confirmar (referencia). Aquí solo se
+ * proveedor al confirmar el pago con tarjeta (webhook de Stripe, o la consulta
+ * del cargo a la API de BBVA) o caja al confirmar (referencia). Aquí solo se
  * prepara el cobro y se consulta.
  */
 class PagosController extends ControladorMovil
 {
     public function __construct(
-        private readonly CobroConTarjeta $tarjeta,
+        private readonly PasarelaDePagos $tarjeta,
         private readonly GeneradorDeReferencia $referencias,
     ) {
     }
@@ -52,13 +56,14 @@ class PagosController extends ControladorMovil
                     ...$datos,
                     'recurrente'  => (bool) $plan->cobro_recurrente,
                     'es_el_actual' => $propia?->plan_id === $plan->id,
-                    // Recurrente sin precio de Stripe: solo por referencia.
-                    'tarjeta_disponible' => $this->tarjeta->disponible()
-                        && (! $plan->cobro_recurrente || filled($plan->stripe_price_id)),
+                    'tarjeta_disponible' => $this->tarjeta->disponiblePara($plan),
+                    // Con BBVA un plan recurrente se paga por periodo.
+                    'renueva_sola' => $this->tarjeta->renuevaSola($plan),
                 ];
             })->values(),
             'metodos' => [
                 'tarjeta'    => $this->tarjeta->disponible(),
+                'pasarela'   => $this->tarjeta->nombre(),
                 'referencia' => collect(MetodoReferencia::cases())->map(fn (MetodoReferencia $m) => [
                     'valor'    => $m->value,
                     'etiqueta' => $m->etiqueta(),
@@ -69,17 +74,33 @@ class PagosController extends ControladorMovil
         ]);
     }
 
-    /** Prepara la hoja de pago nativa de Stripe. */
+    /**
+     * Prepara el cobro con tarjeta.
+     *
+     * - Stripe: los datos para la hoja de pago nativa (`client_secret`).
+     * - BBVA: `modo: redireccion` y la `url` del formulario del banco, que la
+     *   app abre en el navegador del sistema; BBVA regresa a
+     *   `pago/bbva/regreso-app`, que devuelve a la app por `vuelta`.
+     */
     public function prepararTarjeta(Request $request): JsonResponse
     {
-        $datos = $request->validate(['plan_id' => ['required', 'integer', 'exists:planes,id']]);
+        $datos = $request->validate([
+            'plan_id' => ['required', 'integer', 'exists:planes,id'],
+            'vuelta'  => ['nullable', 'string', 'max:500'],
+        ]);
         $plan  = $this->planPublico($datos['plan_id']);
 
-        $intent = $this->tarjeta->preparar($request->user(), $plan);
+        $intent = $this->tarjeta->preparar($request->user(), $plan, true, 'app');
+
+        if (($intent['modo'] ?? null) === 'redireccion') {
+            CargoPasarela::whereKey($intent['cargo_id'])
+                ->update(['url_vuelta' => RegresoBbvaAppController::vueltaValida($datos['vuelta'] ?? null)]);
+        }
 
         return $this->datos([
             ...$intent,
-            'llave_publica'   => config('cashier.key'),
+            'pasarela'        => $this->tarjeta->nombre(),
+            'llave_publica'   => $this->tarjeta->llavePublica(),
             'nombre_comercio' => 'Nódico',
             'plan'            => ['id' => $plan->id, 'nombre' => $plan->nombre, 'precio' => (float) $plan->precio],
         ]);
@@ -100,6 +121,12 @@ class PagosController extends ControladorMovil
         $plan    = $this->planPublico($datos['plan_id']);
         $usuario = $request->user();
 
+        // La hoja de pago con SetupIntent es de Stripe. Con otra pasarela el
+        // periodo se paga con `pagos/tarjeta`.
+        if (! $this->tarjeta instanceof PasarelaStripe) {
+            throw new ErrorDeApi(409, 'no_disponible', 'La renovación automática no está disponible con el pago actual. Paga el periodo desde «Contratar».');
+        }
+
         if (! $plan->cobro_recurrente) {
             throw ValidationException::withMessages(['plan_id' => 'Ese plan se paga en una sola exhibición.']);
         }
@@ -116,14 +143,14 @@ class PagosController extends ControladorMovil
         return $this->datos([
             'requiere_accion' => $pendiente !== null,
             'client_secret'   => $pendiente,
-            'message'         => 'Estamos confirmando tu pago. En cuanto Stripe lo apruebe, se activa tu membresía.',
+            'message'         => 'Estamos confirmando tu pago. En cuanto el banco lo apruebe, se activa tu membresía.',
         ]);
     }
 
-    /** La app pregunta hasta que el webhook confirma. */
+    /** La app pregunta hasta que el proveedor confirma (con BBVA, por el id del cargo). */
     public function estadoTarjeta(Request $request): JsonResponse
     {
-        return $this->datos(['activa' => $this->tarjeta->membresiaActiva($request->user())]);
+        return $this->datos($this->tarjeta->estadoDelCobro($request->user(), $request->integer('cargo_id') ?: null));
     }
 
     /** Referencia para transferencia o efectivo. */

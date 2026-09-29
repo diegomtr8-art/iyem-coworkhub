@@ -9,6 +9,7 @@ use App\Servicios\Horas\ResumenDeBolsas;
 use App\Servicios\Membresias\DescripcionDelPlan;
 use App\Servicios\Membresias\GestorDeAcompanante;
 use App\Servicios\Membresias\MembresiaDelMiembro;
+use App\Servicios\Pagos\Contratos\PasarelaDePagos;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
@@ -117,18 +118,14 @@ class MembresiaController extends ControladorMovil
         return $this->datos(['message' => 'Quitamos al acompañante de tu membresía.']);
     }
 
-    /** Cancela la renovación en Stripe: sigue con acceso hasta el fin del periodo. */
+    /** Cancela la renovación automática: sigue con acceso hasta el fin del periodo. */
     public function cancelarRenovacion(Request $request): JsonResponse
     {
         $this->soloTitular($request->user());
 
-        $stripe = $request->user()->subscription('default');
-
-        if (! $stripe || $stripe->canceled()) {
+        if (! $this->pasarela()->cancelarRenovacion($request->user())) {
             return $this->datos(['message' => 'Tu membresía ya no tiene renovación automática.']);
         }
-
-        $stripe->cancel();
 
         return $this->datos(['message' => 'Cancelamos la renovación. Sigues con acceso hasta el fin del periodo que ya pagaste.']);
     }
@@ -137,13 +134,9 @@ class MembresiaController extends ControladorMovil
     {
         $this->soloTitular($request->user());
 
-        $stripe = $request->user()->subscription('default');
-
-        if (! $stripe || ! $stripe->onGracePeriod()) {
+        if (! $this->pasarela()->reactivarRenovacion($request->user())) {
             throw new ErrorDeApi(409, 'no_reactivable', 'No se puede reactivar: el periodo ya terminó. Contrata de nuevo.');
         }
-
-        $stripe->resume();
 
         return $this->datos(['message' => 'Reactivamos la renovación automática.']);
     }
@@ -163,17 +156,15 @@ class MembresiaController extends ControladorMovil
 
     private function renovacion(User $usuario): array
     {
-        $stripe = $usuario->subscription('default');
-
         return [
-            'cobro_en_linea'       => (bool) config('cashier.key'),
-            'metodo_pago'          => $usuario->pm_last_four
-                ? ['marca' => $usuario->pm_type, 'ultimos4' => $usuario->pm_last_four]
-                : null,
-            'tiene_recurrente'     => (bool) $stripe,
-            'renovacion_activa'    => $stripe ? $stripe->active() && ! $stripe->canceled() : false,
-            'en_periodo_de_gracia' => $stripe ? $stripe->onGracePeriod() : false,
+            'cobro_en_linea' => $this->pasarela()->disponible(),
+            ...$this->pasarela()->estadoDeRenovacion($usuario),
         ];
+    }
+
+    private function pasarela(): PasarelaDePagos
+    {
+        return app(PasarelaDePagos::class);
     }
 
     /** @throws ErrorDeApi */

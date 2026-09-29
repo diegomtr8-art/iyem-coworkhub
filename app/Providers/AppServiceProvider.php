@@ -26,6 +26,17 @@ class AppServiceProvider extends ServiceProvider
         // desactiva el auto-registro de Cashier para no tener dos rutas al mismo
         // path, una apuntando a su controller «pelado».
         \Laravel\Cashier\Cashier::ignoreRoutes();
+
+        // Una sola pasarela de tarjeta a la vez, elegida en el .env
+        // (config/pagos.php). Se resuelve en cada petición, no al arrancar,
+        // para que las pruebas puedan cambiarla con `config()`.
+        $this->app->bind(
+            \App\Servicios\Pagos\Contratos\PasarelaDePagos::class,
+            fn ($app) => match (config('pagos.pasarela')) {
+                'bbva'  => $app->make(\App\Servicios\Pagos\PasarelaBbva::class),
+                default => $app->make(\App\Servicios\Pagos\PasarelaStripe::class),
+            },
+        );
     }
 
     public function boot(): void

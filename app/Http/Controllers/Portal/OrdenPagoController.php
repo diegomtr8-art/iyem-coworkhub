@@ -9,6 +9,7 @@ use App\Http\Controllers\Controller;
 use App\Models\DatosFiscales;
 use App\Models\OrdenPago;
 use App\Models\Plane;
+use App\Servicios\Pagos\Contratos\PasarelaDePagos;
 use App\Servicios\Pagos\GeneradorDeReferencia;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -39,6 +40,8 @@ class OrdenPagoController extends Controller
                 'precio'        => (float) $plan->precio,
                 'periodo_label' => $plan->periodo_label,
                 'recurrente'    => (bool) $plan->cobro_recurrente,
+                // Con BBVA un plan recurrente se paga por periodo.
+                'renueva_sola'  => app(PasarelaDePagos::class)->renuevaSola($plan),
             ],
             'tieneDatosFiscales' => $this->datosFiscalesCompletos($request->user()),
             'vencimientoDias'    => (int) config('nodico.pagos_referencia.vencimiento_dias', 7),

@@ -309,9 +309,9 @@ El pago se hace **dentro de la app**. Las dos vías que ya tiene la web, con la 
 | Método | Ruta | Permiso | Qué hace |
 |---|---|---|---|
 | GET | `/planes/contratables` | token | Planes públicos con su `DescripcionDelPlan`, marcando `es_el_actual`, más `metodos{tarjeta, referencia}` disponibles y `tiene_datos_fiscales`. |
-| POST | `/pagos/tarjeta` | token | `plan_id`. Prepara el cobro para la hoja de pago nativa de Stripe (PaymentSheet): devuelve `modo` (`suscripcion` o `pago_unico`), `tipo_intent` (`setup` o `payment`), `client_secret`, `llave_publica`, `nombre_comercio`, `plan`. Sin llave efímera: la hoja no guarda tarjetas para reutilizar. `Idempotency-Key`. |
-| POST | `/pagos/tarjeta/suscribir` | token | Solo plan recurrente, después de la hoja en modo `setup`: `plan_id`, `setup_intent_id`. El servidor comprueba en Stripe que el SetupIntent es **de este cliente** y crea la suscripción. Devuelve `requiere_accion` y, si el banco pide 3-D Secure, el `client_secret` para `handleNextAction`. `Idempotency-Key`. |
-| GET | `/pagos/tarjeta/estado` | token | `{ activa: bool }`. La app lo consulta tras cerrar la hoja de pago hasta que el webhook confirme, como la pantalla «confirmando» de la web. |
+| POST | `/pagos/tarjeta` | token | `plan_id` y, opcional, `vuelta` (a dónde regresar a la app desde el banco; solo `nodico://`, `exp://` o `exps://`). Depende de la pasarela (`pasarela` en la respuesta). **Stripe:** datos para la hoja de pago nativa: `modo` (`suscripcion` o `pago_unico`), `tipo_intent` (`setup` o `payment`), `client_secret`, `llave_publica`, `nombre_comercio`, `plan`. Sin llave efímera: la hoja no guarda tarjetas para reutilizar. **BBVA:** `modo: redireccion`, `url` (el formulario del banco) y `cargo_id`. Si hay un cargo reciente del mismo plan esperando al banco, devuelve ese mismo. `Idempotency-Key`. |
+| POST | `/pagos/tarjeta/suscribir` | token | Solo Stripe y plan recurrente, después de la hoja en modo `setup`: `plan_id`, `setup_intent_id`. El servidor comprueba en Stripe que el SetupIntent es **de este cliente** y crea la suscripción. Devuelve `requiere_accion` y, si el banco pide 3-D Secure, el `client_secret` para `handleNextAction`. Con BBVA → `409 no_disponible`. `Idempotency-Key`. |
+| GET | `/pagos/tarjeta/estado` | token | `{ activa: bool }`. La app lo consulta tras cerrar la hoja de pago hasta que el webhook confirme, como la pantalla «confirmando» de la web. Con BBVA, `?cargo_id=`: el servidor consulta el cargo en la API del banco y añade `estado` (`pendiente`, `completado`, `fallido`, `cancelado`, `abandonado`, `en_revision`…), `mensaje` en español y `url_pago` mientras siga pendiente. |
 | POST | `/pagos/referencia` | token | `plan_id`, `metodo` (transferencia/efectivo), `pide_factura`. Crea la orden y devuelve la referencia con sus instrucciones (y datos bancarios si es transferencia). Si pide factura sin datos fiscales completos: `422` con `codigo: datos_fiscales_incompletos`. `Idempotency-Key`. |
 
 - **Tarjeta:** los datos de la tarjeta van directos del teléfono a Stripe; nunca pasan por Nódico, igual que con Elements en la web. Plan recurrente: la suscripción se crea en el servidor con el primer cobro pendiente y la hoja de pago lo confirma (resuelve 3-D Secure sola). Plan de pago único: el mismo `PaymentIntent` con metadata que usa la web.
@@ -373,7 +373,7 @@ Grupo aparte: `auth:sanctum`, `ability:reportes`, `can:ver-reportes`, `movil.ver
 | Método | Ruta | Respuesta `data` |
 |---|---|---|
 | GET | `/planes` | Planes públicos para la vista previa de quien no tiene cuenta: `id`, `nombre`, `subtitulo`, `precio`, `periodo_etiqueta`, `color`, `personas`, `incluye[]`, `beneficios[]`. Misma `DescripcionDelPlan` que «Mi membresía». |
-| GET | `/estado` | `version_minima{ios, android}`, `version_recomendada`, `mantenimiento{activo, mensaje}`, `acceso{google, enlace_magico}` (qué botones pintar), `pagos{tarjeta, llave_publica, referencia}` y `web` (la URL base, para lo que se abre en el navegador). La app lo consulta al arrancar. |
+| GET | `/estado` | `version_minima{ios, android}`, `version_recomendada`, `mantenimiento{activo, mensaje}`, `acceso{google, enlace_magico}` (qué botones pintar), `pagos{tarjeta, pasarela, llave_publica, referencia}` y `web` (la URL base, para lo que se abre en el navegador). La app lo consulta al arrancar. |
 
 ---
 

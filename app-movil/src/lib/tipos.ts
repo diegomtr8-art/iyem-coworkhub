@@ -31,7 +31,7 @@ export type EstadoServidor = {
   version_recomendada?: string;
   mantenimiento: boolean | { activo: boolean; mensaje?: string | null };
   acceso: { google: boolean; enlace_magico: boolean };
-  pagos?: { tarjeta: boolean; llave_publica?: string | null; referencia?: boolean };
+  pagos?: { tarjeta: boolean; pasarela?: 'stripe' | 'bbva'; llave_publica?: string | null; referencia?: boolean };
   /** URL base de la web de Nódico (registro, contraseña, seguridad). */
   web?: string;
 };
@@ -193,6 +193,11 @@ export type PlanDescrito = {
   incluye: string[];
   beneficios: string[];
   es_el_actual?: boolean;
+  /** Solo en `/planes/contratables`. */
+  recurrente?: boolean;
+  tarjeta_disponible?: boolean;
+  /** Se cobra solo cada periodo. Con BBVA, no: se paga el periodo y se renueva desde el aviso. */
+  renueva_sola?: boolean;
 };
 
 export type Membresia = {
@@ -320,17 +325,39 @@ export type Factura = {
 
 export type Contratables = {
   planes: PlanDescrito[];
-  metodos: { tarjeta: boolean; referencia: { valor: string; etiqueta: string }[] };
+  metodos: { tarjeta: boolean; pasarela?: 'stripe' | 'bbva'; referencia: { valor: string; etiqueta: string }[] };
   tiene_datos_fiscales: boolean;
 };
 
-export type PreparacionTarjeta = {
-  modo: 'suscripcion' | 'pago_unico';
-  /** `setup` en planes recurrentes (se guarda la tarjeta y luego se suscribe); `payment` en pago único. */
-  tipo_intent: 'setup' | 'payment';
-  client_secret: string;
-  llave_publica: string;
-  nombre_comercio: string;
+/**
+ * Lo que devuelve `POST /pagos/tarjeta`, según la pasarela del servidor:
+ * la hoja de pago de Stripe, o el formulario del banco (BBVA).
+ */
+export type PreparacionTarjeta =
+  | {
+      modo: 'suscripcion' | 'pago_unico';
+      pasarela?: 'stripe';
+      /** `setup` en planes recurrentes (se guarda la tarjeta y luego se suscribe); `payment` en pago único. */
+      tipo_intent: 'setup' | 'payment';
+      client_secret: string;
+      llave_publica: string;
+      nombre_comercio: string;
+    }
+  | {
+      modo: 'redireccion';
+      pasarela: 'bbva';
+      /** El formulario de BBVA: ahí se teclea la tarjeta y se pasa el 3-D Secure. */
+      url: string;
+      cargo_id: number;
+      nombre_comercio: string;
+    };
+
+/** `GET /pagos/tarjeta/estado`. Con BBVA trae el estado del cargo. */
+export type EstadoCobroTarjeta = {
+  activa: boolean;
+  estado?: 'creando' | 'pendiente' | 'completado' | 'fallido' | 'cancelado' | 'abandonado' | 'devuelto' | 'en_revision' | 'desconocido';
+  mensaje?: string;
+  url_pago?: string | null;
 };
 
 export type ResultadoSuscripcion = { requiere_accion: boolean; client_secret: string | null };

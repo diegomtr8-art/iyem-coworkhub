@@ -92,3 +92,13 @@ Schedule::command('nodico:avisos-push')
     ->withoutOverlapping()
     ->onOneServer()
     ->appendOutputTo($bitacoraDeTareas);
+
+// Migración a BBVA — los cargos con tarjeta que siguen esperando al banco.
+// BBVA no manda webhooks: si alguien paga y cierra la pestaña antes de volver,
+// esto es lo que se entera y activa la membresía (docs/PAGOS-BBVA.md §3). Todo
+// el día: se paga a cualquier hora.
+Schedule::command('nodico:confirmar-cargos')
+    ->everyFiveMinutes()
+    ->withoutOverlapping()
+    ->onOneServer()
+    ->appendOutputTo($bitacoraDeTareas);

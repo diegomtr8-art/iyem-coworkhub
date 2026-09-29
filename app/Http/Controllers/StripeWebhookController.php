@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\EventoStripe;
+use App\Models\EventoPasarela;
 use App\Models\Plane;
 use App\Models\User;
 use App\Servicios\Pagos\ActivadorDeMembresia;
@@ -20,7 +20,7 @@ use Symfony\Component\HttpFoundation\Response;
  *
  *  - **por webhook, no por el navegador**: la página de retorno solo consulta;
  *  - **idempotente**: cada evento se procesa una vez (Stripe reintenta), con el
- *    id del evento como candado (ver `EventoStripe`);
+ *    id del evento como candado (ver `EventoPasarela`);
  *  - dejando que Cashier haga su parte primero (`parent::`), que mantiene al día
  *    su propia tabla de suscripciones.
  */
@@ -36,7 +36,7 @@ class StripeWebhookController extends CashierWebhookController
     {
         $respuesta = parent::handleCustomerSubscriptionCreated($payload);
 
-        EventoStripe::procesarUnaVez($payload['id'], $payload['type'], function () use ($payload) {
+        EventoPasarela::procesarUnaVez('stripe', $payload['id'], $payload['type'], function () use ($payload) {
             [$miembro, $plan] = $this->miembroYPlan($payload);
             if ($miembro && $plan) {
                 $this->activador->activar($miembro, $plan);
@@ -56,7 +56,7 @@ class StripeWebhookController extends CashierWebhookController
         // `subscription_create` ya lo cubre `customer.subscription.created`; aquí
         // solo interesan las renovaciones, para no abrir el ciclo dos veces.
         if ($razon === 'subscription_cycle') {
-            EventoStripe::procesarUnaVez($payload['id'], $payload['type'], function () use ($payload) {
+            EventoPasarela::procesarUnaVez('stripe', $payload['id'], $payload['type'], function () use ($payload) {
                 [$miembro, $plan] = $this->miembroYPlan($payload);
                 if ($miembro && $plan) {
                     $this->activador->renovar($miembro, $plan);
@@ -70,7 +70,7 @@ class StripeWebhookController extends CashierWebhookController
     /** Un cobro recurrente falló: suspender y avisar. */
     protected function handleInvoicePaymentFailed(array $payload): Response
     {
-        EventoStripe::procesarUnaVez($payload['id'], $payload['type'], function () use ($payload) {
+        EventoPasarela::procesarUnaVez('stripe', $payload['id'], $payload['type'], function () use ($payload) {
             $miembro = $this->miembroDe($payload);
             if ($miembro) {
                 $this->activador->suspenderPorImpago($miembro);
@@ -85,7 +85,7 @@ class StripeWebhookController extends CashierWebhookController
     {
         $respuesta = parent::handleCustomerSubscriptionDeleted($payload);
 
-        EventoStripe::procesarUnaVez($payload['id'], $payload['type'], function () use ($payload) {
+        EventoPasarela::procesarUnaVez('stripe', $payload['id'], $payload['type'], function () use ($payload) {
             $miembro = $this->miembroDe($payload);
             if ($miembro) {
                 $this->activador->detenerRenovacion($miembro);
@@ -98,7 +98,7 @@ class StripeWebhookController extends CashierWebhookController
     /** Pago único (Day-Pass / Nódico Flex): activar por el periodo del plan. */
     protected function handlePaymentIntentSucceeded(array $payload): Response
     {
-        EventoStripe::procesarUnaVez($payload['id'], $payload['type'], function () use ($payload) {
+        EventoPasarela::procesarUnaVez('stripe', $payload['id'], $payload['type'], function () use ($payload) {
             $objeto = $payload['data']['object'] ?? [];
             $planId = $objeto['metadata']['plan_id'] ?? null;
             $userId = $objeto['metadata']['user_id'] ?? null;

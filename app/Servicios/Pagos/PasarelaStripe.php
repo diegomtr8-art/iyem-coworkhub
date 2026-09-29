@@ -4,6 +4,7 @@ namespace App\Servicios\Pagos;
 
 use App\Models\Plane;
 use App\Models\User;
+use App\Servicios\Pagos\Contratos\PasarelaDePagos;
 use Illuminate\Validation\ValidationException;
 use Laravel\Cashier\Exceptions\IncompletePayment;
 
@@ -15,13 +16,44 @@ use Laravel\Cashier\Exceptions\IncompletePayment;
  * intent con la clave secreta y se recibe de vuelta un identificador. Y la
  * activación de la membresía **no** ocurre aquí: la hace el webhook
  * (`StripeWebhookController`). Esto solo cobra; la verdad la confirma Stripe.
+ *
+ * Antes se llamaba `CobroConTarjeta`; su comportamiento no cambió al ponerse
+ * detrás de `PasarelaDePagos` (migración a BBVA, docs/PAGOS-BBVA.md).
  */
-class CobroConTarjeta
+class PasarelaStripe implements PasarelaDePagos
 {
+    use ConsultaMembresiaActiva;
+
+    public function nombre(): string
+    {
+        return 'stripe';
+    }
+
+    public function etiqueta(): string
+    {
+        return 'Stripe';
+    }
+
     /** Hay claves de Stripe si están tanto la publicable como la secreta. */
     public function disponible(): bool
     {
         return (bool) config('cashier.key') && (bool) config('cashier.secret');
+    }
+
+    /** Recurrente sin precio de Stripe: solo por referencia. */
+    public function disponiblePara(Plane $plan): bool
+    {
+        return $this->disponible() && (! $plan->cobro_recurrente || filled($plan->stripe_price_id));
+    }
+
+    public function renuevaSola(Plane $plan): bool
+    {
+        return (bool) $plan->cobro_recurrente;
+    }
+
+    public function llavePublica(): ?string
+    {
+        return $this->disponible() ? config('cashier.key') : null;
     }
 
     /**
@@ -35,19 +67,19 @@ class CobroConTarjeta
      *
      * @throws ValidationException
      */
-    public function preparar(User $usuario, Plane $plan, bool $exigirPrecio = true): array
+    public function preparar(User $usuario, Plane $plan, bool $exigirConfiguracion = true, string $origen = 'web'): array
     {
         // La web enseña el formulario aunque al plan recurrente le falte el
         // precio de Stripe y avisa al enviar, como hacía antes; la app prefiere
         // saberlo antes de abrir la hoja de pago.
-        if ($exigirPrecio) {
+        if ($exigirConfiguracion) {
             $this->verificarConfigurado($plan);
         }
 
         $usuario->createOrGetStripeCustomer();
 
         // Antes de pedir la tarjeta: si ya se cobra sola, no tiene sentido.
-        if ($plan->cobro_recurrente && $exigirPrecio) {
+        if ($plan->cobro_recurrente && $exigirConfiguracion) {
             $this->suscripcionEnCurso($usuario);
         }
 
@@ -58,6 +90,8 @@ class CobroConTarjeta
         }
 
         $intent = $usuario->stripe()->paymentIntents->create([
+            // Stripe cobra en CENTAVOS enteros. Solo Stripe: BBVA cobra en pesos
+            // (ver `Importe`).
             'amount'   => (int) round($plan->precio * 100),
             'currency' => config('cashier.currency', 'mxn'),
             'customer' => $usuario->stripe_id,
@@ -161,13 +195,54 @@ class CobroConTarjeta
         return is_string($intent->payment_method) ? $intent->payment_method : $intent->payment_method->id;
     }
 
-    /** ¿Ya hay membresía vigente? La pantalla «confirmando» lo pregunta hasta que el webhook llega. */
-    public function membresiaActiva(User $usuario): bool
+    /**
+     * ¿Ya hay membresía vigente? La pantalla «confirmando» lo pregunta hasta
+     * que el webhook llega. Con Stripe no hay cargo propio que consultar.
+     */
+    public function estadoDelCobro(User $usuario, ?int $cargoId = null): array
     {
-        return $usuario->suscripciones()
-            ->where('estatus', 'Activa')
-            ->where('fecha_fin', '>=', now()->toDateString())
-            ->exists();
+        return ['activa' => $this->membresiaActiva($usuario)];
+    }
+
+    /** Solo datos locales (los que Cashier guarda en `users`): no llama a la API de Stripe. */
+    public function estadoDeRenovacion(User $usuario): array
+    {
+        $stripe = $usuario->subscription('default');
+
+        return [
+            'metodo_pago'          => $usuario->pm_last_four
+                ? ['marca' => $usuario->pm_type, 'ultimos4' => $usuario->pm_last_four]
+                : null,
+            'tiene_recurrente'     => (bool) $stripe,
+            'renovacion_activa'    => $stripe ? $stripe->active() && ! $stripe->canceled() : false,
+            'en_periodo_de_gracia' => $stripe ? $stripe->onGracePeriod() : false,
+        ];
+    }
+
+    public function cancelarRenovacion(User $usuario): bool
+    {
+        $stripe = $usuario->subscription('default');
+
+        if (! $stripe || $stripe->canceled()) {
+            return false;
+        }
+
+        $stripe->cancel();
+
+        return true;
+    }
+
+    public function reactivarRenovacion(User $usuario): bool
+    {
+        $stripe = $usuario->subscription('default');
+
+        if (! $stripe || ! $stripe->onGracePeriod()) {
+            return false;
+        }
+
+        $stripe->resume();
+
+        return true;
     }
 
     /**

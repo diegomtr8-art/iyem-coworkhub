@@ -3,74 +3,102 @@
 namespace App\Http\Controllers\Portal;
 
 use App\Http\Controllers\Controller;
+use App\Models\CargoPasarela;
 use App\Models\Plane;
-use App\Models\Suscripcion;
+use App\Servicios\Pagos\Bbva\ConfirmadorDeCargo;
+use App\Servicios\Pagos\Bbva\ErrorDeBbva;
+use App\Servicios\Pagos\Contratos\PasarelaDePagos;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Validation\ValidationException;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 use Inertia\Inertia;
 use Inertia\Response;
-use App\Servicios\Pagos\CobroConTarjeta;
+use Symfony\Component\HttpFoundation\Response as RespuestaHttp;
 
 /**
- * Fase 4.A — el cobro ocurre **dentro** de Nódico, con Stripe Elements.
+ * Cobro con tarjeta desde el portal, con la pasarela que diga
+ * `config('pagos.pasarela')`.
  *
- * El campo de tarjeta es un iframe servido por Stripe montado en nuestra propia
- * página: visualmente el pago pasa en Nódico, pero el número, el CVC y la fecha
- * **nunca tocan este servidor ni la base de datos**. Aquí solo se prepara el
- * intent (con la clave secreta, en el servidor) y se recibe de vuelta un
- * identificador de método de pago o el resultado del intent; los datos de la
- * tarjeta viajan directos del navegador a Stripe.
+ * - **Stripe:** el campo de tarjeta es un iframe de Stripe (Elements) montado
+ *   en nuestra página; aquí solo se prepara el intent.
+ * - **BBVA:** la tarjeta se teclea en el formulario del banco. Aquí se crea el
+ *   cargo, se manda a la persona allá y se la recibe de vuelta.
  *
- * La activación de la membresía **no** ocurre aquí: la hace el webhook (ver
- * StripeWebhookController). Esta pantalla solo cobra; la verdad la confirma
- * Stripe.
+ * En los dos casos, el número, el CVC y la fecha **nunca tocan este servidor**,
+ * y la activación de la membresía **no** ocurre aquí por lo que diga el
+ * navegador: la confirma el proveedor (webhook de Stripe, o la consulta del
+ * cargo a la API de BBVA).
  */
 class CheckoutController extends Controller
 {
-    /** Prepara el pago del plan elegido y muestra el formulario de tarjeta. */
+    public function __construct(private readonly PasarelaDePagos $pasarela)
+    {
+    }
+
+    /** Muestra la pantalla de pago del plan elegido. */
     public function mostrar(Request $request, Plane $plan): Response
     {
-        $modo = $plan->cobro_recurrente ? 'suscripcion' : 'pago_unico';
-        $datosPlan = [
-            'id'            => $plan->id,
-            'nombre'        => $plan->nombre,
-            'precio'        => (float) $plan->precio,
-            'periodo_label' => $plan->periodo_label,
-            'recurrente'    => $plan->cobro_recurrente,
-            'color'         => $plan->color,
+        $modo = $plan->cobro_recurrente && $this->pasarela->renuevaSola($plan) ? 'suscripcion' : 'pago_unico';
+
+        $comunes = [
+            'plan' => [
+                'id'            => $plan->id,
+                'nombre'        => $plan->nombre,
+                'precio'        => (float) $plan->precio,
+                'periodo_label' => $plan->periodo_label,
+                'recurrente'    => $plan->cobro_recurrente,
+                'renueva_sola'  => $this->pasarela->renuevaSola($plan),
+                'color'         => $plan->color,
+            ],
+            'modo'         => $modo,
+            'pasarela'     => $this->pasarela->nombre(),
+            'etiqueta'     => $this->pasarela->etiqueta(),
+            'volverA'      => route('portal.suscripcion'),
+            'clientSecret' => null,
+            'stripeKey'    => null,
         ];
 
-        // Sin claves de Stripe todavía, la pantalla se muestra en **vista previa**:
-        // se ve el flujo completo dentro de Nódico, pero no se crea intent ni se
-        // llama a Stripe. El campo de tarjeta y el cobro se activan solos en cuanto
-        // se configuren las claves. Así ya no se sale del sitio a buy.stripe.com.
-        if (! $this->hayClavesDeStripe()) {
-            return Inertia::render('Portal/Pago', [
-                'plan'         => $datosPlan,
-                'modo'         => $modo,
-                'vistaPrevia'  => true,
-                'clientSecret' => null,
-                'stripeKey'    => null,
-                'volverA'      => route('portal.suscripcion'),
-            ]);
+        // Sin llaves todavía, la pantalla se muestra en **vista previa**: se ve
+        // el flujo completo dentro de Nódico con la tarjeta deshabilitada y su
+        // motivo, sin llamar a ninguna pasarela.
+        if (! $this->pasarela->disponible()) {
+            return Inertia::render('Portal/Pago', [...$comunes, 'vistaPrevia' => true]);
         }
 
-        $intent = $this->cobro()->preparar($request->user(), $plan, exigirPrecio: false);
+        // BBVA: el cargo se crea al pulsar «Pagar» (`iniciar`), no al ver la
+        // página: recargarla no debe crear cargos.
+        if ($this->pasarela->nombre() !== 'stripe') {
+            return Inertia::render('Portal/Pago', [...$comunes, 'vistaPrevia' => false]);
+        }
+
+        $intent = $this->pasarela->preparar($request->user(), $plan, exigirConfiguracion: false);
 
         return Inertia::render('Portal/Pago', [
-            'plan'           => $datosPlan,
-            'modo'           => $modo,
-            'vistaPrevia'    => false,
-            'clientSecret'   => $intent['client_secret'],
-            'stripeKey'      => config('cashier.key'),
-            'volverA'        => route('portal.suscripcion'),
+            ...$comunes,
+            'vistaPrevia'  => false,
+            'clientSecret' => $intent['client_secret'],
+            'stripeKey'    => $this->pasarela->llavePublica(),
         ]);
     }
 
     /**
-     * Suscripción recurrente: con el método ya recogido por Elements, se crea la
-     * suscripción en Stripe. El cobro dispara el webhook, que activa la
+     * BBVA: crea el cargo y manda a la persona al formulario del banco. Si ya
+     * hay uno reciente del mismo plan esperando, la manda a ese mismo.
+     */
+    public function iniciar(Request $request, Plane $plan): RespuestaHttp
+    {
+        abort_if($this->pasarela->nombre() === 'stripe', 404);
+
+        $cobro = $this->pasarela->preparar($request->user(), $plan, origen: 'web');
+
+        // Redirección fuera del sitio: Inertia necesita `location`, no un 302.
+        return Inertia::location($cobro['url']);
+    }
+
+    /**
+     * Stripe, suscripción recurrente: con el método ya recogido por Elements,
+     * se crea la suscripción. El cobro dispara el webhook, que activa la
      * membresía de Nódico. Aquí NO se activa nada.
      */
     public function procesarSuscripcion(Request $request, Plane $plan): RedirectResponse
@@ -79,12 +107,12 @@ class CheckoutController extends Controller
             'payment_method' => ['required', 'string'],
         ]);
 
-        $pendiente = $this->cobro()->suscribir($request->user(), $plan, $datos['payment_method']);
+        $pendiente = $this->pasarela->suscribir($request->user(), $plan, $datos['payment_method']);
 
         if ($pendiente !== null) {
             // El banco pide autenticación (3-D Secure): se manda a la pantalla de
             // Cashier que la resuelve, y luego a «confirmando».
-            $intentId = \Illuminate\Support\Str::before($pendiente, '_secret_');
+            $intentId = Str::before($pendiente, '_secret_');
 
             return redirect()->route(
                 'cashier.payment',
@@ -96,29 +124,57 @@ class CheckoutController extends Controller
     }
 
     /**
-     * Página de retorno: **solo** dice «estamos confirmando» y consulta el
-     * estado. Nunca decide si el pago fue bueno; eso lo hace el webhook.
+     * BBVA regresa aquí con `?id={transacción}`. El id es una **pista**, no una
+     * prueba: solo se acepta si es de un cargo que Nódico creó para esta
+     * persona, y lo que se hace depende de lo que responda la API al
+     * consultarlo. Nunca se activa nada por haber llegado a esta URL.
      */
-    public function confirmando(): Response
+    public function regresoBbva(Request $request, ConfirmadorDeCargo $confirmador): RedirectResponse
     {
-        return Inertia::render('Portal/PagoConfirmando');
+        $id = (string) $request->query('id', '');
+
+        $cargo = $id !== '' ? CargoPasarela::where('user_id', $request->user()->id)
+            ->where('pasarela', 'bbva')
+            ->where('transaccion_id', $id)
+            ->first() : null;
+
+        if (! $cargo) {
+            Log::warning('BBVA: regreso con un id que no es de un cargo de esta persona.', [
+                'usuario' => $request->user()->id, 'id' => Str::limit($id, 60),
+            ]);
+
+            return redirect()->route('portal.suscripcion')
+                ->with('error', 'No encontramos ese pago. Si se te cobró, escríbenos y lo revisamos.');
+        }
+
+        try {
+            $confirmador->confirmar($cargo);
+        } catch (ErrorDeBbva $e) {
+            // La pantalla «confirmando» vuelve a preguntar; y si no, el proceso
+            // programado.
+            Log::warning('BBVA: no se pudo consultar el cargo al regresar.', ['cargo' => $cargo->id, ...$e->contexto()]);
+        }
+
+        return redirect()->route('portal.pago.confirmando', ['cargo' => $cargo->id]);
     }
 
-    /** Estado de la membresía, para que la página de confirmación deje de esperar. */
+    /**
+     * Página de retorno: **solo** dice «estamos confirmando» y consulta el
+     * estado. Nunca decide si el pago fue bueno.
+     */
+    public function confirmando(Request $request): Response
+    {
+        return Inertia::render('Portal/PagoConfirmando', [
+            'cargo'    => $request->integer('cargo') ?: null,
+            'etiqueta' => $this->pasarela->etiqueta(),
+        ]);
+    }
+
+    /** Estado del pago, para que la página de confirmación deje de esperar. */
     public function estado(Request $request)
     {
-        $activa = $this->cobro()->membresiaActiva($request->user());
-
-        return response()->json(['activa' => $activa]);
-    }
-
-    private function hayClavesDeStripe(): bool
-    {
-        return $this->cobro()->disponible();
-    }
-
-    private function cobro(): CobroConTarjeta
-    {
-        return app(CobroConTarjeta::class);
+        return response()->json(
+            $this->pasarela->estadoDelCobro($request->user(), $request->integer('cargo') ?: null)
+        );
     }
 }

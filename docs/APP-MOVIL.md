@@ -40,7 +40,10 @@ EXPO_PUBLIC_API_URL=http://192.168.10.6:8010/api/v1
 
 Sin la variable, la app usa `https://prueba.nodico.com.mx/api/v1`. Los builds de EAS no leen este archivo: toman la URL de su perfil en `eas.json` (los tres perfiles apuntan al servidor de pruebas). Si la IP de la computadora cambia, se cambia aquí (`ipconfig` → «Dirección IPv4») y se reinicia `expo start`.
 
-**Pagos con tarjeta:** el servidor local no tiene claves de Stripe, así que ahí la opción «Tarjeta» sale deshabilitada. Además, Stripe avisa del cobro (webhook) a `prueba.nodico.com.mx`, no a esta computadora. El pago con tarjeta se prueba contra el servidor de pruebas.
+**Pagos con tarjeta:** el servidor local no tiene llaves de ninguna pasarela, así que ahí la opción «Tarjeta» sale deshabilitada. El pago con tarjeta se prueba contra el servidor de pruebas. La pasarela la decide el servidor (`PAGOS_PASARELA`, ver `docs/PAGOS-BBVA.md`):
+
+- **Stripe:** la hoja de pago nativa. Stripe avisa del cobro (webhook) a `prueba.nodico.com.mx`, no a esta computadora.
+- **BBVA:** la app abre el formulario del banco en el navegador del sistema (`expo-web-browser`, `openAuthSessionAsync`). Ahí se teclea la tarjeta y se pasa el 3-D Secure. BBVA regresa a `pago/bbva/regreso-app` en el servidor, que devuelve a la app (`nodico://regreso-banco`, o `exp://…` en Expo Go). La app pregunta por el cargo hasta que el servidor lo confirma con la API del banco. No hay SDK: el navegador del sistema, y no una WebView, porque algunos bancos bloquean el 3-D Secure dentro de vistas embebidas.
 
 **4. Arrancar Expo:**
 
@@ -79,7 +82,8 @@ Cada fila está verificada contra la documentación de Expo **SDK 57** (septiemb
 | Descargar facturas y CSV y compartirlos (`expo-file-system`, `expo-sharing`) | ✅ | ✅ | [sharing](https://docs.expo.dev/versions/latest/sdk/sharing/) — «Included in Expo Go» |
 | Datos sin conexión (`async-storage`, `netinfo`) | ✅ | ✅ | [async-storage](https://docs.expo.dev/versions/latest/sdk/async-storage/), [netinfo](https://docs.expo.dev/versions/latest/sdk/netinfo/) |
 | Copiar referencia y CLABE (`expo-clipboard`) | ✅ | ✅ | [clipboard](https://docs.expo.dev/versions/latest/sdk/clipboard/) |
-| **Pago con tarjeta** (`@stripe/stripe-react-native`, PaymentSheet) | ✅ con tarjeta | ✅ | [stripe](https://docs.expo.dev/versions/latest/sdk/stripe/) — «Included in Expo Go» |
+| **Pago con tarjeta — Stripe** (`@stripe/stripe-react-native`, PaymentSheet) | ✅ con tarjeta | ✅ | [stripe](https://docs.expo.dev/versions/latest/sdk/stripe/) — «Included in Expo Go». Solo con `PAGOS_PASARELA=stripe`. |
+| **Pago con tarjeta — BBVA** (formulario del banco en `expo-web-browser`) | ✅ con tarjeta | ✅ | Sin SDK nativo: el formulario lo sirve BBVA. Solo con `PAGOS_PASARELA=bbva`. Sin probar aún contra el sandbox de BBVA. |
 | Apple Pay / Google Pay | ❌ | ✅ | misma página: «Apple Pay is not supported in Expo Go», «Google Pay is not supported in Expo Go» |
 | Bloqueo con **huella** (Android) | ✅ | ✅ | [local-authentication](https://docs.expo.dev/versions/latest/sdk/local-authentication/) |
 | Bloqueo con **Face ID** (iPhone) | ⚠️ pide el código del teléfono en su lugar | ✅ | misma página: «FaceID authentication for iOS is not supported in Expo Go» |

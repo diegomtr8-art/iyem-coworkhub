@@ -1,5 +1,11 @@
 # Pagos — Stripe dentro de Nódico
 
+> **Migración a BBVA en curso.** La pasarela de tarjeta se elige con
+> `PAGOS_PASARELA` (`stripe` | `bbva`). Este documento describe Stripe; BBVA
+> está en [`PAGOS-BBVA.md`](PAGOS-BBVA.md). Con `bbva` activo, lo de aquí sigue
+> valiendo para las suscripciones de Stripe que ya existan: su webhook sigue
+> escuchando.
+
 > Fase 4.A. El cobro ocurre **dentro** del sitio con Stripe Elements: el campo de
 > tarjeta es un iframe de Stripe montado en la propia página de Nódico. El
 > número, el CVC y la fecha **nunca tocan el servidor ni la base de datos**, así

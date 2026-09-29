@@ -4,7 +4,7 @@ namespace App\Http\Controllers\Api\Movil;
 
 use App\Models\Plane;
 use App\Servicios\Membresias\DescripcionDelPlan;
-use App\Servicios\Pagos\CobroConTarjeta;
+use App\Servicios\Pagos\Contratos\PasarelaDePagos;
 use Illuminate\Http\JsonResponse;
 
 /**
@@ -13,7 +13,7 @@ use Illuminate\Http\JsonResponse;
 class PublicoController extends ControladorMovil
 {
     /** Al arrancar: versión mínima, mantenimiento y qué botones de acceso pintar. */
-    public function estado(CobroConTarjeta $cobro): JsonResponse
+    public function estado(PasarelaDePagos $cobro): JsonResponse
     {
         return $this->datos([
             'version_minima'      => config('nodico.app_movil.version_minima'),
@@ -28,7 +28,10 @@ class PublicoController extends ControladorMovil
             ],
             'pagos' => [
                 'tarjeta'       => $cobro->disponible(),
-                'llave_publica' => $cobro->disponible() ? config('cashier.key') : null,
+                // stripe | bbva: la app sabe si abre la hoja de pago de Stripe
+                // o el formulario del banco.
+                'pasarela'      => $cobro->nombre(),
+                'llave_publica' => $cobro->llavePublica(),
                 'referencia'    => true,
             ],
             // La web, para lo que la app abre en el navegador (registro,

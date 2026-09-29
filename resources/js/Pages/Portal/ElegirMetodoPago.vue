@@ -11,7 +11,7 @@ import TarjetaPortal from '@/Components/Portal/TarjetaPortal.vue'
  * problema que se resuelve.
  */
 const props = defineProps<{
-  plan: { id: number; nombre: string; precio: number; periodo_label: string; recurrente: boolean }
+  plan: { id: number; nombre: string; precio: number; periodo_label: string; recurrente: boolean; renueva_sola?: boolean }
   tieneDatosFiscales: boolean
   vencimientoDias: number
 }>()
@@ -48,7 +48,8 @@ const precio = (v: number) =>
             <h2 class="mt-3 font-display text-display-sm font-extrabold text-dark">Tarjeta</h2>
             <ul class="mt-4 flex-1 space-y-2 font-body text-sm text-dark/80">
               <li class="flex items-start gap-2"><Check :size="16" class="mt-0.5 shrink-0 text-nodo-500" /> Se activa al instante.</li>
-              <li class="flex items-start gap-2"><Check :size="16" class="mt-0.5 shrink-0 text-nodo-500" /> Se renueva automáticamente.</li>
+              <li v-if="plan.renueva_sola" class="flex items-start gap-2"><Check :size="16" class="mt-0.5 shrink-0 text-nodo-500" /> Se renueva automáticamente.</li>
+              <li v-else-if="plan.recurrente" class="flex items-start gap-2"><Check :size="16" class="mt-0.5 shrink-0 text-nodo-500" /> Te avisamos antes de que venza para renovar.</li>
               <li class="flex items-start gap-2 font-bold text-dark"><X :size="16" class="mt-0.5 shrink-0 text-coral" /> No genera factura.</li>
             </ul>
             <Link

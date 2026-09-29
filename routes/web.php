@@ -345,6 +345,14 @@ Route::middleware(['auth', 'verified', 'portal:miembro', 'no.suspendida', 'conse
     // Tarjeta — Stripe (mismos métodos, ahora bajo /tarjeta).
     Route::get('contratar/{plan}/tarjeta', [CheckoutController::class, 'mostrar'])->name('contratar.tarjeta');
     Route::post('contratar/{plan}/tarjeta', [CheckoutController::class, 'procesarSuscripcion'])->name('contratar.suscripcion');
+    // Tarjeta — BBVA: se crea el cargo y se manda al formulario del banco, que
+    // regresa aquí con el id. El regreso solo consulta (docs/PAGOS-BBVA.md §3).
+    Route::post('contratar/{plan}/tarjeta/banco', [CheckoutController::class, 'iniciar'])
+        ->middleware('throttle:10,1')
+        ->name('contratar.tarjeta.iniciar');
+    Route::get('pago/bbva/regreso', [CheckoutController::class, 'regresoBbva'])
+        ->middleware('throttle:30,1')
+        ->name('pago.bbva.regreso');
     Route::get('pago/confirmando', [CheckoutController::class, 'confirmando'])->name('pago.confirmando');
     Route::get('pago/estado', [CheckoutController::class, 'estado'])->name('pago.estado');
 
@@ -419,3 +427,10 @@ Route::middleware(\App\Http\Middleware\CompartirMarcaDeAcceso::class)
 // en bootstrap/app.php); la firma la verifica el propio controlador vía Cashier.
 Route::post('stripe/webhook', [\App\Http\Controllers\StripeWebhookController::class, 'handleWebhook'])
     ->name('cashier.webhook');
+
+// Migración a BBVA — regreso del formulario del banco cuando el pago se inició
+// en la app. Sin sesión web (la app usa token): solo consulta el cargo, que ya
+// dice de quién es y por cuánto, y devuelve a la app por `nodico://`.
+Route::get('pago/bbva/regreso-app', \App\Http\Controllers\RegresoBbvaAppController::class)
+    ->middleware('throttle:30,1')
+    ->name('pago.bbva.regreso-app');
