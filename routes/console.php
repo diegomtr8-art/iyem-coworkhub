@@ -112,3 +112,13 @@ Schedule::command('nodico:sincronizar-suscripciones')
     ->withoutOverlapping()
     ->onOneServer()
     ->appendOutputTo($bitacoraDeTareas);
+
+// Cuentas de demostración al día, solo fuera de producción: se resiembran
+// cuando cumplen 7 días, antes de que sus membresías venzan (ver DemoAlDia).
+Schedule::command('nodico:demo-al-dia')
+    ->dailyAt('04:30')
+    ->timezone('America/Merida')
+    ->environments(['staging', 'local'])
+    ->withoutOverlapping()
+    ->onOneServer()
+    ->appendOutputTo($bitacoraDeTareas);

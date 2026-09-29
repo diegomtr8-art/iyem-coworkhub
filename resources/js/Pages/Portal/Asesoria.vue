@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { Head, Link, router, useForm } from '@inertiajs/vue3'
-import { Lightbulb, Clock, User as UserIcon, X } from 'lucide-vue-next'
+import { Lightbulb, Clock, User as UserIcon, X, CalendarX2 } from 'lucide-vue-next'
 import PortalLayout from '@/Layouts/PortalLayout.vue'
 import EncabezadoPortal from '@/Components/Portal/EncabezadoPortal.vue'
 import TarjetaPortal from '@/Components/Portal/TarjetaPortal.vue'
@@ -19,6 +19,10 @@ const props = defineProps<{
   bolsa: any
   planQueLaIncluye: any
   vigenciaHasta: string | null
+  /** Ya pasó su último día pagado: no hay fecha que elegir (el selector quedaba vacío). */
+  vencida?: boolean
+  /** A dónde ir para renovar el plan de la membresía. */
+  renovarA?: string
   solicitudes: any[]
   franjas: string[]
   oferta: any[]
@@ -163,8 +167,27 @@ const tonos: Record<string, string> = {
         </div>
       </section>
 
+      <!-- Membresía vencida: se dice y se ofrece renovar, en vez de un selector
+           de fecha que no deja elegir nada. -->
+      <TarjetaPortal v-if="vencida" fondo="crema" class="mb-8">
+        <div class="flex items-start gap-3" role="status">
+          <CalendarX2 :size="22" class="mt-0.5 shrink-0 text-dark" aria-hidden="true" />
+          <p class="font-body text-cuerpo text-dark">
+            Tu membresía venció<template v-if="vigenciaHasta"> el {{ fechaLarga(vigenciaHasta) }}</template>.
+            Renuévala para pedir una asesoría.
+          </p>
+        </div>
+        <Link
+          v-if="renovarA"
+          :href="renovarA"
+          class="mt-4 inline-flex min-h-[48px] items-center border-2 border-dark bg-nodo-400 px-5
+                 font-display text-sm font-bold text-dark hover:-translate-y-0.5 hover:shadow-dura-sm
+                 transition-all duration-200 ease-salida"
+        >Renovar mi membresía</Link>
+      </TarjetaPortal>
+
       <!-- Solicitud. -->
-      <form id="form-asesoria" class="mb-8" @submit.prevent="form.post(route('portal.asesoria.store'), {
+      <form v-else id="form-asesoria" class="mb-8" @submit.prevent="form.post(route('portal.asesoria.store'), {
         preserveScroll: true,
         onSuccess: () => form.reset('tema_id', 'detalle', 'asesor_preferido_id', 'dia_preferido'),
       })">
@@ -237,6 +260,9 @@ const tonos: Record<string, string> = {
                 />
                 <p v-if="form.errors.dia_preferido" class="mt-1.5 font-body text-xs text-coral">
                   {{ form.errors.dia_preferido }}
+                </p>
+                <p v-else-if="vigenciaHasta" class="mt-1.5 font-body text-xs text-dark/70">
+                  Hasta el {{ fechaLarga(vigenciaHasta) }}, cuando vence tu membresía.
                 </p>
               </div>
 
