@@ -152,6 +152,25 @@ class PagoBbvaTest extends TestCase
             && $p->hasHeader('X-Forwarded-For', '189.203.1.2'));
     }
 
+    /**
+     * Regresión (prueba.nodico.com.mx, 29-sep-2026): con `trustProxies('*')`,
+     * una cabecera `X-Forwarded-For` inventada se volvía la IP del cliente.
+     * A BBVA le llega la de la conexión.
+     */
+    public function test_una_ip_inventada_en_la_cabecera_no_llega_al_antifraude(): void
+    {
+        $this->fingirCreacion();
+        $plan = Plane::factory()->dayPass()->create();
+
+        $this->actingAs(User::factory()->miembro()->create())
+            ->withServerVariables(['REMOTE_ADDR' => '187.251.136.251'])
+            ->withHeader('X-Forwarded-For', '1.2.3.4')
+            ->post(route('portal.contratar.tarjeta.iniciar', $plan));
+
+        Http::assertSent(fn (Request $p) => $p->hasHeader('X-Forwarded-For', '187.251.136.251'));
+        $this->assertSame('187.251.136.251', CargoPasarela::sole()->ip_cliente);
+    }
+
     // ── Crear el cargo ──────────────────────────────────────────────────────
 
     public function test_pagar_manda_al_formulario_del_banco_sin_activar_nada(): void

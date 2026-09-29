@@ -264,7 +264,7 @@ class PasarelaBbva implements PasarelaDePagos
      */
     private function crearCargo(User $usuario, Plane $plan, string $origen): array
     {
-        $ip = request()?->ip() ?? '127.0.0.1';
+        $ip = $this->ipDelCliente();
 
         // La fila va primero: si la red se corta después de que BBVA cree el
         // cargo, sabemos qué se pidió y por cuánto.
@@ -345,6 +345,21 @@ class PasarelaBbva implements PasarelaDePagos
             'email'        => (string) $usuario->email,
             'phone_number' => (string) ($usuario->telefono ?? ''),
         ], fn ($v) => $v !== '');
+    }
+
+    /**
+     * La IP que va en `X-Forwarded-For` para el antifraude de BBVA.
+     *
+     * **No es `$request->ip()`.** Con `trustProxies(at: '*')` (bootstrap/app.php),
+     * Laravel toma la IP de la cabecera `X-Forwarded-For`, y Hostinger deja
+     * pasar la que mande el visitante: con `X-Forwarded-For: 1.2.3.4`,
+     * `ip()` devuelve `1.2.3.4` (comprobado en prueba.nodico.com.mx el
+     * 29-sep-2026). En cambio, `REMOTE_ADDR` sí es la IP real: Hostinger la
+     * fija con la de la conexión y el visitante no la puede tocar.
+     */
+    private function ipDelCliente(): string
+    {
+        return (string) (request()?->server('REMOTE_ADDR') ?: '127.0.0.1');
     }
 
     private function consultarSinRomper(CargoPasarela $cargo): void
