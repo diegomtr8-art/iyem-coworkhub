@@ -11,6 +11,7 @@ use App\Servicios\Pagos\Openpay\ClienteOpenpay;
 use App\Servicios\Pagos\Openpay\ConfirmadorDeCargo;
 use App\Servicios\Pagos\Openpay\ErrorDeOpenpay;
 use App\Servicios\Pagos\Openpay\MensajesDeOpenpay;
+use App\Servicios\Pagos\Openpay\SuscripcionesOpenpay;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
@@ -46,6 +47,7 @@ class PasarelaOpenpay implements PasarelaDePagos
     public function __construct(
         private readonly string $plataforma,
         private readonly ConfirmadorDeCargo $confirmador,
+        private readonly SuscripcionesOpenpay $suscripciones,
     ) {
         $this->api = ClienteOpenpay::para($plataforma);
     }
@@ -70,10 +72,16 @@ class PasarelaOpenpay implements PasarelaDePagos
         return $this->disponible() && (float) $plan->precio > 0;
     }
 
-    /** Las suscripciones llegan en el paso 3; hasta entonces se paga por periodo. */
+    /**
+     * Openpay cobra solo cada mes los planes recurrentes cuyo plan de Openpay
+     * está sincronizado a su precio (`nodico:sincronizar-planes-pasarela`).
+     * Ecommerce BBVA no tiene suscripciones: se paga por periodo.
+     */
     public function renuevaSola(Plane $plan): bool
     {
-        return false;
+        return ! $this->esBbva()
+            && (bool) $plan->cobro_recurrente
+            && $this->suscripciones->planDe($plan, $this->nombre()) !== null;
     }
 
     /** Solo con la captura en Nódico: la pública únicamente sirve para crear tokens. */
@@ -110,7 +118,10 @@ class PasarelaOpenpay implements PasarelaDePagos
         ];
     }
 
-    /** En los planes que se renuevan, la tarjeta queda guardada en Openpay. */
+    /**
+     * En los planes que se renuevan, la tarjeta queda guardada en Openpay: es
+     * con la que Openpay cobra cada periodo.
+     */
     public function guardaTarjeta(Plane $plan): bool
     {
         return ! $this->esBbva() && (bool) $plan->cobro_recurrente;
@@ -143,6 +154,13 @@ class PasarelaOpenpay implements PasarelaDePagos
         return $this->conCandado($usuario, function () use ($usuario, $plan, $token, $deviceSessionId) {
             $this->rechazarSiRecienPagado($usuario, $plan);
 
+            // Nunca dos suscripciones que se cobren solas a la vez: antes de
+            // guardar la tarjeta o cobrar nada.
+            $renueva = $this->renuevaSola($plan);
+            if ($renueva) {
+                $this->suscripcionEnCurso($usuario);
+            }
+
             // Un cargo del mismo plan esperando el 3-D Secure: se termina ese,
             // no se cobra otro con la tarjeta nueva.
             if ($retomado = $this->retomarPendiente($usuario, $plan, 'web')) {
@@ -160,11 +178,19 @@ class PasarelaOpenpay implements PasarelaDePagos
 
             if ($this->guardaTarjeta($plan)) {
                 $fuente = $this->guardarTarjeta($cliente, $token, $deviceSessionId) ?? $token;
+
+                // 2002: esa tarjeta ya estaba guardada. Para la suscripción
+                // hace falta su id; si Nódico no lo tiene, no se puede seguir.
+                if ($renueva && $fuente === $token && ! $cliente->refresh()->tieneTarjeta()) {
+                    throw ValidationException::withMessages([
+                        'plan' => 'No pudimos preparar esta tarjeta para la renovación automática. Usa otra tarjeta o escríbenos.',
+                    ]);
+                }
             }
 
             return $this->crearCargo($usuario, $plan, 'web', [
                 'method' => 'card', 'source_id' => $fuente, 'device_session_id' => $deviceSessionId,
-            ], $cliente->cliente_id);
+            ], $cliente->cliente_id, suscribir: $renueva);
         });
     }
 
@@ -203,16 +229,36 @@ class PasarelaOpenpay implements PasarelaDePagos
         });
     }
 
-    /** Las suscripciones llegan en el paso 3; hasta entonces el periodo se paga con un cargo. */
+    /**
+     * Con Openpay la suscripción no se crea desde la pantalla: la da de alta el
+     * servidor al confirmarse el primer cobro (`cobrarConToken`). Esto es la
+     * hoja de pago de Stripe.
+     */
     public function suscribir(User $usuario, Plane $plan, string $metodoDePago): ?string
     {
         throw ValidationException::withMessages([
-            'plan' => 'La renovación automática todavía no está disponible. Paga el periodo y te avisamos antes de que venza.',
+            'plan' => 'Paga el primer periodo con tu tarjeta; la renovación automática se activa sola al confirmarse.',
         ]);
     }
 
+    /**
+     * Protección contra suscripciones duplicadas (la de `PasarelaStripe`):
+     * con una suscripción que se cobra sola, no se crea otra. Una ya
+     * cancelada al final del periodo no cuenta: no volverá a cobrar.
+     *
+     * @throws ValidationException
+     */
     public function suscripcionEnCurso(User $usuario): string|false
     {
+        $viva = $this->suscripciones->vivaDe($usuario, $this->nombre());
+
+        if ($viva && ! $viva->cancelar_al_final) {
+            throw ValidationException::withMessages([
+                'plan' => 'Ya tienes una membresía con renovación automática: se cobra sola cada periodo. '
+                    . 'Para cambiar de plan, escríbenos o cancela la renovación primero.',
+            ]);
+        }
+
         return false;
     }
 
@@ -269,11 +315,14 @@ class PasarelaOpenpay implements PasarelaDePagos
     }
 
     /**
-     * La tarjeta guardada en Openpay, si la hay; si no, la del último pago
-     * confirmado. Sin suscripciones todavía, nada se renueva solo.
+     * La tarjeta guardada en Openpay (si no, la del último pago confirmado) y
+     * cómo va la suscripción. Solo datos locales: no se llama a Openpay en
+     * cada carga del portal.
      */
     public function estadoDeRenovacion(User $usuario): array
     {
+        $viva = $this->esBbva() ? null : $this->suscripciones->vivaDe($usuario, $this->nombre());
+
         $guardada = ClientePasarela::where('user_id', $usuario->id)
             ->where('pasarela', $this->nombre())
             ->whereNotNull('tarjeta_id')
@@ -293,20 +342,56 @@ class PasarelaOpenpay implements PasarelaDePagos
 
         return [
             'metodo_pago'          => $metodo,
-            'tiene_recurrente'     => false,
-            'renovacion_activa'    => false,
-            'en_periodo_de_gracia' => false,
+            'tiene_recurrente'     => (bool) $viva,
+            'renovacion_activa'    => $viva && ! $viva->cancelar_al_final,
+            'en_periodo_de_gracia' => $viva && $viva->cancelar_al_final,
         ];
     }
 
+    /**
+     * Deja de cobrar al final del periodo pagado; la membresía sigue hasta su
+     * fecha.
+     *
+     * @throws ValidationException si Openpay no responde
+     */
     public function cancelarRenovacion(User $usuario): bool
     {
-        return false;
+        $viva = $this->esBbva() ? null : $this->suscripciones->vivaDe($usuario, $this->nombre());
+
+        if (! $viva || $viva->cancelar_al_final) {
+            return false;
+        }
+
+        $this->contraOpenpay(fn () => $this->suscripciones->cancelarAlFinal($viva));
+
+        return true;
     }
 
+    /** @throws ValidationException si Openpay no responde */
     public function reactivarRenovacion(User $usuario): bool
     {
-        return false;
+        $viva = $this->esBbva() ? null : $this->suscripciones->vivaDe($usuario, $this->nombre());
+
+        return $viva ? (bool) $this->contraOpenpay(fn () => $this->suscripciones->reactivar($viva)) : false;
+    }
+
+    /**
+     * Una llamada a Openpay desde una acción de la persona: si falla, un
+     * mensaje claro en vez de un 500.
+     *
+     * @throws ValidationException
+     */
+    private function contraOpenpay(callable $fn): mixed
+    {
+        try {
+            return $fn();
+        } catch (ErrorDeOpenpay $e) {
+            Log::error('Openpay: no se pudo cambiar la renovación.', $e->contexto());
+
+            throw ValidationException::withMessages([
+                'plan' => 'No pudimos cambiar la renovación en este momento. Intenta de nuevo en unos minutos.',
+            ]);
+        }
     }
 
     // ── Cliente y tarjeta guardada (Openpay) ────────────────────────────────
@@ -475,8 +560,9 @@ class PasarelaOpenpay implements PasarelaDePagos
      *
      * @throws ValidationException
      */
-    private function crearCargo(User $usuario, Plane $plan, string $origen, array $conTarjeta = [], ?string $clienteId = null): array
-    {
+    private function crearCargo(
+        User $usuario, Plane $plan, string $origen, array $conTarjeta = [], ?string $clienteId = null, bool $suscribir = false,
+    ): array {
         $ip = $this->ipDelCliente();
 
         // La fila va primero: si la red se corta después de que la pasarela
@@ -487,6 +573,8 @@ class PasarelaOpenpay implements PasarelaDePagos
             'pasarela'            => $this->nombre(),
             'order_id'            => $this->nuevoOrderId(),
             'cliente_pasarela_id' => $clienteId,
+            // Primer periodo de una suscripción: al confirmarse, se da de alta.
+            'suscribir'           => $suscribir,
             'importe'             => Importe::enPesos($plan),
             'moneda'              => 'MXN',
             'estado'              => CargoPasarela::CREANDO,

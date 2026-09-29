@@ -18,9 +18,9 @@ quedó resuelta: se usa Openpay. Plan acordado con Diego:
 |---|---|---|
 | 1 | Pasarela Openpay: cobro con la tarjeta tecleada en Nódico (openpay.js + antifraude), 3-D Secure si el antifraude lo pide | **Hecho** |
 | 2 | Cliente de Openpay por miembro; tarjeta guardada **en Openpay** en planes que se renuevan | **Hecho** |
-| 3 | Suscripciones: planes en Openpay, alta al pagar, protección contra duplicados, cancelar/reactivar | Pendiente |
+| 3 | Suscripciones: planes en Openpay, alta al pagar, protección contra duplicados, cancelar/reactivar | **Hecho** |
 | 4 | Webhooks: Basic Auth + consulta del cargo antes de activar; renovación y rechazo automáticos | Pendiente |
-| 5 | Revisión periódica de suscripciones canceladas por Openpay al agotar reintentos | Pendiente |
+| 5 | Revisión periódica de suscripciones (renovación, impago, cancelación) | **Hecho** con el paso 3 (`nodico:sincronizar-suscripciones`, cada hora) |
 | 6 | App: la página de pago de Nódico dentro de la app | Pendiente (hoy abre el formulario de Openpay) |
 | 7 | Pruebas en sandbox, incluida una renovación | Pendiente |
 
@@ -47,6 +47,39 @@ comparten código):
 - La confirmación no cambió: `ConfirmadorDeCargo` consulta el cargo (por la
   ruta del cliente si es de un cliente) y compara importe, `order_id` y moneda.
 - Pruebas: `tests/Feature/Pagos/PagoOpenpayTest.php`.
+
+**Suscripciones (paso 3)** — `Openpay/SuscripcionesOpenpay`:
+
+- **Contrato comprobado en el sandbox** (29-sep-2026, con limpieza): el plan se
+  crea con importe en pesos; la suscripción acepta `source_id` (no `card_id`),
+  queda `trial` hasta `trial_end_date` y cobra el día siguiente;
+  `cancel_at_period_end` se pone y se quita con `PUT`.
+- **Cómo se reparte el cobro:** el primer mes lo cobra Nódico (cargo normal,
+  con 3-D Secure si hace falta). Al **confirmarse** ese cargo, el servidor da de
+  alta la suscripción con la tarjeta guardada y prueba hasta el último día
+  pagado; Openpay cobra desde el mes siguiente. Así el primer cobro nunca
+  depende de lo que Openpay haga al crear la suscripción (punto 4 de «Lo que no
+  pude confirmar»).
+- **Planes:** `nodico:sincronizar-planes-pasarela` crea en Openpay Nodo Pro y
+  Nodo Match (mensual, 2 reintentos, `unpaid`). Un cambio de precio crea otro
+  plan: el importe de un plan de Openpay no se puede editar. Sin plan
+  sincronizado a su precio actual no se ofrece la renovación automática.
+- **Nunca dos:** con una suscripción viva (salvo la ya cancelada al final del
+  periodo) no se guarda tarjeta ni se cobra.
+- **Renovación, impago y cancelación:** `nodico:sincronizar-suscripciones`
+  (cada hora) consulta cada suscripción; con un periodo más cobrado renueva la
+  membresía, con `past_due`/`unpaid` la suspende (una vez por periodo) y la
+  reactiva si un reintento se cobra, y con `cancelled` deja de renovarla.
+  También reintenta el alta si Openpay no respondió al confirmarse el cargo.
+- **Cancelar / reactivar** desde «Mi membresía» (web y app): `PUT
+  cancel_at_period_end`.
+- **App:** hasta el paso 6 la app paga el periodo sin suscripción (su pago es
+  el formulario de Openpay, que no guarda la tarjeta).
+- Pruebas: `tests/Feature/Pagos/SuscripcionesOpenpayTest.php`.
+
+**Puesta en marcha en un servidor:** `php artisan migrate` y
+`php artisan nodico:sincronizar-planes-pasarela` (una vez, y cada que cambie el
+precio de Nodo Pro o Nodo Match).
 
 ---
 

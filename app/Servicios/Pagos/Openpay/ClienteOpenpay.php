@@ -140,6 +140,66 @@ class ClienteOpenpay
         ]));
     }
 
+    // ── Planes y suscripciones (solo Openpay) ───────────────────────────────
+    //
+    // Contrato comprobado contra el sandbox el 29-sep-2026: el plan se crea con
+    // importe en pesos; la suscripción acepta `source_id` (la referencia; la
+    // guía dice `card_id`), queda en `trial` hasta `trial_end_date` y cobra el
+    // día siguiente; `cancel_at_period_end` se puede poner y quitar.
+
+    /**
+     * POST /plans — https://documents.openpay.mx/docs/api/index.html#crear-un-nuevo-plan
+     *
+     * @param  array<string, mixed>  $datos
+     * @return array<string, mixed>
+     *
+     * @throws ErrorDeOpenpay
+     */
+    public function crearPlan(array $datos): array
+    {
+        return $this->enviar(fn () => $this->peticion('127.0.0.1')->post('plans', $datos));
+    }
+
+    /**
+     * POST /customers/{id}/subscriptions
+     *
+     * @param  array<string, mixed>  $datos
+     * @return array<string, mixed>
+     *
+     * @throws ErrorDeOpenpay
+     */
+    public function crearSuscripcion(string $clienteId, array $datos, string $ipCliente): array
+    {
+        return $this->enviar(fn () => $this->peticion($ipCliente)->post($this->deCliente($clienteId).'subscriptions', $datos));
+    }
+
+    /**
+     * GET /customers/{id}/subscriptions/{id}
+     *
+     * @return array<string, mixed>
+     *
+     * @throws ErrorDeOpenpay
+     */
+    public function obtenerSuscripcion(string $clienteId, string $suscripcionId): array
+    {
+        return $this->enviar(fn () => $this->peticion('127.0.0.1')
+            ->get($this->deCliente($clienteId).'subscriptions/'.rawurlencode($suscripcionId)));
+    }
+
+    /**
+     * PUT /customers/{id}/subscriptions/{id} (p. ej. `cancel_at_period_end`).
+     *
+     * @param  array<string, mixed>  $datos
+     * @return array<string, mixed>
+     *
+     * @throws ErrorDeOpenpay
+     */
+    public function actualizarSuscripcion(string $clienteId, string $suscripcionId, array $datos, string $ipCliente): array
+    {
+        return $this->enviar(fn () => $this->peticion($ipCliente)
+            ->put($this->deCliente($clienteId).'subscriptions/'.rawurlencode($suscripcionId), $datos));
+    }
+
     // ── Apoyo ───────────────────────────────────────────────────────────────
 
     private function deCliente(?string $clienteId): string

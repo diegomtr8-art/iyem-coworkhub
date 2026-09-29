@@ -38,6 +38,7 @@ class AppServiceProvider extends ServiceProvider
                 'openpay', 'bbva' => new \App\Servicios\Pagos\PasarelaOpenpay(
                     config('pagos.pasarela'),
                     $app->make(\App\Servicios\Pagos\Openpay\ConfirmadorDeCargo::class),
+                    $app->make(\App\Servicios\Pagos\Openpay\SuscripcionesOpenpay::class),
                 ),
                 default => $app->make(\App\Servicios\Pagos\PasarelaStripe::class),
             },

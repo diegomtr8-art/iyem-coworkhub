@@ -102,3 +102,13 @@ Schedule::command('nodico:confirmar-cargos')
     ->withoutOverlapping()
     ->onOneServer()
     ->appendOutputTo($bitacoraDeTareas);
+
+// Migración a Openpay — suscripciones: renueva la membresía cuando Openpay
+// cobra un periodo, la suspende si el cobro se rechaza y deja de renovarla si
+// Openpay la cancela al agotar reintentos (eso no tiene aviso). Cada hora
+// basta: Openpay cobra una vez al día. Ver SuscripcionesOpenpay.
+Schedule::command('nodico:sincronizar-suscripciones')
+    ->hourly()
+    ->withoutOverlapping()
+    ->onOneServer()
+    ->appendOutputTo($bitacoraDeTareas);

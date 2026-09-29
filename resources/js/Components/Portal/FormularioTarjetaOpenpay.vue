@@ -23,9 +23,12 @@ const props = withDefaults(defineProps<{
   openpay: { merchant_id: string; llave_publica: string; sandbox: boolean }
   /** Plan que se renueva: la tarjeta queda guardada en la pasarela (no en Nódico). */
   guardaTarjeta?: boolean
+  /** Openpay la cobrará sola cada periodo (suscripción). */
+  renuevaSola?: boolean
   etiqueta?: string
 }>(), {
   guardaTarjeta: false,
+  renuevaSola: false,
   etiqueta: 'Openpay',
 })
 
@@ -226,8 +229,12 @@ const claseCampo = (conError: string | null, mono = true) => [
         {{ procesando ? 'Procesando…' : 'Pagar ' + importe }}
       </button>
 
-      <p v-if="guardaTarjeta" class="font-body text-xs text-dark/60">
-        Guardaremos tu tarjeta de forma segura en {{ etiqueta }} (no en Nódico) para cobrar cada periodo de tu membresía.
+      <p v-if="renuevaSola" class="font-body text-xs text-dark/60">
+        Hoy pagas este mes. Después, {{ etiqueta }} lo cobrará solo cada mes a esta tarjeta, que queda guardada en
+        {{ etiqueta }} (no en Nódico). Puedes cancelar la renovación cuando quieras desde «Mi membresía».
+      </p>
+      <p v-else-if="guardaTarjeta" class="font-body text-xs text-dark/60">
+        Guardaremos tu tarjeta de forma segura en {{ etiqueta }} (no en Nódico) para tus próximos pagos.
       </p>
       <p class="font-body text-xs text-dark/60">
         Si tu banco lo pide, te llevaremos un momento a su página para confirmar el pago y regresarás aquí.

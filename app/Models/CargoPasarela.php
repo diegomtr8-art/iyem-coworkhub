@@ -32,7 +32,7 @@ class CargoPasarela extends Model
 
     protected $fillable = [
         'user_id', 'plan_id', 'pasarela', 'order_id', 'transaccion_id', 'cliente_pasarela_id',
-        'importe', 'moneda', 'estado', 'estado_pasarela', 'operacion',
+        'importe', 'moneda', 'estado', 'estado_pasarela', 'operacion', 'suscribir',
         'origen', 'url_pago', 'url_vuelta', 'ip_cliente',
         'tarjeta_marca', 'tarjeta_ultimos4', 'error_codigo', 'error_mensaje',
         'ultima_consulta_en', 'confirmado_en',
@@ -40,6 +40,7 @@ class CargoPasarela extends Model
 
     protected $casts = [
         'importe'            => 'float',
+        'suscribir'          => 'boolean',
         'ultima_consulta_en' => 'datetime',
         'confirmado_en'      => 'datetime',
     ];

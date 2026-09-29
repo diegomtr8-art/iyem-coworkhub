@@ -27,8 +27,10 @@ use Illuminate\Support\Facades\Log;
  */
 class ConfirmadorDeCargo
 {
-    public function __construct(private readonly ActivadorDeMembresia $activador)
-    {
+    public function __construct(
+        private readonly ActivadorDeMembresia $activador,
+        private readonly SuscripcionesOpenpay $suscripciones,
+    ) {
     }
 
     /**
@@ -79,6 +81,17 @@ class ConfirmadorDeCargo
         };
 
         $cargo->save();
+
+        // Primer periodo de un plan que se renueva: confirmado el cobro, se da
+        // de alta la suscripción en Openpay. Si Openpay no responde ahora, lo
+        // reintenta `nodico:sincronizar-suscripciones`; el cobro ya quedó.
+        if ($cargo->suscribir && $cargo->estado === CargoPasarela::COMPLETADO) {
+            try {
+                $this->suscripciones->asegurarAlta($cargo);
+            } catch (ErrorDeOpenpay $e) {
+                Log::warning('Openpay: el alta de la suscripción se reintentará.', ['cargo' => $cargo->id, ...$e->contexto()]);
+            }
+        }
 
         Log::info('Pasarela: cargo consultado.', [
             'cargo'       => $cargo->id,

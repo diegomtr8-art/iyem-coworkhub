@@ -208,7 +208,7 @@ async function pagar() {
         <template v-else-if="esOpenpay && captura === 'token' && openpay">
           <FormularioTarjetaOpenpay
             :plan-id="plan.id" :importe="precio(plan.precio)" :openpay="openpay"
-            :guarda-tarjeta="guardaTarjeta" :etiqueta="etiqueta"
+            :guarda-tarjeta="guardaTarjeta" :renueva-sola="plan.renueva_sola" :etiqueta="etiqueta"
           />
         </template>
 
