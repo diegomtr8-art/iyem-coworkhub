@@ -9,7 +9,8 @@ import type { Plan } from '@/tipos'
 import { Check, CreditCard, ShieldCheck, Users } from 'lucide-vue-next'
 import { computed } from 'vue'
 
-const props = defineProps<{ planes?: Plan[] }>()
+/** `pasarela`: quién procesa el cobro con tarjeta (Stripe, Openpay…), según el servidor. */
+const props = defineProps<{ planes?: Plan[]; pasarela?: string }>()
 
 /** SEO-03 — cada membresía como Offer dentro de un catálogo. */
 const ofertas = computed(() => ({
@@ -34,11 +35,17 @@ const incluidoEnTodas = [
   'Espacio pet friendly',
 ]
 
-const comoFunciona = [
-  { icono: CreditCard, titulo: 'Elige y paga en línea', texto: 'El cobro se procesa por Stripe. Nódico no almacena datos de tarjeta.' },
+const comoFunciona = computed(() => [
+  {
+    icono: CreditCard,
+    titulo: 'Elige y paga en línea',
+    texto: props.pasarela
+      ? `El cobro con tarjeta lo procesa ${props.pasarela}. Nódico no almacena datos de tarjeta.`
+      : 'Paga con tarjeta, transferencia o en recepción. Nódico no almacena datos de tarjeta.',
+  },
   { icono: Users, titulo: 'Registra tu acceso', texto: 'Pasa a recepción para dar de alta tu Face ID y activar la membresía.' },
   { icono: ShieldCheck, titulo: 'Usa el espacio', texto: 'Reserva salas y estudio de contenido desde la plataforma, según tu plan.' },
-]
+])
 </script>
 
 <template>

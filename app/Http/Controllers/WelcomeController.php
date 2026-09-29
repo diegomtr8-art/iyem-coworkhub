@@ -7,6 +7,7 @@ use App\Models\DirectorioEmprendedor;
 use App\Models\Espacio;
 use App\Models\Evento;
 use App\Models\Plane;
+use App\Servicios\Pagos\Contratos\PasarelaDePagos;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Str;
 use Inertia\Inertia;
@@ -29,11 +30,14 @@ class WelcomeController extends Controller
         return Inertia::render('Nosotros', $this->authProps());
     }
 
-    public function membresias()
+    public function membresias(PasarelaDePagos $pasarela)
     {
         return Inertia::render('Membresias', [
             ...$this->authProps(),
             'planes' => Plane::publicos()->get(),
+            // Quién procesa el cobro con tarjeta: cambia con PAGOS_PASARELA
+            // (Stripe, Openpay…), así que no puede ir escrito en la página.
+            'pasarela' => $pasarela->etiqueta(),
         ]);
     }
 

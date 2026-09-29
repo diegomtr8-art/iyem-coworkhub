@@ -56,6 +56,16 @@ class SitioPublicoTest extends TestCase
                 ->has('planes.0.beneficios', 3));
     }
 
+    /** El «quién cobra» de la página sale de la pasarela activa, no de un texto fijo. */
+    public function test_membresias_dice_que_pasarela_procesa_el_cobro(): void
+    {
+        config(['pagos.pasarela' => 'stripe']);
+        $this->get(route('membresias'))->assertInertia(fn (AssertableInertia $page) => $page->where('pasarela', 'Stripe'));
+
+        config(['pagos.pasarela' => 'openpay']);
+        $this->get(route('membresias'))->assertInertia(fn (AssertableInertia $page) => $page->where('pasarela', 'Openpay'));
+    }
+
     public function test_los_salones_publicados_llegan_a_la_vista(): void
     {
         $this->seed(\Database\Seeders\NodicoWebSeeder::class);
