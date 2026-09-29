@@ -3,34 +3,13 @@
  * Logos de aliados sueltos sobre el fondo de la sección, sin caja.
  * Los PNG llevan fondo transparente y están recortados a su tinta;
  * las alturas se ajustan una a una para alinearlos ópticamente, no por su caja.
+ *
+ * Nombre y enlace salen del módulo «Página Web» (comun.aliados); logo y
+ * medidas son diseño y se quedan aquí.
  */
-const aliados = [
-  {
-    nombre: 'Instituto Yucateco de Emprendedores',
-    logo: '/img/nodico/logo-iyem.png',
-    href: 'https://iyem.yucatan.gob.mx',
-    ancho: 452,
-    alto: 75,
-    clase: 'h-11 sm:h-14',
-  },
-  {
-    nombre: 'Herencia Viva',
-    logo: '/img/nodico/logo-herencia-viva.png',
-    href: 'https://www.herenciaviva.com',
-    ancho: 418,
-    alto: 63,
-    clase: 'h-9 sm:h-11',
-  },
-  {
-    // CANIETI va sin enlace por indicación de Nódico.
-    nombre: 'CANIETI',
-    logo: '/img/nodico/logo-canieti.png',
-    href: null,
-    ancho: 255,
-    alto: 99,
-    clase: 'h-14 sm:h-16',
-  },
-]
+import { useAliados } from '@/composables/useAliados'
+
+const aliados = useAliados({ iyem: 'h-11 sm:h-14', herencia: 'h-9 sm:h-11', canieti: 'h-14 sm:h-16' })
 </script>
 
 <template>

@@ -5,15 +5,17 @@ import { Clock, MapPin, Pause, Phone, Play, Volume2, VolumeX, X } from 'lucide-v
 import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
 
 const props = withDefaults(defineProps<{
-  videoId?: string
+  /** Sale del módulo «Página Web» (inicio.hero); el respaldo vive allí. */
+  videoId: string
   poster?: string
   posterAlt?: string
   direccion?: string
   horarios?: string
   telefono?: string
+  /** Para el `tel:`: con lada internacional marca igual desde cualquier país. */
+  telefonoE164?: string
   mapsUrl?: string
 }>(), {
-  videoId: 'Ml4sprGUqzc',
   poster: '/img/nodico/hero-inicio.webp',
   posterAlt: 'Área de coworking de Nódico en Mérida',
 })
@@ -254,7 +256,7 @@ onBeforeUnmount(() => {
           </li>
           <li v-if="telefono">
             <a
-              :href="`tel:${telefono.replace(/\s/g, '')}`"
+              :href="`tel:${telefonoE164 ?? telefono.replace(/\s/g, '')}`"
               class="flex min-h-[44px] items-center gap-2.5 font-body text-sm text-white/60 transition hover:text-nodo-400"
             >
               <Phone class="h-4 w-4 shrink-0" aria-hidden="true" />

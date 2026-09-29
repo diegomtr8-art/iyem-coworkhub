@@ -41,6 +41,10 @@ class HandleInertiaRequests extends Middleware
             // Web» a quien los edita: el sitio lo avisa con una franja.
             'vistaPrevia' => app(ContenidoDelSitio::class)->enVistaPrevia(),
 
+            // «Página Web»: lo que se repite en todas las páginas públicas
+            // (aliados, pie, «Hablemos»). Sale de la caché del contenido.
+            'comun' => fn () => app(ContenidoDelSitio::class)->pagina('comun'),
+
             // Fase 3.1 - Contadores del menu del panel operativo. Es lo que
             // pone el punto de aviso junto a "Asesorias" sin obligar a entrar
             // para descubrir que hay algo pendiente.
@@ -213,12 +217,15 @@ class HandleInertiaRequests extends Middleware
         $origen = $this->origenCanonico();
         $contacto = app(ContenidoDelSitio::class)->seccion('contacto');
         $redes = app(ContenidoDelSitio::class)->seccion('redes');
+        $negocio = app(ContenidoDelSitio::class)->seccion('negocio');
+        $operacion = config('nodico.operacion');
+        $dias = [1 => 'Monday', 2 => 'Tuesday', 3 => 'Wednesday', 4 => 'Thursday', 5 => 'Friday', 6 => 'Saturday', 7 => 'Sunday', 0 => 'Sunday'];
 
         return [
             '@context'    => 'https://schema.org',
             '@type'       => 'LocalBusiness',
             'name'        => 'Nódico',
-            'description' => 'Coworking del Instituto Yucateco de Emprendedores en Mérida, Yucatán.',
+            'description' => $negocio['descripcion'],
             'url'         => $origen,
             'image'       => $origen . '/img/og/home.jpg',
             'logo'        => $origen . '/img/nodico/logo-nodico-blanco.png',
@@ -226,22 +233,23 @@ class HandleInertiaRequests extends Middleware
             'telephone'   => CatalogoDelSitio::telefonoE164((string) $contacto['telefono']),
             'address'     => [
                 '@type'           => 'PostalAddress',
-                'streetAddress'   => 'Avenida Principal, Industrias No Contaminantes 13613',
-                'addressLocality' => 'Mérida',
-                'addressRegion'   => 'Yucatán',
-                'postalCode'      => '97110',
+                'streetAddress'   => $negocio['calle'],
+                'addressLocality' => $negocio['localidad'],
+                'addressRegion'   => $negocio['region'],
+                'postalCode'      => $negocio['codigo_postal'],
                 'addressCountry'  => 'MX',
             ],
             'geo' => [
                 '@type'     => 'GeoCoordinates',
-                'latitude'  => 21.0527159,
-                'longitude' => -89.6413298,
+                'latitude'  => (float) $negocio['latitud'],
+                'longitude' => (float) $negocio['longitud'],
             ],
+            // Sale de la regla del motor de reservas: un solo horario.
             'openingHoursSpecification' => [[
                 '@type'     => 'OpeningHoursSpecification',
-                'dayOfWeek' => ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'],
-                'opens'     => '09:00',
-                'closes'    => '19:00',
+                'dayOfWeek' => array_values(array_map(fn (int $dia) => $dias[$dia], $operacion['dias_habiles'])),
+                'opens'     => $operacion['apertura'],
+                'closes'    => $operacion['cierre'],
             ]],
             'sameAs' => array_values(array_filter([$redes['instagram'], $redes['facebook'], $redes['linkedin']])),
         ];

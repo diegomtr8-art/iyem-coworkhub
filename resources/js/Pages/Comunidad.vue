@@ -19,6 +19,8 @@ const props = defineProps<{
   /** CNT-02: ambos vienen de la tabla directorio_emprendedores. */
   directorio?: Emprendedor[]
   destacado?: Emprendedor | null
+  /** Dirección de la ficha del negocio («Página Web» → Datos generales). */
+  lugarEventos: string
 }>()
 
 const page = usePage()
@@ -38,7 +40,7 @@ const eventosEstructurados = computed(() =>
     location: {
       '@type': 'Place',
       name: e.lugar ?? 'Nódico',
-      address: 'Hacienda Sodzil Nte., Mérida, Yucatán',
+      address: props.lugarEventos,
     },
   })),
 )

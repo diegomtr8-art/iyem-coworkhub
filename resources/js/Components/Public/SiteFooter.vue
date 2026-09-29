@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import Boton from '@/Components/Public/Boton.vue'
+import { useAliados } from '@/composables/useAliados'
 import { Link, usePage } from '@inertiajs/vue3'
 import { ArrowUp, Clock, Facebook, Instagram, Linkedin, Mail, MapPin, Phone } from 'lucide-vue-next'
 import { computed } from 'vue'
@@ -22,11 +23,7 @@ const redes = computed(() => [
   { label: 'LinkedIn',  href: nodico.value.redes?.linkedin,  icono: Linkedin },
 ].filter((r) => r.href))
 
-const aliados = [
-  { nombre: 'Instituto Yucateco de Emprendedores', logo: '/img/nodico/logo-iyem.png', ancho: 452, alto: 75, clase: 'h-8' },
-  { nombre: 'Herencia Viva', logo: '/img/nodico/logo-herencia-viva.png', ancho: 418, alto: 63, clase: 'h-7' },
-  { nombre: 'CANIETI', logo: '/img/nodico/logo-canieti.png', ancho: 255, alto: 99, clase: 'h-9' },
-]
+const aliados = useAliados({ iyem: 'h-8', herencia: 'h-7', canieti: 'h-9' })
 
 function volverArriba() {
   const sinMovimiento = window.matchMedia('(prefers-reduced-motion: reduce)').matches
@@ -160,7 +157,7 @@ function volverArriba() {
         <!-- Aliados + facturación -->
         <div class="mt-16 grid gap-10 border-t border-white/10 pt-10 lg:grid-cols-[1.4fr_1fr]">
           <div>
-            <h2 class="etiqueta-tecnica text-white/60">Con el respaldo de</h2>
+            <h2 class="etiqueta-tecnica text-white/60">{{ ($page.props as any).comun.aliados.etiqueta }}</h2>
             <ul class="mt-6 flex flex-wrap items-center gap-x-10 gap-y-6">
               <li v-for="aliado in aliados" :key="aliado.nombre">
                 <img

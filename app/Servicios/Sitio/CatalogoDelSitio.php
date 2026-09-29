@@ -2,11 +2,16 @@
 
 namespace App\Servicios\Sitio;
 
+use App\Servicios\Sitio\Paginas\Comun;
+use App\Servicios\Sitio\Paginas\General;
+use App\Servicios\Sitio\Paginas\Inicio;
 use Closure;
+use InvalidArgumentException;
 
 /**
  * Qué contenido del sitio público se puede editar desde el panel, con qué
- * reglas y cuál es su respaldo.
+ * reglas y cuál es su respaldo. Las secciones de cada página viven en
+ * `Paginas/`; aquí solo se juntan en el orden del sitio.
  *
  * Es el **único** sitio donde vive el valor por omisión de cada campo: cuando
  * una sección se muda aquí, su literal desaparece del componente Vue. Que el
@@ -27,12 +32,15 @@ final class CatalogoDelSitio
      * pie de página es una forma de mandar a todo el que lo pulse a cualquier
      * sitio; aquí cada enlace solo puede apuntar a donde dice que apunta.
      */
-    private const HOSTS = [
+    public const HOSTS = [
         'maps'      => ['maps.app.goo.gl', 'goo.gl', 'maps.google.com', 'www.google.com', 'google.com'],
         'instagram' => ['www.instagram.com', 'instagram.com'],
         'facebook'  => ['www.facebook.com', 'facebook.com', 'm.facebook.com'],
         'linkedin'  => ['www.linkedin.com', 'linkedin.com', 'mx.linkedin.com'],
     ];
+
+    /** @var array<string, array>|null */
+    private static ?array $secciones = null;
 
     /**
      * Las pantallas del panel, en el orden del menú del sitio. El administrador
@@ -43,9 +51,19 @@ final class CatalogoDelSitio
     public static function paginas(): array
     {
         return [
+            'inicio' => [
+                'titulo'      => 'Inicio',
+                'descripcion' => 'La portada del sitio.',
+                'ruta'        => 'home',
+            ],
+            'comun' => [
+                'titulo'      => 'Todas las páginas',
+                'descripcion' => 'Lo que se repite al final de cada página: aliados, «Hablemos» y pie.',
+                'ruta'        => 'home',
+            ],
             'general' => [
                 'titulo'      => 'Datos generales',
-                'descripcion' => 'Contacto y redes sociales. Salen en el pie de todas las páginas, en el bloque «Hablemos» y en la portada.',
+                'descripcion' => 'Contacto, redes sociales y la ficha del negocio para buscadores.',
                 'ruta'        => 'home',
             ],
         ];
@@ -53,135 +71,24 @@ final class CatalogoDelSitio
 
     /**
      * Cada sección editable: a qué pantalla del panel pertenece, dónde sale en
-     * el sitio y sus campos. El orden es el del sitio.
+     * el sitio y sus campos (ver `Campo`). El orden es el del sitio.
      *
-     * Por campo: `etiqueta` y `ayuda` son lo que lee la coordinación; `tipo`
-     * elige el control (texto, parrafo, email, telefono, url, usuario);
-     * `reglas` valida al guardar y al leer; `respaldo` es el valor si no hay
-     * nada guardado.
-     *
-     * @return array<string, array{pagina: string, titulo: string, aparece: string, ancla: ?string, campos: array<string, array{etiqueta: string, tipo: string, ayuda?: string, reglas: array<int, mixed>, respaldo: Closure(): mixed}>}>
+     * @return array<string, array{pagina: string, titulo: string, aparece: string, ancla: ?string, campos: array<string, array>}>
      */
     public static function secciones(): array
     {
-        return [
-            'contacto' => [
-                'pagina'  => 'general',
-                'titulo'  => 'Datos de contacto',
-                'aparece' => 'Pie de todas las páginas, bloque «Hablemos» y franja inferior de la portada.',
-                'ancla'   => '#hablemos',
-                'campos'  => [
-                    'email' => [
-                        'etiqueta' => 'Correo de contacto',
-                        'tipo'     => 'email',
-                        'ayuda'    => 'También es a donde llegan los mensajes del formulario «Hablemos».',
-                        'reglas'   => ['required', 'string', 'email:rfc', 'max:120'],
-                        'respaldo' => fn () => config('nodico.contacto_email'),
-                    ],
-                    'telefono' => [
-                        'etiqueta' => 'Teléfono',
-                        'tipo'     => 'telefono',
-                        'ayuda'    => 'Diez dígitos, escrito como quieras que se lea. Al pulsarlo en el celular, marca.',
-                        'reglas'   => ['required', 'string', 'max:20', 'regex:/^[\d\s()+-]+$/', self::telefonoDeDiezDigitos()],
-                        'respaldo' => fn () => config('nodico.telefono'),
-                    ],
-                    'direccion' => [
-                        'etiqueta' => 'Dirección completa',
-                        'tipo'     => 'parrafo',
-                        'ayuda'    => 'Sale en el pie de página.',
-                        'reglas'   => ['required', 'string', 'max:160'],
-                        'respaldo' => fn () => config('nodico.direccion'),
-                    ],
-                    'direccion_corta' => [
-                        'etiqueta' => 'Dirección corta',
-                        'tipo'     => 'texto',
-                        'ayuda'    => 'Sale en la portada y en «Hablemos», donde no cabe la completa.',
-                        'reglas'   => ['required', 'string', 'max:80'],
-                        'respaldo' => fn () => config('nodico.direccion_corta'),
-                    ],
-                    'maps_url' => [
-                        'etiqueta' => 'Enlace «Cómo llegar»',
-                        'tipo'     => 'url',
-                        'ayuda'    => 'El enlace de Google Maps que da el botón «Compartir» de la ficha del lugar.',
-                        'reglas'   => ['required', 'string', 'max:300', 'url:https', self::host('maps')],
-                        'respaldo' => fn () => config('nodico.maps_url'),
-                    ],
-                    'horarios' => [
-                        'etiqueta' => 'Horario',
-                        'tipo'     => 'texto',
-                        'ayuda'    => 'Solo es el texto que se lee. El horario en el que se puede reservar se cambia en la configuración del sistema.',
-                        'reglas'   => ['required', 'string', 'max:60'],
-                        'respaldo' => fn () => config('nodico.horarios'),
-                    ],
-                    'horarios_detalle' => [
-                        'etiqueta' => 'Nota del horario',
-                        'tipo'     => 'texto',
-                        'ayuda'    => 'Línea pequeña debajo del horario. Déjala vacía para quitarla.',
-                        'reglas'   => ['nullable', 'string', 'max:60'],
-                        'respaldo' => fn () => config('nodico.horarios_detalle'),
-                    ],
-                ],
-            ],
-
-            // Vacío es válido en las tres redes: quita el icono del pie.
-            'redes' => [
-                'pagina'  => 'general',
-                'titulo'  => 'Redes sociales',
-                'aparece' => 'Iconos del pie de todas las páginas y sección de Instagram de la portada y de Comunidad.',
-                'ancla'   => null,
-                'campos'  => [
-                    'instagram' => [
-                        'etiqueta' => 'Instagram',
-                        'tipo'     => 'url',
-                        'ayuda'    => 'Enlace al perfil. Vacío quita el icono.',
-                        'reglas'   => ['nullable', 'string', 'max:200', 'url:https', self::host('instagram')],
-                        'respaldo' => fn () => config('nodico.redes.instagram'),
-                    ],
-                    'facebook' => [
-                        'etiqueta' => 'Facebook',
-                        'tipo'     => 'url',
-                        'ayuda'    => 'Enlace a la página. Vacío quita el icono.',
-                        'reglas'   => ['nullable', 'string', 'max:200', 'url:https', self::host('facebook')],
-                        'respaldo' => fn () => config('nodico.redes.facebook'),
-                    ],
-                    'linkedin' => [
-                        'etiqueta' => 'LinkedIn',
-                        'tipo'     => 'url',
-                        'ayuda'    => 'Enlace al perfil. Vacío quita el icono.',
-                        'reglas'   => ['nullable', 'string', 'max:200', 'url:https', self::host('linkedin')],
-                        'respaldo' => fn () => config('nodico.redes.linkedin'),
-                    ],
-                    // Va dentro de la URL del iframe del perfil: solo los caracteres
-                    // que Instagram admite en un nombre de usuario.
-                    'instagram_usuario' => [
-                        'etiqueta' => 'Usuario de Instagram',
-                        'tipo'     => 'usuario',
-                        'ayuda'    => 'Sin la @. Es la cuenta cuyas publicaciones se muestran en la portada y en Comunidad.',
-                        'reglas'   => ['required', 'string', 'regex:/^[A-Za-z0-9._]{1,30}$/'],
-                        'respaldo' => fn () => config('nodico.instagram_handle'),
-                    ],
-                ],
-            ],
+        return self::$secciones ??= [
+            ...Inicio::secciones(),
+            ...Comun::secciones(),
+            ...General::secciones(),
         ];
     }
 
-    /** @return array<string, array{etiqueta: string, tipo: string, ayuda?: string, reglas: array<int, mixed>, respaldo: Closure(): mixed}> */
+    /** @return array<string, array> */
     public static function campos(string $clave): array
     {
         return self::secciones()[$clave]['campos']
-            ?? throw new \InvalidArgumentException("La sección «{$clave}» no está en el catálogo del sitio.");
-    }
-
-    /** Tope de caracteres de un campo, sacado de su regla `max:`. Lo usa el contador del panel. */
-    public static function maximo(array $campo): ?int
-    {
-        foreach ($campo['reglas'] as $regla) {
-            if (is_string($regla) && str_starts_with($regla, 'max:')) {
-                return (int) substr($regla, 4);
-            }
-        }
-
-        return null;
+            ?? throw new InvalidArgumentException("La sección «{$clave}» no está en el catálogo del sitio.");
     }
 
     /** @return array<int, string> */
@@ -193,6 +100,22 @@ final class CatalogoDelSitio
     public static function existe(string $clave): bool
     {
         return array_key_exists($clave, self::secciones());
+    }
+
+    /** Tope de caracteres de un campo, sacado de su regla `max:`. Lo usa el contador del panel. */
+    public static function maximo(array $campo): ?int
+    {
+        if ($campo['tipo'] === 'lista') {
+            return null;
+        }
+
+        foreach ($campo['reglas'] as $regla) {
+            if (is_string($regla) && str_starts_with($regla, 'max:')) {
+                return (int) substr($regla, 4);
+            }
+        }
+
+        return null;
     }
 
     /**
@@ -207,7 +130,7 @@ final class CatalogoDelSitio
         return '+52' . substr($digitos, -10);
     }
 
-    private static function telefonoDeDiezDigitos(): Closure
+    public static function telefonoDeDiezDigitos(): Closure
     {
         return function (string $atributo, mixed $valor, Closure $falla): void {
             // Si no es texto ya lo rechaza la regla `string`; Laravel sigue
@@ -220,21 +143,6 @@ final class CatalogoDelSitio
 
             if (! preg_match('/^(52)?\d{10}$/', $digitos)) {
                 $falla('El teléfono debe tener 10 dígitos.');
-            }
-        };
-    }
-
-    private static function host(string $red): Closure
-    {
-        return function (string $atributo, mixed $valor, Closure $falla) use ($red): void {
-            if (! is_string($valor)) {
-                return;
-            }
-
-            $host = strtolower((string) parse_url($valor, PHP_URL_HOST));
-
-            if (! in_array($host, self::HOSTS[$red], true)) {
-                $falla('El enlace tiene que ser de ' . self::HOSTS[$red][0] . '.');
             }
         };
     }

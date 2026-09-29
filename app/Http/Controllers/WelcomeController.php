@@ -7,6 +7,7 @@ use App\Models\DirectorioEmprendedor;
 use App\Models\Espacio;
 use App\Models\Evento;
 use App\Models\Plane;
+use App\Servicios\Sitio\ContenidoDelSitio;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Str;
 use Inertia\Inertia;
@@ -21,6 +22,7 @@ class WelcomeController extends Controller
             ...$this->authProps(),
             'planes'         => Plane::publicos()->get(),
             'salon'          => Espacio::salonesPublicados()->first(),
+            'contenido'      => app(ContenidoDelSitio::class)->pagina('inicio'),
         ]);
     }
 
@@ -58,7 +60,16 @@ class WelcomeController extends Controller
             // CNT-02: directorio y destacado salen de la BD, no del componente.
             'directorio'     => DirectorioEmprendedor::publicos()->where('destacado_semana', false)->get(),
             'destacado'      => DirectorioEmprendedor::deLaSemana()->first(),
+            // Lugar de los eventos en el JSON-LD: la misma dirección de la ficha.
+            'lugarEventos'   => $this->lugarEventos(),
         ]);
+    }
+
+    private function lugarEventos(): string
+    {
+        $negocio = app(ContenidoDelSitio::class)->seccion('negocio');
+
+        return "{$negocio['colonia']}, {$negocio['localidad']}, {$negocio['region']}";
     }
 
     public function privacidad()

@@ -16,7 +16,7 @@ import { computed, ref, watch } from 'vue'
 type Campo = {
   nombre: string
   etiqueta: string
-  tipo: 'texto' | 'parrafo' | 'email' | 'telefono' | 'url' | 'usuario'
+  tipo: 'texto' | 'parrafo' | 'email' | 'telefono' | 'url' | 'usuario' | 'youtube' | 'numero'
   ayuda: string | null
   maximo: number | null
   requerido: boolean
@@ -51,8 +51,8 @@ watch(() => props.seccion.valores, (valores) => {
   form.defaults()
 }, { deep: true })
 
-const tiposInput: Record<string, string> = { email: 'email', telefono: 'tel', url: 'url', texto: 'text', usuario: 'text' }
-const modosTeclado: Record<string, string> = { email: 'email', telefono: 'tel', url: 'url', texto: 'text', usuario: 'text' }
+const tiposInput: Record<string, string> = { email: 'email', telefono: 'tel', url: 'url', texto: 'text', usuario: 'text', youtube: 'text', numero: 'text' }
+const modosTeclado: Record<string, string> = { email: 'email', telefono: 'tel', url: 'url', texto: 'text', usuario: 'text', youtube: 'text', numero: 'decimal' }
 
 // preserveState: sin él, Inertia vuelve a montar la pantalla tras cada envío y
 // se pierde lo que se esté escribiendo, en esta sección (vista previa) o en otra
@@ -103,7 +103,7 @@ const cuando = computed(() => props.seccion.ultimoCambio
   : null)
 
 const idCampo = (c: Campo) => `${props.seccion.clave}-${c.nombre}`
-const largo = (c: Campo) => (form[c.nombre] ?? '').length
+const largo = (c: Campo) => String(form[c.nombre] ?? '').length
 </script>
 
 <template>

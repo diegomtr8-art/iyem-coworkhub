@@ -19,6 +19,8 @@ import { computed, ref } from 'vue'
 const props = defineProps<{
   planes?: Plan[]
   salon?: Salon | null
+  /** Secciones del módulo «Página Web» para la portada, ya con su respaldo. */
+  contenido: Record<string, any>
 }>()
 
 const page = usePage()
@@ -201,6 +203,8 @@ const fichaSalon = computed(() => {
   <PublicLayout>
     <!-- ═══ HERO — aprobado, no se modifica ═══ -->
     <HeroVideo
+      :video-id="contenido.hero.video_youtube"
+      :telefono-e164="nodico.telefonoE164"
       :direccion="nodico.direccionCorta"
       :horarios="nodico.horarios"
       :telefono="nodico.telefono"
@@ -490,7 +494,7 @@ const fichaSalon = computed(() => {
       <div class="mx-auto max-w-7xl px-5 sm:px-8">
         <ScrollReveal>
           <p class="etiqueta-tecnica mb-10 text-center text-dark/70">
-            Con el respaldo de
+            {{ $page.props.comun.aliados.etiqueta }}
           </p>
           <AliadosSection />
         </ScrollReveal>
