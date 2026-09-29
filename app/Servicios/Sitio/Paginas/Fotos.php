@@ -33,9 +33,20 @@ final class Fotos
         return ['src' => "/img/nodico/{$archivo}", 'srcset' => null, 'width' => $ancho, 'height' => $alto, 'alt' => $alt];
     }
 
+    /**
+     * Solo dos tamaños: el `srcset` de antes anunciaba un hero-inicio-1280.webp
+     * que nunca existió, y en pantallas anchas la portada salía con la foto
+     * rota (404). La original mide 1079 de ancho: no hay nada mayor que servir.
+     */
     public static function heroInicio(): array
     {
-        return self::juego('hero-inicio', 1079, 1920, 'Área de coworking de Nódico en Mérida', 1079);
+        return [
+            'src'    => '/img/nodico/hero-inicio.webp',
+            'srcset' => '/img/nodico/hero-inicio-640.webp 640w, /img/nodico/hero-inicio.webp 1079w',
+            'width'  => 1079,
+            'height' => 1920,
+            'alt'    => 'Área de coworking de Nódico en Mérida',
+        ];
     }
 
     /** Las dos tarjetas grandes de Servicios: decorativas, el texto va encima. */
