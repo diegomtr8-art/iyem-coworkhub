@@ -311,6 +311,9 @@ Route::middleware(['auth', 'verified', 'portal:operativo', 'no.suspendida', 'con
         Route::post('secciones/{seccion}/vista-previa', [PaginaWebController::class, 'vistaPrevia'])->name('vista-previa');
         Route::post('secciones/{seccion}/deshacer', [PaginaWebController::class, 'deshacer'])->name('deshacer');
         Route::post('secciones/{seccion}/restablecer', [PaginaWebController::class, 'restablecer'])->name('restablecer');
+        // Procesar una foto de 50 MP cuesta: con esto nadie lo usa de martillo.
+        Route::post('imagenes/{formato}', [PaginaWebController::class, 'subirImagen'])
+            ->middleware('throttle:20,1')->name('imagenes');
     });
 
     Route::middleware('can:ver-reportes')->group(function () {

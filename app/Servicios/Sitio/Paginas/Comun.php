@@ -57,6 +57,19 @@ final class Comun
                 ],
             ],
 
+            // Pantallas de acceso (login, registro…): solo la foto (decisión 6).
+            'acceso' => [
+                'pagina'  => 'comun',
+                'titulo'  => 'Pantallas de acceso',
+                'aparece' => 'Panel de la izquierda en «Entrar», «Crear cuenta» y demás pantallas de acceso. Las frases de cada pantalla no se cambian desde aquí.',
+                'ruta'    => 'login',
+                'ancla'   => null,
+                'campos'  => [
+                    'fondo' => Campo::imagen('Foto de fondo', 'panoramica', Fotos::acceso(),
+                        'Va muy oscurecida detrás del logo y la frase.', decorativa: true),
+                ],
+            ],
+
             // Los logos no se cambian desde el panel (decisión 3): cada uno está
             // recortado a su tinta y alineado a mano. Sí el nombre y el enlace.
             'comun.aliados' => [

@@ -10,18 +10,15 @@ const props = withDefaults(defineProps<{
   antetitulo: string
   titulo: string
   subtitulo: string
-  poster?: string
-  posterAlt?: string
+  /** Póster: se ve mientras carga el video y, en el celular, en su lugar. */
+  imagen: { src: string; srcset: string | null; alt: string }
   direccion?: string
   horarios?: string
   telefono?: string
   /** Para el `tel:`: con lada internacional marca igual desde cualquier país. */
   telefonoE164?: string
   mapsUrl?: string
-}>(), {
-  poster: '/img/nodico/hero-inicio.webp',
-  posterAlt: 'Área de coworking de Nódico en Mérida',
-})
+}>(), {})
 
 const raiz = ref<HTMLElement | null>(null)
 const marco = ref<HTMLIFrameElement | null>(null)
@@ -172,9 +169,9 @@ onBeforeUnmount(() => {
 <template>
   <section ref="raiz" class="relative isolate flex min-h-[100svh] flex-col overflow-hidden bg-tinta">
     <img
-      :src="poster"
-      :alt="posterAlt"
-      srcset="/img/nodico/hero-inicio-640.webp 640w, /img/nodico/hero-inicio-1280.webp 1280w, /img/nodico/hero-inicio.webp 1079w"
+      :src="imagen.src"
+      :alt="imagen.alt"
+      :srcset="imagen.srcset ?? undefined"
       sizes="100vw"
       fetchpriority="high"
       decoding="async"

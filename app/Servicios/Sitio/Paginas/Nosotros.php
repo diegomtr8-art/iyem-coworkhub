@@ -18,6 +18,7 @@ final class Nosotros
                 'campos'  => [
                     'etiqueta' => Campo::texto('Etiqueta', 30, 'Nódico MX'),
                     'titulo'   => Campo::texto('Titular', 40, '¿Quiénes somos?'),
+                    'imagen'   => Campo::imagen('Foto de portada', 'horizontal', Fotos::nosotrosPortada()),
                     'texto'    => Campo::parrafo('Texto', 320,
                         'Más allá de un espacio físico, Nódico es una comunidad profesional donde se fomenta la colaboración, la vinculación estratégica y el desarrollo de habilidades a través de experiencias compartidas, eventos y formación continua.'),
                 ],
@@ -29,6 +30,7 @@ final class Nosotros
                 'ancla'   => null,
                 'campos'  => [
                     'titulo'   => Campo::texto('Título', 60, 'Convertir ideas en proyectos de impacto'),
+                    'imagen'   => Campo::imagen('Foto', 'ancha', Fotos::mision()),
                     'parrafo1' => Campo::parrafo('Primer párrafo', 320,
                         'Ser el espacio donde los emprendedores encuentran las herramientas, conexiones y experiencias necesarias para transformar sus ideas en proyectos de impacto.'),
                     'parrafo2' => Campo::parrafo('Segundo párrafo', 320,
@@ -43,6 +45,8 @@ final class Nosotros
                 'ancla'   => null,
                 'campos'  => [
                     'titulo' => Campo::texto('Título', 60, 'El referente del sureste de México'),
+                    'imagen' => Campo::imagen('Foto de fondo', 'ancha', Fotos::vision(),
+                        'Va cubierta por una capa oscura para que el texto se lea: elige una foto sin zonas muy claras.', decorativa: true),
                     'texto'  => Campo::parrafo('Texto', 400,
                         'Consolidarnos como el espacio referente en el sureste de México para el desarrollo de la creatividad, el emprendimiento y la innovación, reconocido por ser el punto de encuentro donde convergen las nuevas generaciones de creadores, emprendedores y agentes de cambio.'),
                 ],

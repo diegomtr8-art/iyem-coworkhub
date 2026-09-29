@@ -43,12 +43,12 @@ const ficha = (salon: Salon) => [
     <!-- Portada: foto del salón a sangre -->
     <section class="relative isolate flex min-h-[62svh] items-end overflow-hidden bg-tinta">
       <img
-        src="/img/nodico/salon-yucatan-emprende-1.webp"
-        srcset="/img/nodico/salon-yucatan-emprende-1-640.webp 640w, /img/nodico/salon-yucatan-emprende-1.webp 1079w"
+        :src="contenido.portada.imagen.src"
+        :srcset="contenido.portada.imagen.srcset ?? undefined"
         sizes="100vw"
-        alt="Salón Yucatán Emprende montado para un evento"
-        width="1079"
-        height="1920"
+        :alt="contenido.portada.imagen.alt"
+        :width="contenido.portada.imagen.width"
+        :height="contenido.portada.imagen.height"
         fetchpriority="high"
         decoding="async"
         class="absolute inset-0 -z-20 h-full w-full object-cover"
@@ -154,13 +154,13 @@ const ficha = (salon: Salon) => [
     <!-- Coffee break -->
     <section class="relative isolate overflow-hidden bg-tinta">
       <img
-        src="/img/nodico/salon-detalle.webp"
-        srcset="/img/nodico/salon-detalle-640.webp 640w, /img/nodico/salon-detalle-1280.webp 1280w, /img/nodico/salon-detalle.webp 1920w"
+        :src="contenido.coffee.imagen.src"
+        :srcset="contenido.coffee.imagen.srcset ?? undefined"
         sizes="100vw"
         alt=""
         aria-hidden="true"
-        width="1920"
-        height="1079"
+        :width="contenido.coffee.imagen.width"
+        :height="contenido.coffee.imagen.height"
         loading="lazy"
         decoding="async"
         class="absolute inset-0 -z-20 h-full w-full object-cover"

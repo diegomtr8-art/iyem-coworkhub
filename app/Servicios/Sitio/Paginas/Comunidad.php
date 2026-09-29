@@ -21,6 +21,8 @@ final class Comunidad
                 'campos'  => [
                     'etiqueta' => Campo::texto('Etiqueta', 30, 'Comunidad'),
                     'titulo'   => Campo::texto('Titular', 50, 'Aquí pasan cosas todo el mes'),
+                    'imagen'   => Campo::imagen('Foto de portada', 'panoramica', Fotos::comunidadPortada(),
+                        'Muy apaisada (2:1). Va oscurecida por abajo, donde está el texto.', decorativa: true),
                     'texto'    => Campo::parrafo('Texto', 260,
                         'Talleres, encuentros y una red de emprendedores que ya forman parte de los programas de incubación del Instituto Yucateco de Emprendedores.'),
                 ],

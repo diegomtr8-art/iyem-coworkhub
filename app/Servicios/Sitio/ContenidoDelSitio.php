@@ -414,7 +414,7 @@ class ContenidoDelSitio
      * @param  array<string, mixed>  $valores
      * @return array<string, mixed>
      */
-    private function presentarCampos(array $campos, array $valores): array
+    private function presentarCampos(array $campos, array $valores, ?int $posicion = null): array
     {
         foreach ($campos as $nombre => $campo) {
             if (! array_key_exists($nombre, $valores)) {
@@ -422,11 +422,13 @@ class ContenidoDelSitio
             }
 
             if ($campo['tipo'] === 'imagen') {
-                $valores[$nombre] = $this->presentarImagen($campo, (array) $valores[$nombre]);
+                $valores[$nombre] = $this->presentarImagen($campo, (array) $valores[$nombre], $posicion);
             } elseif ($campo['tipo'] === 'lista') {
+                $elementos = array_values((array) $valores[$nombre]);
                 $valores[$nombre] = array_map(
-                    fn ($elemento) => $this->presentarCampos($campo['campos'], (array) $elemento),
-                    (array) $valores[$nombre],
+                    fn ($elemento, int $i) => $this->presentarCampos($campo['campos'], (array) $elemento, $i),
+                    $elementos,
+                    array_keys($elementos),
                 );
             }
         }
@@ -435,22 +437,26 @@ class ContenidoDelSitio
     }
 
     /** @return array{src: string, srcset: ?string, width: int, height: int, alt: string} */
-    private function presentarImagen(array $campo, array $valor): array
+    private function presentarImagen(array $campo, array $valor, ?int $posicion): array
     {
         $alt = (string) ($valor['alt'] ?? '');
         $subida = isset($valor['id']) ? $this->imagen((int) $valor['id']) : null;
 
-        // Si la foto subida ya no existe se sirve la fija: nunca un <img> roto.
         if ($subida) {
             return $subida->presentar($alt);
         }
 
+        // Si la foto subida ya no existe se sirve la fija: nunca un <img> roto.
+        // En una lista, la de su posición; si es un elemento nuevo sin fija
+        // (no debería pasar la validación), la primera.
+        $fija = $campo['fija'] ?? $campo['fijas'][$posicion] ?? reset($campo['fijas']);
+
         return [
-            'src'    => $campo['fija']['src'],
-            'srcset' => $campo['fija']['srcset'] ?? null,
-            'width'  => $campo['fija']['width'],
-            'height' => $campo['fija']['height'],
-            'alt'    => $alt,
+            'src'    => $fija['src'],
+            'srcset' => $fija['srcset'] ?? null,
+            'width'  => $fija['width'],
+            'height' => $fija['height'],
+            'alt'    => $alt !== '' || $campo['decorativa'] ? $alt : $fija['alt'],
         ];
     }
 

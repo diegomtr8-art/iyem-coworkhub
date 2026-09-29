@@ -40,6 +40,10 @@ final class Buscadores
                     'titulo'      => Campo::texto('Título', 60, fn () => config("nodico.seo_paginas.{$ruta}.titulo")),
                     'descripcion' => Campo::parrafo('Descripción', 220, fn () => config("nodico.seo_paginas.{$ruta}.descripcion"),
                         'Lo que Google enseña bajo el título. Suele cortar a partir de unos 155 caracteres: lo importante, al principio.'),
+                    // JPG y 1200×630: WhatsApp y LinkedIn no abren WebP.
+                    'imagen' => Campo::imagen('Imagen al compartir', 'social',
+                        Fotos::social(config("nodico.seo_paginas.{$ruta}.imagen", 'home')),
+                        'La que sale en la tarjeta de WhatsApp, Facebook o LinkedIn. Se recorta a 1200×630.', decorativa: true),
                 ],
             ];
         }

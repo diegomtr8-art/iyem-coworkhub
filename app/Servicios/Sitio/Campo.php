@@ -74,9 +74,42 @@ final class Campo
             'formato'    => $formato,
             'decorativa' => $decorativa,
             'fija'       => $fija,
-            'reglas'     => ['required', 'array', self::reglaImagen($formato, $decorativa)],
+            'fijas'      => null,
+            'reglas'     => ['required', 'array', self::reglaImagen($formato, $decorativa, null)],
             'respaldo'   => fn () => ['id' => null, 'alt' => $decorativa ? '' : $fija['alt']],
         ];
+    }
+
+    /**
+     * Foto de un elemento de lista: cada posición tiene su foto fija de
+     * respaldo. Un elemento añadido más allá de las que hay no tiene foto fija,
+     * así que ahí subir una es obligatorio: nunca sale una tarjeta sin foto.
+     *
+     * @param  array<int, array{src: string, srcset?: ?string, width: int, height: int, alt: string}>  $fijas
+     */
+    public static function imagenPorPosicion(string $etiqueta, string $formato, array $fijas, ?string $ayuda = null, bool $decorativa = false): array
+    {
+        return [
+            'etiqueta'   => $etiqueta,
+            'tipo'       => 'imagen',
+            'ayuda'      => $ayuda,
+            'formato'    => $formato,
+            'decorativa' => $decorativa,
+            'fija'       => null,
+            'fijas'      => $fijas,
+            'reglas'     => ['required', 'array', self::reglaImagen($formato, $decorativa, $fijas)],
+            'respaldo'   => fn () => ['id' => null, 'alt' => ''],
+        ];
+    }
+
+    /**
+     * El respaldo de un elemento de lista con foto: la de su posición.
+     *
+     * @param  array{src: string, srcset?: ?string, width: int, height: int, alt: string}  $fija
+     */
+    public static function fotoFija(array $fija, bool $decorativa = false): array
+    {
+        return ['id' => null, 'alt' => $decorativa ? '' : $fija['alt']];
     }
 
     /**
@@ -235,15 +268,28 @@ final class Campo
         };
     }
 
-    private static function reglaImagen(string $formato, bool $decorativa): Closure
+    /** @param array<int, array>|null $fijas Fotos fijas por posición, en las listas. */
+    private static function reglaImagen(string $formato, bool $decorativa, ?array $fijas): Closure
     {
-        return function (string $atributo, mixed $valor, Closure $falla) use ($formato, $decorativa): void {
+        return function (string $atributo, mixed $valor, Closure $falla) use ($formato, $decorativa, $fijas): void {
             if (! is_array($valor)) {
                 return;
             }
 
             $id = $valor['id'] ?? null;
             $alt = $valor['alt'] ?? '';
+
+            // En una lista, `elementos.4.foto`: la posición es el penúltimo tramo.
+            if ($fijas !== null && $id === null) {
+                $tramos = explode('.', $atributo);
+                $posicion = (int) ($tramos[count($tramos) - 2] ?? -1);
+
+                if (! isset($fijas[$posicion])) {
+                    $falla('Sube una foto para este elemento: es nuevo y no tiene una de respaldo.');
+
+                    return;
+                }
+            }
 
             if ($id !== null && ! (is_int($id) || ctype_digit((string) $id))) {
                 $falla('La foto no es válida.');

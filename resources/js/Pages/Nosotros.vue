@@ -36,12 +36,12 @@ const valores = computed(() =>
     <!-- Portada de sección: foto a sangre con velo -->
     <section class="relative isolate flex min-h-[62svh] items-end overflow-hidden bg-tinta">
       <img
-        src="/img/nodico/nosotros-hero.webp"
-        srcset="/img/nodico/nosotros-hero-640.webp 640w, /img/nodico/nosotros-hero-1280.webp 1280w, /img/nodico/nosotros-hero.webp 1920w"
+        :src="contenido.portada.imagen.src"
+        :srcset="contenido.portada.imagen.srcset ?? undefined"
         sizes="100vw"
-        alt="Miembros de la comunidad Nódico"
-        width="1920"
-        height="1280"
+        :alt="contenido.portada.imagen.alt"
+        :width="contenido.portada.imagen.width"
+        :height="contenido.portada.imagen.height"
         fetchpriority="high"
         decoding="async"
         class="absolute inset-0 -z-20 h-full w-full object-cover object-center"
@@ -73,12 +73,12 @@ const valores = computed(() =>
       <div class="mx-auto grid max-w-7xl items-center gap-14 px-5 sm:px-8 lg:grid-cols-2 lg:gap-20">
         <ScrollReveal from="left">
           <img
-            src="/img/nodico/mision.webp"
-        srcset="/img/nodico/mision-640.webp 640w, /img/nodico/mision-1280.webp 1280w, /img/nodico/mision.webp 1920w"
-        sizes="(min-width: 1024px) 50vw, 100vw"
-            alt="Emprendedores colaborando en una mesa de trabajo de Nódico"
-            width="1920"
-            height="1079"
+            :src="contenido.mision.imagen.src"
+            :srcset="contenido.mision.imagen.srcset ?? undefined"
+            sizes="(min-width: 1024px) 50vw, 100vw"
+            :alt="contenido.mision.imagen.alt"
+            :width="contenido.mision.imagen.width"
+            :height="contenido.mision.imagen.height"
             loading="lazy"
             decoding="async"
             class="aspect-[4/3] w-full rounded-3xl object-cover shadow-sombra"
@@ -98,13 +98,13 @@ const valores = computed(() =>
     <!-- Visión -->
     <section class="relative isolate overflow-hidden bg-tinta">
       <img
-        src="/img/nodico/vision.webp"
-        srcset="/img/nodico/vision-640.webp 640w, /img/nodico/vision-1280.webp 1280w, /img/nodico/vision.webp 1920w"
+        :src="contenido.vision.imagen.src"
+        :srcset="contenido.vision.imagen.srcset ?? undefined"
         sizes="100vw"
         alt=""
         aria-hidden="true"
-        width="1920"
-        height="1079"
+        :width="contenido.vision.imagen.width"
+        :height="contenido.vision.imagen.height"
         loading="lazy"
         decoding="async"
         class="absolute inset-0 -z-20 h-full w-full object-cover"

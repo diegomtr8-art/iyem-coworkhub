@@ -22,6 +22,7 @@ final class Salones
                 'campos'  => [
                     'etiqueta' => Campo::texto('Etiqueta', 30, 'Salones'),
                     'titulo'   => Campo::texto('Titular', 50, 'Espacios listos para tu evento'),
+                    'imagen'   => Campo::imagen('Foto de portada', 'retrato', Fotos::salonesPortada()),
                     'texto'    => Campo::parrafo('Texto', 260,
                         'Nuestros salones están listos para tus talleres, conferencias o reuniones. Modernos, cómodos y equipados para que cada idea cobre vida.'),
                 ],
@@ -44,6 +45,8 @@ final class Salones
                 'ancla'   => null,
                 'campos'  => [
                     'titulo' => Campo::texto('Título', 60, 'Coffee break para tu evento'),
+                    'imagen' => Campo::imagen('Foto de fondo', 'ancha', Fotos::coffee(),
+                        'Va casi cubierta por una capa oscura.', decorativa: true),
                 ],
             ],
         ];

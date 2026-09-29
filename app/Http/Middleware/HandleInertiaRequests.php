@@ -203,16 +203,15 @@ class HandleInertiaRequests extends Middleware
         $ruta = $request->route()?->getName();
         $ruta = isset($paginas[$ruta]) ? $ruta : 'home';
 
-        $pagina = $paginas[$ruta] ?? [];
-
-        // Título y descripción se editan en «Página Web» → Buscadores; la imagen
-        // social sigue saliendo de config hasta que se migren las imágenes.
-        $textos = app(ContenidoDelSitio::class)->seccion("buscadores.{$ruta}");
+        // Título, descripción e imagen social se editan en «Página Web» →
+        // Buscadores, con config/nodico.php como respaldo.
+        $seo = app(ContenidoDelSitio::class)->presentar("buscadores.{$ruta}");
 
         return [
-            'titulo'      => $textos['titulo'] ?? config('nodico.sufijo_titulo'),
-            'descripcion' => $textos['descripcion'] ?? '',
-            'imagen'      => $this->origenCanonico() . '/img/og/' . ($pagina['imagen'] ?? 'home') . '.jpg',
+            'titulo'      => $seo['titulo'] ?? config('nodico.sufijo_titulo'),
+            'descripcion' => $seo['descripcion'] ?? '',
+            // URL absoluta: un scraper no resuelve rutas relativas.
+            'imagen'      => $this->origenCanonico() . $seo['imagen']['src'],
         ];
     }
 
@@ -232,7 +231,7 @@ class HandleInertiaRequests extends Middleware
             'name'        => 'Nódico',
             'description' => $negocio['descripcion'],
             'url'         => $origen,
-            'image'       => $origen . '/img/og/home.jpg',
+            'image'       => $origen . app(ContenidoDelSitio::class)->presentar('buscadores.home')['imagen']['src'],
             'logo'        => $origen . '/img/nodico/logo-nodico-blanco.png',
             'email'       => $contacto['email'],
             'telephone'   => CatalogoDelSitio::telefonoE164((string) $contacto['telefono']),

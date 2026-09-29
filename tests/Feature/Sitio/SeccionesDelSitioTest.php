@@ -269,6 +269,138 @@ class SeccionesDelSitioTest extends TestCase
                 ->where('secciones.3.campos.1.campos.0.maximo', 40));
     }
 
+    // --- 4.4 · Imágenes -------------------------------------------------------
+
+    private function subir(string $formato, int $ancho, int $alto): \App\Models\ImagenSitio
+    {
+        return app(\App\Servicios\Sitio\ProcesadorDeImagenes::class)
+            ->subir(\Illuminate\Http\UploadedFile::fake()->image('foto.jpg', $ancho, $alto), $formato);
+    }
+
+    public function test_las_fotos_llegan_presentadas_con_la_fija_de_respaldo(): void
+    {
+        $this->get('/')->assertInertia(fn (AssertableInertia $page) => $page
+            ->where('contenido.hero.imagen.src', '/img/nodico/hero-inicio.webp')
+            ->where('contenido.hero.imagen.alt', 'Área de coworking de Nódico en Mérida')
+            ->where('contenido.espacios.elementos.2.foto.src', '/img/nodico/espacio-contenido.webp')
+            ->where('contenido.espacios.elementos.2.foto.width', 1600)
+            ->where('contenido.servicios.foto_1.srcset', null)
+            ->where('comun.acceso.fondo.src', '/img/nodico/comunidad-fondo.webp'));
+    }
+
+    public function test_una_foto_subida_sustituye_a_la_fija_con_sus_tamanos(): void
+    {
+        \Illuminate\Support\Facades\Storage::fake('medios', ['url' => '/medios']);
+        $imagen = $this->subir('tarjeta', 2400, 1800);
+
+        $this->sitio()->guardar('inicio.daypass', ['imagen' => ['id' => $imagen->id, 'alt' => 'Dos emprendedoras en la mesa larga']]);
+
+        $this->get('/')->assertInertia(fn (AssertableInertia $page) => $page
+            ->where('contenido.daypass.imagen.src', "/medios/sitio/{$imagen->carpeta}/1600.webp")
+            ->where('contenido.daypass.imagen.srcset', "/medios/sitio/{$imagen->carpeta}/800.webp 800w, /medios/sitio/{$imagen->carpeta}/1600.webp 1600w")
+            ->where('contenido.daypass.imagen.alt', 'Dos emprendedoras en la mesa larga'));
+    }
+
+    public function test_una_foto_de_otro_formato_o_inexistente_se_rechaza(): void
+    {
+        \Illuminate\Support\Facades\Storage::fake('medios', ['url' => '/medios']);
+        $vertical = $this->subir('retrato', 1200, 2200);
+
+        $this->rechaza('inicio.daypass', ['imagen' => ['id' => $vertical->id, 'alt' => 'x']], 'imagen');
+        $this->rechaza('inicio.daypass', ['imagen' => ['id' => 99999, 'alt' => 'x']], 'imagen');
+    }
+
+    public function test_una_foto_con_contenido_necesita_descripcion_y_una_decorativa_no(): void
+    {
+        $this->rechaza('inicio.daypass', ['imagen' => ['id' => null, 'alt' => '  ']], 'imagen');
+
+        $this->sitio()->guardar('nosotros.vision', ['imagen' => ['id' => null, 'alt' => '']]);
+        $this->assertTrue($this->sitio()->personalizada('nosotros.vision'));
+    }
+
+    public function test_si_la_foto_subida_desaparece_se_sirve_la_fija(): void
+    {
+        \Illuminate\Support\Facades\Storage::fake('medios', ['url' => '/medios']);
+        $imagen = $this->subir('horizontal', 1800, 1200);
+        $this->sitio()->guardar('nosotros.portada', ['imagen' => ['id' => $imagen->id, 'alt' => 'La comunidad']]);
+
+        \App\Models\ImagenSitio::whereKey($imagen->id)->delete();
+        $this->sitio()->olvidar();
+
+        $this->get('/nosotros')->assertOk()->assertInertia(fn (AssertableInertia $page) => $page
+            ->where('contenido.portada.imagen.src', '/img/nodico/nosotros-hero.webp'));
+    }
+
+    public function test_un_espacio_nuevo_no_puede_quedarse_sin_foto(): void
+    {
+        \Illuminate\Support\Facades\Storage::fake('medios', ['url' => '/medios']);
+        $elementos = $this->sitio()->seccion('inicio.espacios')['elementos'];
+        $nuevo = ['foto' => ['id' => null, 'alt' => 'Terraza'], 'nombre' => 'Terraza', 'cantidad' => '1', 'capacidad' => 'Hasta 20', 'descripcion' => 'Al aire libre.'];
+
+        // Seis en pares, pero los dos nuevos sin foto: no hay fija para esas posiciones.
+        $this->rechaza('inicio.espacios', ['elementos' => [...$elementos, $nuevo, $nuevo]], 'elementos.4.foto');
+
+        $foto = $this->subir('tarjeta', 1600, 1200);
+        $conFoto = ['foto' => ['id' => $foto->id, 'alt' => 'Terraza']] + $nuevo;
+        $this->sitio()->guardar('inicio.espacios', ['elementos' => [...$elementos, $conFoto, $conFoto]]);
+
+        $this->get('/')->assertInertia(fn (AssertableInertia $page) => $page->has('contenido.espacios.elementos', 6));
+    }
+
+    public function test_los_espacios_van_de_dos_en_dos(): void
+    {
+        $elementos = $this->sitio()->seccion('inicio.espacios')['elementos'];
+
+        $this->rechaza('inicio.espacios', ['elementos' => array_slice($elementos, 0, 3)], 'elementos');
+        $this->sitio()->guardar('inicio.espacios', ['elementos' => array_slice($elementos, 0, 2)]);
+    }
+
+    public function test_la_imagen_social_se_edita_y_sale_absoluta_en_el_html(): void
+    {
+        \Illuminate\Support\Facades\Storage::fake('medios', ['url' => '/medios']);
+        $this->get('/nosotros')->assertSee('/img/og/nosotros.jpg', false);
+
+        $og = $this->subir('social', 2000, 1100);
+        $this->sitio()->guardar('buscadores.nosotros', ['imagen' => ['id' => $og->id, 'alt' => '']]);
+
+        $this->get('/nosotros')->assertSee(url("/medios/sitio/{$og->carpeta}/1200.jpg"), false);
+    }
+
+    public function test_subir_desde_el_panel_devuelve_la_foto_y_no_la_publica(): void
+    {
+        \Illuminate\Support\Facades\Storage::fake('medios', ['url' => '/medios']);
+        $this->actingAs(User::factory()->admin()->create());
+
+        $respuesta = $this->post(route('pagina-web.imagenes', 'tarjeta'), [
+            'imagen' => \Illuminate\Http\UploadedFile::fake()->image('foto.jpg', 1600, 1200),
+        ])->assertOk()->assertJsonStructure(['id', 'src', 'srcset', 'width', 'height']);
+
+        $this->assertStringStartsWith('/medios/sitio/', $respuesta->json('src'));
+        $this->assertFalse($this->sitio()->personalizada('inicio.daypass'));
+    }
+
+    public function test_subir_desde_el_panel_valida_y_explica(): void
+    {
+        \Illuminate\Support\Facades\Storage::fake('medios', ['url' => '/medios']);
+        $this->actingAs(User::factory()->admin()->create());
+
+        $this->postJson(route('pagina-web.imagenes', 'tarjeta'), [
+            'imagen' => \Illuminate\Http\UploadedFile::fake()->image('chica.jpg', 600, 400),
+        ])->assertStatus(422)->assertJsonPath('errors.imagen.0', fn ($m) => str_contains($m, 'demasiado pequeña'));
+
+        $this->post(route('pagina-web.imagenes', 'inventado'), [])->assertNotFound();
+    }
+
+    public function test_staff_no_puede_subir_fotos(): void
+    {
+        $this->actingAs(User::factory()->staff()->create())
+            ->post(route('pagina-web.imagenes', 'tarjeta'), [
+                'imagen' => \Illuminate\Http\UploadedFile::fake()->image('foto.jpg', 1600, 1200),
+            ])->assertForbidden();
+
+        $this->assertSame(0, \App\Models\ImagenSitio::count());
+    }
+
     public function test_cada_pagina_del_panel_se_abre(): void
     {
         $this->actingAs(User::factory()->admin()->create());

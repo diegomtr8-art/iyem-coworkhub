@@ -22,6 +22,8 @@ final class Inicio
                     'subtitulo'  => Campo::texto('Texto bajo el titular', 140, 'El coworking del Instituto Yucateco de Emprendedores en Mérida.'),
                     'video_youtube' => Campo::youtube('Video de YouTube', 'Ml4sprGUqzc',
                         'El código de 11 caracteres que va después de «v=» en el enlace del video. Es el que se reproduce de fondo y en «Ver el video completo».'),
+                    'imagen' => Campo::imagen('Foto de portada', 'retrato', Fotos::heroInicio(),
+                        'Se ve mientras carga el video, y en el celular en lugar del video. Vertical: lo importante, al centro.'),
                 ],
             ],
             'inicio.servicios' => [
@@ -31,6 +33,10 @@ final class Inicio
                 'ancla'   => null,
                 'campos'  => [
                     'titulo' => Campo::texto('Título de la sección', 60, 'Todo incluido en tu membresía'),
+                    'foto_1' => Campo::imagen('Foto de la primera tarjeta grande', 'ancha', Fotos::serviciosGrandes()[0],
+                        'Va oscurecida debajo del texto del primer servicio.', decorativa: true),
+                    'foto_2' => Campo::imagen('Foto de la segunda tarjeta grande', 'ancha', Fotos::serviciosGrandes()[1],
+                        'Va oscurecida debajo del texto del segundo servicio.', decorativa: true),
                     // Seis fijos: el mosaico es 2 grandes con foto + 4 compactos,
                     // y cada posición tiene su icono (decisión 2).
                     'elementos' => Campo::lista('Servicios', [
@@ -54,22 +60,24 @@ final class Inicio
                 'campos'  => [
                     'titulo'      => Campo::texto('Título de la sección', 60, 'Lo que puedes reservar'),
                     'descripcion' => Campo::parrafo('Texto bajo el título', 200, 'Tu membresía incluye horas para usarlos. Reservas desde tu portal o desde la app.'),
-                    // Número fijo hasta que cada tarjeta tenga su propia foto (4.4).
+                    // De dos en dos: la retícula es de dos columnas.
                     'elementos' => Campo::lista('Espacios', [
+                        'foto'        => Campo::imagenPorPosicion('Foto', 'tarjeta', Fotos::espacios(),
+                            'La foto de ese espacio en concreto, no una general del coworking.'),
                         'nombre'      => Campo::texto('Nombre', 40, ''),
                         'cantidad'    => Campo::texto('Cantidad', 30, '', 'La etiqueta sobre la foto: «4 disponibles», «Cabina de podcast»…'),
                         'capacidad'   => Campo::texto('Capacidad', 30, ''),
                         'descripcion' => Campo::parrafo('Descripción', 160, ''),
-                    ], 4, 4, [
-                        ['nombre' => 'Cubículos privados', 'cantidad' => '4 disponibles', 'capacidad' => 'Hasta 4 personas',
+                    ], 2, 6, [
+                        ['foto' => Campo::fotoFija(Fotos::espacios()[0]), 'nombre' => 'Cubículos privados', 'cantidad' => '4 disponibles', 'capacidad' => 'Hasta 4 personas',
                             'descripcion' => 'Para concentrarte, tomar una llamada o trabajar sin interrupciones.'],
-                        ['nombre' => 'Sala de juntas', 'cantidad' => '1 disponible', 'capacidad' => 'Hasta 12 personas',
+                        ['foto' => Campo::fotoFija(Fotos::espacios()[1]), 'nombre' => 'Sala de juntas', 'cantidad' => '1 disponible', 'capacidad' => 'Hasta 12 personas',
                             'descripcion' => 'Con pantalla, proyector y videoconferencia para recibir a tu equipo o a un cliente.'],
-                        ['nombre' => 'Sala de creación de contenido', 'cantidad' => 'Cabina de podcast', 'capacidad' => 'Hasta 4 personas',
+                        ['foto' => Campo::fotoFija(Fotos::espacios()[2]), 'nombre' => 'Sala de creación de contenido', 'cantidad' => 'Cabina de podcast', 'capacidad' => 'Hasta 4 personas',
                             'descripcion' => 'Micrófonos, insonorización, aro de luz y fondo verde para grabar podcast o reels.'],
-                        ['nombre' => 'Sala de fotografía', 'cantidad' => 'Estudio equipado', 'capacidad' => 'Hasta 6 personas',
+                        ['foto' => Campo::fotoFija(Fotos::espacios()[3]), 'nombre' => 'Sala de fotografía', 'cantidad' => 'Estudio equipado', 'capacidad' => 'Hasta 6 personas',
                             'descripcion' => 'Luces profesionales y fondos removibles para fotografiar tu producto.'],
-                    ], 'Los nombres y capacidades deberían coincidir con Configurar → Espacios.', 'Espacio'),
+                    ], 'Los nombres y capacidades deberían coincidir con Configurar → Espacios.', 'Espacio', multiplo: 2),
                 ],
             ],
             'inicio.beneficios' => [
@@ -79,22 +87,23 @@ final class Inicio
                 'ancla'   => null,
                 'campos'  => [
                     'titulo' => Campo::texto('Título de la sección', 60, 'Y otras cosas que solo pasan aquí'),
-                    // Número fijo hasta que cada panel tenga su propia foto (4.4).
                     // El color de cada panel es de la paleta y va por posición.
                     'elementos' => Campo::lista('Beneficios', [
+                        'foto'         => Campo::imagenPorPosicion('Foto de fondo', 'horizontal', Fotos::beneficios(),
+                            'Va oscurecida detrás del texto del panel.', decorativa: true),
                         'titulo'       => Campo::texto('Título', 60, ''),
                         'titulo_corto' => Campo::texto('Título corto', 20, '', 'Se lee en vertical cuando el panel está cerrado.'),
                         'descripcion'  => Campo::parrafo('Descripción', 160, ''),
-                    ], 5, 5, [
-                        ['titulo' => 'Descuentos en Tienda Herencia Viva', 'titulo_corto' => 'Descuentos',
+                    ], 3, 6, [
+                        ['foto' => Campo::fotoFija(Fotos::beneficios()[0], true), 'titulo' => 'Descuentos en Tienda Herencia Viva', 'titulo_corto' => 'Descuentos',
                             'descripcion' => 'Precio preferente en artesanía yucateca, para ti y para los regalos de tu negocio.'],
-                        ['titulo' => 'Directorio de miembros Nódico', 'titulo_corto' => 'Directorio',
+                        ['foto' => Campo::fotoFija(Fotos::beneficios()[1], true), 'titulo' => 'Directorio de miembros Nódico', 'titulo_corto' => 'Directorio',
                             'descripcion' => 'Tu proyecto visible ante toda la comunidad, y la comunidad disponible para ti.'],
-                        ['titulo' => 'Acceso preferente a eventos y talleres', 'titulo_corto' => 'Eventos y talleres',
+                        ['foto' => Campo::fotoFija(Fotos::beneficios()[2], true), 'titulo' => 'Acceso preferente a eventos y talleres', 'titulo_corto' => 'Eventos y talleres',
                             'descripcion' => 'Te avisamos antes y apartas lugar antes de que se abra al público.'],
-                        ['titulo' => 'Conexión con el ecosistema emprendedor', 'titulo_corto' => 'Ecosistema',
+                        ['foto' => Campo::fotoFija(Fotos::beneficios()[3], true), 'titulo' => 'Conexión con el ecosistema emprendedor', 'titulo_corto' => 'Ecosistema',
                             'descripcion' => 'Programas del IYEM, CANIETI y la red de incubación, a un paso de tu escritorio.'],
-                        ['titulo' => 'Espacio pet friendly', 'titulo_corto' => 'Pet friendly',
+                        ['foto' => Campo::fotoFija(Fotos::beneficios()[4], true), 'titulo' => 'Espacio pet friendly', 'titulo_corto' => 'Pet friendly',
                             'descripcion' => 'Tu perro también tiene lugar aquí. Sin permisos ni explicaciones.'],
                     ], elemento: 'Beneficio'),
                 ],
@@ -123,6 +132,7 @@ final class Inicio
                         'Si tu negocio está fuera de Mérida y necesitas un lugar para tener una junta, trabajar un rato o presentar tu proyecto, el espacio es tuyo sin costo.'),
                     'sello_giratorio' => Campo::texto('Texto del sello giratorio', 60, 'DAY-PASS GRATUITO · INTERIOR DEL ESTADO · ',
                         'Da la vuelta al círculo sobre la foto. Termínalo con « · » para que el final se junte bien con el principio.'),
+                    'imagen' => Campo::imagen('Foto', 'tarjeta', Fotos::daypass()),
                 ],
             ],
             'inicio.salones' => [
@@ -134,6 +144,8 @@ final class Inicio
                     'titulo'      => Campo::texto('Título de la sección', 60, 'Espacios listos para tu evento'),
                     'descripcion' => Campo::parrafo('Texto bajo el título', 200,
                         'Talleres, conferencias o reuniones. Modernos, cómodos y equipados para que cada idea cobre vida.'),
+                    'imagen' => Campo::imagen('Foto de fondo', 'tarjeta', Fotos::salonInicio(),
+                        'Va de fondo a todo lo ancho, oscurecida hacia la izquierda, donde está el texto.'),
                 ],
             ],
         ];

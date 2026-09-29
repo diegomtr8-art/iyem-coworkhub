@@ -38,6 +38,8 @@ withDefaults(
 const page = usePage()
 const marca = computed(() => (page.props.marca ?? {}) as any)
 const datos = computed<Array<{ valor: string; texto: string }>>(() => marca.value.datos ?? [])
+/** Foto de fondo del panel, del módulo «Página Web» (acceso.fondo). */
+const fondo = computed(() => (page.props as any).comun.acceso.fondo)
 </script>
 
 <template>
@@ -52,11 +54,12 @@ const datos = computed<Array<{ valor: string; texto: string }>>(() => marca.valu
         pliegue; el tamaño explícito evita el salto de maquetación.
       -->
       <img
-        src="/img/nodico/comunidad-fondo.webp"
+        :src="fondo.src"
+        :srcset="fondo.srcset ?? undefined"
         alt=""
         aria-hidden="true"
-        width="1920"
-        height="960"
+        :width="fondo.width"
+        :height="fondo.height"
         class="absolute inset-0 -z-10 h-full w-full object-cover opacity-45"
       />
       <div class="absolute inset-0 -z-10 bg-tinta/55" aria-hidden="true" />

@@ -60,13 +60,13 @@ const fechaLarga = (valor: string) =>
     <!-- Portada -->
     <section class="relative isolate flex min-h-[58svh] items-end overflow-hidden bg-tinta">
       <img
-        src="/img/nodico/comunidad-fondo.webp"
-        srcset="/img/nodico/comunidad-fondo-640.webp 640w, /img/nodico/comunidad-fondo-1280.webp 1280w, /img/nodico/comunidad-fondo.webp 1920w"
+        :src="contenido.portada.imagen.src"
+        :srcset="contenido.portada.imagen.srcset ?? undefined"
         sizes="100vw"
         alt=""
         aria-hidden="true"
-        width="1920"
-        height="960"
+        :width="contenido.portada.imagen.width"
+        :height="contenido.portada.imagen.height"
         fetchpriority="high"
         decoding="async"
         class="absolute inset-0 -z-20 h-full w-full object-cover"

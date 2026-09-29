@@ -34,62 +34,46 @@ const nodico = computed(() => (page.props.nodico ?? {}) as any)
  * tamaño de celda son diseño y van por posición (decisión 2).
  */
 const DISENO_SERVICIOS = [
-  { icono: '/img/nodico/icono-espacio-colaborativo.webp', protagonista: true, foto: '/img/nodico/mision.webp' },
-  // Antes apuntaba a vision.webp, que es el área de trabajo abierta: la tarjeta
-  // prometía un estudio y enseñaba un coworking. Ahora es la cabina de verdad.
-  { icono: '/img/nodico/icono-sala-contenido.webp', protagonista: true, foto: '/img/nodico/sala-contenido.webp' },
+  { icono: '/img/nodico/icono-espacio-colaborativo.webp', protagonista: true },
+  { icono: '/img/nodico/icono-sala-contenido.webp', protagonista: true },
   { icono: '/img/nodico/icono-wifi.webp' },
   { icono: '/img/nodico/icono-paqueteria.webp' },
   { icono: '/img/nodico/icono-invitados.webp' },
   { icono: '/img/nodico/icono-cafe-agua.webp' },
 ]
 
-const servicios = computed(() =>
-  (props.contenido.servicios.elementos as Array<{ titulo: string; descripcion: string }>)
-    .map((texto, i) => ({ ...DISENO_SERVICIOS[i], ...texto })),
-)
+/** Las dos tarjetas grandes llevan foto (inicio.servicios.foto_1 y foto_2). */
+const servicios = computed(() => {
+  const fotos = [props.contenido.servicios.foto_1, props.contenido.servicios.foto_2]
+  return (props.contenido.servicios.elementos as Array<{ titulo: string; descripcion: string }>)
+    .map((texto, i) => ({ ...DISENO_SERVICIOS[i], ...texto, foto: fotos[i] ?? null }))
+})
 
 const protagonistas = computed(() => servicios.value.filter((x) => x.protagonista))
 const compactos = computed(() => servicios.value.filter((x) => !x.protagonista))
 
 /**
- * Espacios reservables (inicio.espacios). Las fotos son de cada espacio de
- * verdad, no genéricas del coworking: ese era el problema que tenía la
- * tarjeta de la sala de contenido. Van por posición hasta que cada tarjeta
- * tenga su foto en el módulo.
+ * Espacios reservables (inicio.espacios), cada uno con la foto de ese espacio
+ * de verdad, no una genérica del coworking: ese era el problema que tenía la
+ * tarjeta de la sala de contenido.
  */
-const FOTOS_ESPACIOS = [
-  { foto: '/img/nodico/espacio-cubiculos.webp', fotoPequena: '/img/nodico/espacio-cubiculos-800.webp',
-    alt: 'Cubículo privado de Nódico con escritorio y sillas junto a una ventana' },
-  { foto: '/img/nodico/espacio-salas-juntas.webp', fotoPequena: '/img/nodico/espacio-salas-juntas-800.webp',
-    alt: 'Personas reunidas alrededor de la mesa de juntas de Nódico' },
-  { foto: '/img/nodico/espacio-contenido.webp', fotoPequena: '/img/nodico/espacio-contenido-800.webp',
-    alt: 'Cabina de podcast de Nódico con micrófonos, paneles acústicos y aro de luz' },
-  { foto: '/img/nodico/espacio-fotografia.webp', fotoPequena: '/img/nodico/espacio-fotografia-800.webp',
-    alt: 'Estudio de fotografía de Nódico con softboxes, aro de luz y fondo removible' },
-]
-
-const espacios = computed(() =>
-  (props.contenido.espacios.elementos as Array<Record<string, string>>)
-    .map((texto, i) => ({ ...FOTOS_ESPACIOS[i], ...texto })),
-)
+const espacios = computed(() => props.contenido.espacios.elementos as Array<Record<string, any>>)
 
 /**
- * 4.4 — paneles expansibles (inicio.beneficios). Las fotos son del espacio,
- * no de cada beneficio concreto: varios son conceptos abstractos y no hay
- * material específico. El color es de la paleta y va por posición.
+ * 4.4 — paneles expansibles (inicio.beneficios). El color es de la paleta y
+ * va por posición; con un sexto panel se repite el primero.
  */
-const DISENO_BENEFICIOS = [
-  { foto: '/img/nodico/salon-detalle.webp', acento: '#FFDD00' },
-  { foto: '/img/nodico/mision.webp', acento: '#D6E265' },
-  { foto: '/img/nodico/comunidad-fondo.webp', acento: '#EF7E88' },
-  { foto: '/img/nodico/salon-yucatan-emprende-1.webp', acento: '#864B95' },
-  { foto: '/img/nodico/nosotros-hero.webp', acento: '#FFE124' },
-]
+const ACENTOS_BENEFICIOS = ['#FFDD00', '#D6E265', '#EF7E88', '#864B95', '#FFE124']
 
 const beneficios = computed(() =>
-  (props.contenido.beneficios.elementos as Array<{ titulo: string; titulo_corto: string; descripcion: string }>)
-    .map((b, i) => ({ ...DISENO_BENEFICIOS[i % DISENO_BENEFICIOS.length], titulo: b.titulo, tituloCorto: b.titulo_corto, descripcion: b.descripcion })),
+  (props.contenido.beneficios.elementos as Array<{ titulo: string; titulo_corto: string; descripcion: string; foto: any }>)
+    .map((b, i) => ({
+      titulo: b.titulo,
+      tituloCorto: b.titulo_corto,
+      descripcion: b.descripcion,
+      foto: b.foto,
+      acento: ACENTOS_BENEFICIOS[i % ACENTOS_BENEFICIOS.length],
+    })),
 )
 
 /** Si la BD viniera vacía, la portada sigue mostrando los cuatro planes reales. */
@@ -134,6 +118,7 @@ const fichaSalon = computed(() => {
       :antetitulo="contenido.hero.antetitulo"
       :titulo="contenido.hero.titulo"
       :subtitulo="contenido.hero.subtitulo"
+      :imagen="contenido.hero.imagen"
       :telefono-e164="nodico.telefonoE164"
       :direccion="nodico.direccionCorta"
       :horarios="nodico.horarios"
@@ -163,11 +148,12 @@ const fichaSalon = computed(() => {
           >
             <article class="group relative isolate flex h-full min-h-[300px] flex-col justify-end overflow-hidden rounded-3xl p-8">
               <img
-                :src="servicio.foto"
+                :src="servicio.foto.src"
+                :srcset="servicio.foto.srcset ?? undefined"
                 alt=""
                 aria-hidden="true"
-                width="1920"
-                height="1079"
+                :width="servicio.foto.width"
+                :height="servicio.foto.height"
                 loading="lazy"
                 decoding="async"
                 class="absolute inset-0 -z-20 h-full w-full object-cover transition-transform duration-700 ease-salida group-hover:scale-105"
@@ -250,12 +236,12 @@ const fichaSalon = computed(() => {
             >
               <div class="relative aspect-[4/3] overflow-hidden">
                 <img
-                  :src="espacio.foto"
-                  :srcset="`${espacio.fotoPequena} 800w, ${espacio.foto} 1600w`"
+                  :src="espacio.foto.src"
+                  :srcset="espacio.foto.srcset ?? undefined"
                   sizes="(min-width: 640px) 50vw, 100vw"
-                  :alt="espacio.alt"
-                  width="1600"
-                  height="1200"
+                  :alt="espacio.foto.alt"
+                  :width="espacio.foto.width"
+                  :height="espacio.foto.height"
                   loading="lazy"
                   decoding="async"
                   class="h-full w-full object-cover transition-transform duration-700 ease-salida group-hover:scale-105"
@@ -331,12 +317,12 @@ const fichaSalon = computed(() => {
         <ScrollReveal from="left">
           <div ref="fotoDaypass" class="relative">
             <img
-              src="/img/nodico/daypass-emprendedor.webp"
-              srcset="/img/nodico/daypass-emprendedor-640.webp 640w, /img/nodico/daypass-emprendedor-1280.webp 1280w, /img/nodico/daypass-emprendedor.webp 1677w"
+              :src="contenido.daypass.imagen.src"
+              :srcset="contenido.daypass.imagen.srcset ?? undefined"
               sizes="(min-width: 1024px) 50vw, 100vw"
-              alt="Emprendedores del interior del estado trabajando en Nódico"
-              width="1677"
-              height="1920"
+              :alt="contenido.daypass.imagen.alt"
+              :width="contenido.daypass.imagen.width"
+              :height="contenido.daypass.imagen.height"
               loading="lazy"
               decoding="async"
               class="aspect-[4/3] w-full rounded-3xl object-cover shadow-sombra-lg will-change-transform"
@@ -382,12 +368,12 @@ const fichaSalon = computed(() => {
          en 1366 y 1920 px (antes quedaba aplastada) ═══ -->
     <section class="relative isolate flex min-h-[560px] items-center overflow-hidden bg-tinta lg:min-h-[680px]">
       <img
-        src="/img/nodico/salon-yucatan-emprende-2.webp"
-        srcset="/img/nodico/salon-yucatan-emprende-2-640.webp 640w, /img/nodico/salon-yucatan-emprende-2-1280.webp 1280w, /img/nodico/salon-yucatan-emprende-2.webp 1920w"
+        :src="contenido.salones.imagen.src"
+        :srcset="contenido.salones.imagen.srcset ?? undefined"
         sizes="100vw"
-        alt="Salón de eventos de Nódico montado para una conferencia"
-        width="1920"
-        height="1440"
+        :alt="contenido.salones.imagen.alt"
+        :width="contenido.salones.imagen.width"
+        :height="contenido.salones.imagen.height"
         loading="lazy"
         decoding="async"
         class="absolute inset-0 -z-20 h-full w-full object-cover"

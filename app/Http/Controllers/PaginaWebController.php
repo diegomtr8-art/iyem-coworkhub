@@ -5,6 +5,8 @@ namespace App\Http\Controllers;
 use App\Servicios\Sitio\CatalogoDelSitio;
 use App\Servicios\Sitio\ContenidoDelSitio;
 use App\Servicios\Sitio\FormatosDeImagen;
+use App\Servicios\Sitio\ProcesadorDeImagenes;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -98,6 +100,20 @@ class PaginaWebController extends Controller
         $this->sitio->prepararVistaPrevia($seccion, $this->valores($request, $seccion));
 
         return back()->with('vistaPrevia', $seccion);
+    }
+
+    /**
+     * Sube una foto para un hueco del formato dado y devuelve cómo se ve. No
+     * la publica: el panel la pone en el formulario y se publica al guardar la
+     * sección, igual que un texto.
+     */
+    public function subirImagen(Request $request, string $formato, ProcesadorDeImagenes $procesador): JsonResponse
+    {
+        FormatosDeImagen::existe($formato) || abort(404);
+
+        $imagen = $procesador->subir($request->file('imagen') ?? abort(422, 'Falta la foto.'), $formato, $request->user());
+
+        return response()->json(['id' => $imagen->id] + $imagen->presentar(''));
     }
 
     /** @return array<string, mixed> */
