@@ -42,7 +42,9 @@ const servicios = [
     titulo: 'Sala profesional de creación de contenido',
     descripcion: 'Estudio equipado para grabar tu podcast, tus reels o tus fotos de producto.',
     protagonista: true,
-    foto: '/img/nodico/vision.webp',
+    // Antes apuntaba a vision.webp, que es el área de trabajo abierta: la tarjeta
+    // prometía un estudio y enseñaba un coworking. Ahora es la cabina de verdad.
+    foto: '/img/nodico/sala-contenido.webp',
   },
   {
     icono: '/img/nodico/icono-wifi.webp',
@@ -68,6 +70,55 @@ const servicios = [
 
 const protagonistas = computed(() => servicios.filter((x) => x.protagonista))
 const compactos = computed(() => servicios.filter((x) => !x.protagonista))
+
+/**
+ * Espacios reservables. Los nombres y las capacidades son los mismos que siembra
+ * `NodicoWebSeeder`: si allá cambian, aquí también. No se leen de la base a
+ * propósito — esta sección es la portada pública y no debe caerse ni quedar a
+ * medias si el catálogo está vacío.
+ *
+ * Las fotos son de cada espacio de verdad, no genéricas del coworking. Ese era
+ * el problema que tenía la tarjeta de la sala de contenido.
+ * Las descripciones las redacté yo: PENDIENTE de que Nódico las valide.
+ */
+const espacios = [
+  {
+    nombre: 'Cubículos privados',
+    cantidad: '4 disponibles',
+    capacidad: 'Hasta 4 personas',
+    descripcion: 'Para concentrarte, tomar una llamada o trabajar sin interrupciones.',
+    foto: '/img/nodico/espacio-cubiculos.webp',
+    fotoPequena: '/img/nodico/espacio-cubiculos-800.webp',
+    alt: 'Cubículo privado de Nódico con escritorio y sillas junto a una ventana',
+  },
+  {
+    nombre: 'Salas de juntas',
+    cantidad: '2 disponibles',
+    capacidad: 'Hasta 12 personas',
+    descripcion: 'Con pantalla, proyector y videoconferencia para recibir a tu equipo o a un cliente.',
+    foto: '/img/nodico/espacio-salas-juntas.webp',
+    fotoPequena: '/img/nodico/espacio-salas-juntas-800.webp',
+    alt: 'Personas reunidas alrededor de la mesa de juntas de Nódico',
+  },
+  {
+    nombre: 'Sala de creación de contenido',
+    cantidad: 'Cabina de podcast',
+    capacidad: 'Hasta 4 personas',
+    descripcion: 'Micrófonos, insonorización, aro de luz y fondo verde para grabar podcast o reels.',
+    foto: '/img/nodico/espacio-contenido.webp',
+    fotoPequena: '/img/nodico/espacio-contenido-800.webp',
+    alt: 'Cabina de podcast de Nódico con micrófonos, paneles acústicos y aro de luz',
+  },
+  {
+    nombre: 'Sala de fotografía',
+    cantidad: 'Estudio equipado',
+    capacidad: 'Hasta 6 personas',
+    descripcion: 'Luces profesionales y fondos removibles para fotografiar tu producto.',
+    foto: '/img/nodico/espacio-fotografia.webp',
+    fotoPequena: '/img/nodico/espacio-fotografia-800.webp',
+    alt: 'Estudio de fotografía de Nódico con softboxes, aro de luz y fondo removible',
+  },
+]
 
 /**
  * 4.4 — paneles expansibles. Descripciones redactadas por mí, PENDIENTES de
@@ -233,6 +284,65 @@ const fichaSalon = computed(() => {
               <p class="mt-2.5 font-body text-sm leading-relaxed text-dark/70">
                 {{ servicio.descripcion }}
               </p>
+            </article>
+          </ScrollReveal>
+        </div>
+      </div>
+    </section>
+
+    <!-- Espacios — qué puedes reservar, con foto de cada uno -->
+    <section class="bg-cream-50 py-20 lg:py-28">
+      <div class="mx-auto max-w-7xl px-5 sm:px-8">
+        <ScrollReveal>
+          <SectionHeading
+            etiqueta="Espacios"
+            titulo="Lo que puedes reservar"
+            descripcion="Tu membresía incluye horas para usarlos. Reservas desde tu portal o desde la app."
+            align="center"
+            tamano="lg"
+          />
+        </ScrollReveal>
+
+        <div class="mt-14 grid gap-6 sm:grid-cols-2">
+          <ScrollReveal
+            v-for="(espacio, i) in espacios"
+            :key="espacio.nombre"
+            :delay="i * 80"
+          >
+            <article
+              class="group flex h-full flex-col overflow-hidden rounded-3xl bg-white shadow-sombra-sm ring-1 ring-dark/[.07]
+                     transition-all duration-300 ease-salida hover:-translate-y-1 hover:shadow-sombra"
+            >
+              <div class="relative aspect-[4/3] overflow-hidden">
+                <img
+                  :src="espacio.foto"
+                  :srcset="`${espacio.fotoPequena} 800w, ${espacio.foto} 1600w`"
+                  sizes="(min-width: 640px) 50vw, 100vw"
+                  :alt="espacio.alt"
+                  width="1600"
+                  height="1200"
+                  loading="lazy"
+                  decoding="async"
+                  class="h-full w-full object-cover transition-transform duration-700 ease-salida group-hover:scale-105"
+                />
+                <span
+                  class="absolute left-4 top-4 rounded-full bg-tinta/85 px-3 py-1 font-body text-xs font-semibold text-white backdrop-blur-sm"
+                >
+                  {{ espacio.cantidad }}
+                </span>
+              </div>
+
+              <div class="flex flex-1 flex-col p-7">
+                <h3 class="font-display text-xl font-bold leading-snug text-dark">
+                  {{ espacio.nombre }}
+                </h3>
+                <p class="mt-2.5 flex-1 font-body text-cuerpo leading-relaxed text-dark/70">
+                  {{ espacio.descripcion }}
+                </p>
+                <p class="etiqueta-tecnica mt-5 text-dark/55">
+                  {{ espacio.capacidad }}
+                </p>
+              </div>
             </article>
           </ScrollReveal>
         </div>
