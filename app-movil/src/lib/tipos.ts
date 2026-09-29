@@ -352,6 +352,9 @@ export type PreparacionTarjeta =
       nombre_comercio: string;
     };
 
+/** `POST /pagos/tarjeta/enlace`: la página de pago web, con la sesión ya abierta (un solo uso, 5 min). */
+export type EnlacePagoWeb = { url: string; vence_en: number; pasarela: 'stripe' | 'openpay' | 'bbva' };
+
 /** `GET /pagos/tarjeta/estado`. Con BBVA trae el estado del cargo. */
 export type EstadoCobroTarjeta = {
   activa: boolean;
