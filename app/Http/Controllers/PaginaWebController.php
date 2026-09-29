@@ -4,6 +4,9 @@ namespace App\Http\Controllers;
 
 use App\Servicios\Sitio\CatalogoDelSitio;
 use App\Servicios\Sitio\ContenidoDelSitio;
+use App\Servicios\Sitio\FormatosDeImagen;
+use App\Servicios\Sitio\ProcesadorDeImagenes;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -46,7 +49,7 @@ class PaginaWebController extends Controller
 
         $secciones = collect(CatalogoDelSitio::secciones())
             ->filter(fn (array $seccion) => $seccion['pagina'] === $pagina)
-            ->map(fn (array $seccion, string $clave) => $this->presentarSeccion($clave, $seccion, $datos['ruta']))
+            ->map(fn (array $seccion, string $clave) => $this->presentarSeccion($clave, $seccion, $seccion['ruta'] ?? $datos['ruta']))
             ->values();
 
         abort_if($secciones->isEmpty(), 404);
@@ -99,6 +102,20 @@ class PaginaWebController extends Controller
         return back()->with('vistaPrevia', $seccion);
     }
 
+    /**
+     * Sube una foto para un hueco del formato dado y devuelve cómo se ve. No
+     * la publica: el panel la pone en el formulario y se publica al guardar la
+     * sección, igual que un texto.
+     */
+    public function subirImagen(Request $request, string $formato, ProcesadorDeImagenes $procesador): JsonResponse
+    {
+        FormatosDeImagen::existe($formato) || abort(404);
+
+        $imagen = $procesador->subir($request->file('imagen') ?? abort(422, 'Falta la foto.'), $formato, $request->user());
+
+        return response()->json(['id' => $imagen->id] + $imagen->presentar(''));
+    }
+
     /** @return array<string, mixed> */
     private function valores(Request $request, string $seccion): array
     {
@@ -125,19 +142,61 @@ class PaginaWebController extends Controller
             'vistaPrevia'   => $publica,
             'personalizada' => $this->sitio->personalizada($clave),
             'valores'       => $this->sitio->seccion($clave),
+            // Lo mismo que ve el sitio: de aquí sale la miniatura de cada foto.
+            'presentada'    => $this->sitio->presentar($clave),
             'ultimoCambio'  => $ultimo ? [
                 'por'    => $ultimo->autor?->name ?? 'Sistema',
                 'cuando' => $ultimo->created_at?->toIso8601String(),
             ] : null,
             'puedeDeshacer' => $ultimo !== null,
-            'campos'        => collect($seccion['campos'])->map(fn (array $campo, string $nombre) => [
+            'campos'        => $this->describirCampos($seccion['campos']),
+        ];
+    }
+
+    /**
+     * Lo que el panel necesita para pintar cada control. En las listas, lo
+     * mismo para los campos de cada elemento; en las fotos, la proporción y el
+     * ancho mínimo que se le enseñan al administrador antes de subir.
+     *
+     * @param  array<string, array>  $campos
+     * @return array<int, array<string, mixed>>
+     */
+    private function describirCampos(array $campos): array
+    {
+        return collect($campos)->map(function (array $campo, string $nombre) {
+            $descripcion = [
                 'nombre'    => $nombre,
                 'etiqueta'  => $campo['etiqueta'],
                 'tipo'      => $campo['tipo'],
                 'ayuda'     => $campo['ayuda'] ?? null,
                 'maximo'    => CatalogoDelSitio::maximo($campo),
                 'requerido' => in_array('required', $campo['reglas'], true),
-            ])->values(),
-        ];
+            ];
+
+            // array_merge y no `+=`: `maximo` ya existe (el tope de caracteres,
+            // nulo en una lista) y aquí tiene que pasar a ser el de elementos.
+            if ($campo['tipo'] === 'lista') {
+                $descripcion = array_merge($descripcion, [
+                    'elemento'  => $campo['elemento'],
+                    'minimo'    => $campo['minimo'],
+                    'maximo'    => $campo['maximo'],
+                    'multiplo'  => $campo['multiplo'] ?? 1,
+                    'campos'    => $this->describirCampos($campo['campos']),
+                ]);
+            }
+
+            if ($campo['tipo'] === 'imagen') {
+                $formato = FormatosDeImagen::de($campo['formato']);
+                $descripcion += [
+                    'formato'     => $campo['formato'],
+                    'formatoNombre' => $formato['nombre'],
+                    'proporcion'  => $formato['proporcion'],
+                    'anchoMinimo' => $formato['minimo'],
+                    'decorativa'  => $campo['decorativa'],
+                ];
+            }
+
+            return $descripcion;
+        })->values()->all();
     }
 }

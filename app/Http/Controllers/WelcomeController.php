@@ -7,7 +7,7 @@ use App\Models\DirectorioEmprendedor;
 use App\Models\Espacio;
 use App\Models\Evento;
 use App\Models\Plane;
-use App\Servicios\Pagos\Contratos\PasarelaDePagos;
+use App\Servicios\Sitio\ContenidoDelSitio;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Str;
 use Inertia\Inertia;
@@ -22,22 +22,24 @@ class WelcomeController extends Controller
             ...$this->authProps(),
             'planes'         => Plane::publicos()->get(),
             'salon'          => Espacio::salonesPublicados()->first(),
+            'contenido'      => app(ContenidoDelSitio::class)->pagina('inicio'),
         ]);
     }
 
     public function nosotros()
     {
-        return Inertia::render('Nosotros', $this->authProps());
+        return Inertia::render('Nosotros', [
+            ...$this->authProps(),
+            'contenido' => app(ContenidoDelSitio::class)->pagina('nosotros'),
+        ]);
     }
 
-    public function membresias(PasarelaDePagos $pasarela)
+    public function membresias()
     {
         return Inertia::render('Membresias', [
             ...$this->authProps(),
             'planes' => Plane::publicos()->get(),
-            // Quién procesa el cobro con tarjeta: cambia con PAGOS_PASARELA
-            // (Stripe, Openpay…), así que no puede ir escrito en la página.
-            'pasarela' => $pasarela->etiqueta(),
+            'contenido' => app(ContenidoDelSitio::class)->pagina('membresias'),
         ]);
     }
 
@@ -47,6 +49,10 @@ class WelcomeController extends Controller
         return Inertia::render('Salones', [
             ...$this->authProps(),
             'salones' => Espacio::salonesPublicados()->get(),
+            'contenido' => app(ContenidoDelSitio::class)->pagina('salones'),
+            // Los mismos tramos que usa el cotizador: antes estaban escritos a
+            // mano en la vista y podían no coincidir con lo que se cobra.
+            'coffee' => config('nodico.salones.coffee'),
         ]);
     }
 
@@ -62,7 +68,17 @@ class WelcomeController extends Controller
             // CNT-02: directorio y destacado salen de la BD, no del componente.
             'directorio'     => DirectorioEmprendedor::publicos()->where('destacado_semana', false)->get(),
             'destacado'      => DirectorioEmprendedor::deLaSemana()->first(),
+            // Lugar de los eventos en el JSON-LD: la misma dirección de la ficha.
+            'lugarEventos'   => $this->lugarEventos(),
+            'contenido'      => app(ContenidoDelSitio::class)->pagina('comunidad'),
         ]);
+    }
+
+    private function lugarEventos(): string
+    {
+        $negocio = app(ContenidoDelSitio::class)->seccion('negocio');
+
+        return "{$negocio['colonia']}, {$negocio['localidad']}, {$negocio['region']}";
     }
 
     public function privacidad()

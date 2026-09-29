@@ -3,6 +3,7 @@
 namespace App\Servicios\Sitio;
 
 use App\Models\Ajuste;
+use App\Models\ImagenSitio;
 use App\Models\User;
 use App\Models\VersionContenidoSitio;
 use Illuminate\Support\Facades\Cache;
@@ -31,7 +32,8 @@ use Illuminate\Validation\ValidationException;
  */
 class ContenidoDelSitio
 {
-    public const CACHE = 'sitio:contenido';
+    // v2: además de las filas, la caché lleva las fotos a las que apuntan.
+    public const CACHE = 'sitio:contenido:v2';
 
     /** Dónde vive el borrador de la vista previa, por sección. */
     public const SESION_VISTA_PREVIA = 'sitio.vista_previa';
@@ -49,6 +51,9 @@ class ContenidoDelSitio
     /** @var array<string, mixed>|null Filas crudas de `ajustes`, por clave. */
     private ?array $filas = null;
 
+    /** @var array<int, ImagenSitio|null> Fotos ya buscadas, por id. */
+    private array $imagenes = [];
+
     /** @var array<string, array<string, mixed>> */
     private array $resueltas = [];
 
@@ -63,6 +68,54 @@ class ContenidoDelSitio
     public function valor(string $clave, string $campo): mixed
     {
         return $this->seccion($clave)[$campo] ?? null;
+    }
+
+    /**
+     * La sección como la necesita la página pública: cada foto convertida en
+     * `{src, srcset, width, height, alt}`, sea la subida o la fija del respaldo.
+     *
+     * @return array<string, mixed>
+     */
+    public function presentar(string $clave): array
+    {
+        return $this->presentarCampos(CatalogoDelSitio::campos($clave), $this->seccion($clave));
+    }
+
+    /**
+     * Todas las secciones de una página del panel, presentadas y con nombre
+     * corto (`inicio.hero` → `hero`), que es como las leen los componentes.
+     *
+     * @return array<string, array<string, mixed>>
+     */
+    public function pagina(string $pagina): array
+    {
+        $resultado = [];
+
+        foreach (CatalogoDelSitio::secciones() as $clave => $seccion) {
+            if ($seccion['pagina'] === $pagina) {
+                $resultado[str_contains($clave, '.') ? substr($clave, strpos($clave, '.') + 1) : $clave] = $this->presentar($clave);
+            }
+        }
+
+        return $resultado;
+    }
+
+    /** Una foto subida, sin consultar la base si ya venía en la caché. */
+    public function imagen(int $id): ?ImagenSitio
+    {
+        if (! array_key_exists($id, $this->imagenes)) {
+            $this->filas();
+        }
+
+        if (! array_key_exists($id, $this->imagenes)) {
+            try {
+                $this->imagenes[$id] = ImagenSitio::find($id);
+            } catch (\Throwable) {
+                $this->imagenes[$id] = null;
+            }
+        }
+
+        return $this->imagenes[$id];
     }
 
     /** Si hay una fila guardada para la sección, o se está sirviendo el respaldo. */
@@ -184,6 +237,7 @@ class ContenidoDelSitio
     {
         $this->filas = null;
         $this->resueltas = [];
+        $this->imagenes = [];
 
         try {
             Cache::forget(self::CACHE);
@@ -202,12 +256,14 @@ class ContenidoDelSitio
     {
         $campos = CatalogoDelSitio::campos($clave);
 
-        return Validator::make(
+        $datos = Validator::make(
             array_intersect_key($valor, $campos) + $this->resolver($clave),
-            array_map(fn (array $campo) => $campo['reglas'], $campos),
+            Campo::reglas($campos),
             [],
-            array_map(fn (array $campo) => mb_strtolower($campo['etiqueta']), $campos),
+            Campo::nombres($campos),
         )->validate();
+
+        return Campo::limpiar($campos, $datos);
     }
 
     private function versionar(string $clave, mixed $anterior, ?User $autor): void
@@ -286,10 +342,16 @@ class ContenidoDelSitio
         $presentes = array_intersect_key($campos, $guardado);
         $validador = Validator::make(
             array_intersect_key($guardado, $presentes),
-            array_map(fn (array $campo) => $campo['reglas'], $presentes),
+            Campo::reglas($presentes),
         );
 
-        $invalidos = array_keys($validador->errors()->messages());
+        // `servicios.2.titulo` invalida la lista entera: una lista a medias no
+        // tiene respaldo que la complete.
+        $invalidos = array_values(array_unique(array_map(
+            fn (string $error) => explode('.', $error)[0],
+            array_keys($validador->errors()->messages()),
+        )));
+        $guardado = Campo::limpiar($presentes, $guardado);
 
         if ($invalidos) {
             $this->avisar($clave, 'hay campos que no cumplen sus reglas', $invalidos);
@@ -314,10 +376,30 @@ class ContenidoDelSitio
         }
 
         try {
-            return $this->filas = Cache::remember(self::CACHE, self::VIGENCIA_SEGUNDOS, fn () => Ajuste::query()
-                ->whereIn('clave', CatalogoDelSitio::claves())
-                ->pluck('valor', 'clave')
-                ->all());
+            $contenido = Cache::remember(self::CACHE, self::VIGENCIA_SEGUNDOS, function () {
+                $filas = Ajuste::query()
+                    ->whereIn('clave', CatalogoDelSitio::claves())
+                    ->pluck('valor', 'clave')
+                    ->all();
+
+                // Las fotos a las que apunta el contenido van en la misma lectura:
+                // sin esto, cada foto de la portada sería una consulta por visita.
+                $ids = [];
+                array_walk_recursive($filas, function ($valor, $llave) use (&$ids) {
+                    if ($llave === 'id' && is_int($valor)) {
+                        $ids[] = $valor;
+                    }
+                });
+
+                return [
+                    'filas'    => $filas,
+                    'imagenes' => $ids ? ImagenSitio::whereIn('id', array_unique($ids))->get()->keyBy('id')->all() : [],
+                ];
+            });
+
+            $this->imagenes += $contenido['imagenes'];
+
+            return $this->filas = $contenido['filas'];
         } catch (\Throwable $e) {
             // Sin base o sin caché, el sitio sale con el respaldo. No se guarda
             // el vacío en `$filas`: la próxima petición vuelve a intentarlo.
@@ -325,6 +407,57 @@ class ContenidoDelSitio
 
             return [];
         }
+    }
+
+    /**
+     * @param  array<string, array>  $campos
+     * @param  array<string, mixed>  $valores
+     * @return array<string, mixed>
+     */
+    private function presentarCampos(array $campos, array $valores, ?int $posicion = null): array
+    {
+        foreach ($campos as $nombre => $campo) {
+            if (! array_key_exists($nombre, $valores)) {
+                continue;
+            }
+
+            if ($campo['tipo'] === 'imagen') {
+                $valores[$nombre] = $this->presentarImagen($campo, (array) $valores[$nombre], $posicion);
+            } elseif ($campo['tipo'] === 'lista') {
+                $elementos = array_values((array) $valores[$nombre]);
+                $valores[$nombre] = array_map(
+                    fn ($elemento, int $i) => $this->presentarCampos($campo['campos'], (array) $elemento, $i),
+                    $elementos,
+                    array_keys($elementos),
+                );
+            }
+        }
+
+        return $valores;
+    }
+
+    /** @return array{src: string, srcset: ?string, width: int, height: int, alt: string} */
+    private function presentarImagen(array $campo, array $valor, ?int $posicion): array
+    {
+        $alt = (string) ($valor['alt'] ?? '');
+        $subida = isset($valor['id']) ? $this->imagen((int) $valor['id']) : null;
+
+        if ($subida) {
+            return $subida->presentar($alt);
+        }
+
+        // Si la foto subida ya no existe se sirve la fija: nunca un <img> roto.
+        // En una lista, la de su posición; si es un elemento nuevo sin fija
+        // (no debería pasar la validación), la primera.
+        $fija = $campo['fija'] ?? $campo['fijas'][$posicion] ?? reset($campo['fijas']);
+
+        return [
+            'src'    => $fija['src'],
+            'srcset' => $fija['srcset'] ?? null,
+            'width'  => $fija['width'],
+            'height' => $fija['height'],
+            'alt'    => $alt !== '' || $campo['decorativa'] ? $alt : $fija['alt'],
+        ];
     }
 
     /** @param array<int, string> $campos */

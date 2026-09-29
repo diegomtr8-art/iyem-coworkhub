@@ -6,7 +6,8 @@ export interface Beneficio {
   /** Version corta para el panel comprimido, donde el texto va en vertical. */
   tituloCorto?: string
   descripcion: string
-  foto: string
+  /** Foto presentada por el módulo «Página Web»: decorativa, va de fondo. */
+  foto: { src: string; srcset: string | null; width: number; height: number }
   /** Color de acento, tomado de la paleta de planes. */
   acento: string
 }
@@ -81,11 +82,12 @@ function enfocar(i: number) {
       @keydown="alPulsarTecla($event, i)"
     >
       <img
-        :src="beneficio.foto"
+        :src="beneficio.foto.src"
+        :srcset="beneficio.foto.srcset ?? undefined"
         alt=""
         aria-hidden="true"
-        width="1200"
-        height="800"
+        :width="beneficio.foto.width"
+        :height="beneficio.foto.height"
         loading="lazy"
         decoding="async"
         class="absolute inset-0 -z-20 h-full w-full object-cover"
@@ -138,11 +140,12 @@ function enfocar(i: number) {
       class="relative isolate overflow-hidden rounded-3xl"
     >
       <img
-        :src="beneficio.foto"
+        :src="beneficio.foto.src"
+        :srcset="beneficio.foto.srcset ?? undefined"
         alt=""
         aria-hidden="true"
-        width="1200"
-        height="800"
+        :width="beneficio.foto.width"
+        :height="beneficio.foto.height"
         loading="lazy"
         decoding="async"
         class="absolute inset-0 -z-20 h-full w-full object-cover"

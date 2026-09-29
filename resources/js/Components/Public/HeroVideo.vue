@@ -5,18 +5,20 @@ import { Clock, MapPin, Pause, Phone, Play, Volume2, VolumeX, X } from 'lucide-v
 import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
 
 const props = withDefaults(defineProps<{
-  videoId?: string
-  poster?: string
-  posterAlt?: string
+  /** Del módulo «Página Web» (inicio.hero); el respaldo vive allí. */
+  videoId: string
+  antetitulo: string
+  titulo: string
+  subtitulo: string
+  /** Póster: se ve mientras carga el video y, en el celular, en su lugar. */
+  imagen: { src: string; srcset: string | null; alt: string }
   direccion?: string
   horarios?: string
   telefono?: string
+  /** Para el `tel:`: con lada internacional marca igual desde cualquier país. */
+  telefonoE164?: string
   mapsUrl?: string
-}>(), {
-  videoId: 'Ml4sprGUqzc',
-  poster: '/img/nodico/hero-inicio.webp',
-  posterAlt: 'Área de coworking de Nódico en Mérida',
-})
+}>(), {})
 
 const raiz = ref<HTMLElement | null>(null)
 const marco = ref<HTMLIFrameElement | null>(null)
@@ -167,9 +169,9 @@ onBeforeUnmount(() => {
 <template>
   <section ref="raiz" class="relative isolate flex min-h-[100svh] flex-col overflow-hidden bg-tinta">
     <img
-      :src="poster"
-      :alt="posterAlt"
-      srcset="/img/nodico/hero-inicio-640.webp 640w, /img/nodico/hero-inicio-1280.webp 1280w, /img/nodico/hero-inicio.webp 1079w"
+      :src="imagen.src"
+      :alt="imagen.alt"
+      :srcset="imagen.srcset ?? undefined"
       sizes="100vw"
       fetchpriority="high"
       decoding="async"
@@ -197,14 +199,14 @@ onBeforeUnmount(() => {
     />
 
     <div class="mx-auto flex w-full max-w-7xl flex-1 flex-col justify-end px-5 pb-8 pt-32 sm:px-8">
-      <p class="font-display text-lg font-bold text-nodo-400 sm:text-xl">Bienvenidos al lugar</p>
+      <p class="font-display text-lg font-bold text-nodo-400 sm:text-xl">{{ antetitulo }}</p>
 
       <h1 class="mt-4 max-w-[17ch] font-display text-display-xl font-extrabold text-white">
-        Donde el trabajo es un pretexto para crear
+        {{ titulo }}
       </h1>
 
       <p class="mt-7 max-w-lg font-body text-cuerpo-lg text-white/80">
-        El coworking del Instituto Yucateco de Emprendedores en Mérida.
+        {{ subtitulo }}
       </p>
 
       <div class="mt-9 flex flex-wrap items-center gap-3">
@@ -254,7 +256,7 @@ onBeforeUnmount(() => {
           </li>
           <li v-if="telefono">
             <a
-              :href="`tel:${telefono.replace(/\s/g, '')}`"
+              :href="`tel:${telefonoE164 ?? telefono.replace(/\s/g, '')}`"
               class="flex min-h-[44px] items-center gap-2.5 font-body text-sm text-white/60 transition hover:text-nodo-400"
             >
               <Phone class="h-4 w-4 shrink-0" aria-hidden="true" />

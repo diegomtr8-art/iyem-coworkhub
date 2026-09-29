@@ -19,6 +19,8 @@ import { computed, ref } from 'vue'
 const props = defineProps<{
   planes?: Plan[]
   salon?: Salon | null
+  /** Secciones del módulo «Página Web» para la portada, ya con su respaldo. */
+  contenido: Record<string, any>
 }>()
 
 const page = usePage()
@@ -27,141 +29,52 @@ const nodico = computed(() => (page.props.nodico ?? {}) as any)
 /**
  * 4.3 — mosaico asimétrico. Los dos de más peso comercial ocupan celda grande
  * con foto; los otros cuatro van compactos.
- * Las descripciones las redacté yo: PENDIENTE de que Nódico las valide.
- */
-const servicios = [
-  {
-    icono: '/img/nodico/icono-espacio-colaborativo.webp',
-    titulo: 'Espacio colaborativo de trabajo',
-    descripcion: 'Escritorios en área abierta, con lugar para ti y para quien venga contigo.',
-    protagonista: true,
-    foto: '/img/nodico/mision.webp',
-  },
-  {
-    icono: '/img/nodico/icono-sala-contenido.webp',
-    titulo: 'Sala profesional de creación de contenido',
-    descripcion: 'Estudio equipado para grabar tu podcast, tus reels o tus fotos de producto.',
-    protagonista: true,
-    // Antes apuntaba a vision.webp, que es el área de trabajo abierta: la tarjeta
-    // prometía un estudio y enseñaba un coworking. Ahora es la cabina de verdad.
-    foto: '/img/nodico/sala-contenido.webp',
-  },
-  {
-    icono: '/img/nodico/icono-wifi.webp',
-    titulo: 'Wifi con 200 MB de velocidad',
-    descripcion: 'Suficiente para videollamadas, subir contenido y trabajar sin pausas.',
-  },
-  {
-    icono: '/img/nodico/icono-paqueteria.webp',
-    titulo: 'Recepción de paquetería',
-    descripcion: 'Recibimos tus envíos aunque no estés; te avisamos en cuanto llegan.',
-  },
-  {
-    icono: '/img/nodico/icono-invitados.webp',
-    titulo: 'Hasta 5 invitados gratuitos al mes',
-    descripcion: 'Trae a tu equipo o a un cliente sin costo adicional.',
-  },
-  {
-    icono: '/img/nodico/icono-cafe-agua.webp',
-    titulo: 'Café y agua todo el día',
-    descripcion: 'Barra libre mientras trabajas. Sin fichas ni límites.',
-  },
-]
-
-const protagonistas = computed(() => servicios.filter((x) => x.protagonista))
-const compactos = computed(() => servicios.filter((x) => !x.protagonista))
-
-/**
- * Espacios reservables. Los nombres y las capacidades son los mismos que siembra
- * `NodicoWebSeeder`: si allá cambian, aquí también. No se leen de la base a
- * propósito — esta sección es la portada pública y no debe caerse ni quedar a
- * medias si el catálogo está vacío.
  *
- * Las fotos son de cada espacio de verdad, no genéricas del coworking. Ese era
- * el problema que tenía la tarjeta de la sala de contenido.
- * Las descripciones las redacté yo: PENDIENTE de que Nódico las valide.
+ * El texto sale del módulo «Página Web» (inicio.servicios); icono, foto y
+ * tamaño de celda son diseño y van por posición (decisión 2).
  */
-const espacios = [
-  {
-    nombre: 'Cubículos privados',
-    cantidad: '4 disponibles',
-    capacidad: 'Hasta 4 personas',
-    descripcion: 'Para concentrarte, tomar una llamada o trabajar sin interrupciones.',
-    foto: '/img/nodico/espacio-cubiculos.webp',
-    fotoPequena: '/img/nodico/espacio-cubiculos-800.webp',
-    alt: 'Cubículo privado de Nódico con escritorio y sillas junto a una ventana',
-  },
-  {
-    nombre: 'Sala de juntas',
-    cantidad: '1 disponible',
-    capacidad: 'Hasta 12 personas',
-    descripcion: 'Con pantalla, proyector y videoconferencia para recibir a tu equipo o a un cliente.',
-    foto: '/img/nodico/espacio-salas-juntas.webp',
-    fotoPequena: '/img/nodico/espacio-salas-juntas-800.webp',
-    alt: 'Personas reunidas alrededor de la mesa de juntas de Nódico',
-  },
-  {
-    nombre: 'Sala de creación de contenido',
-    cantidad: 'Cabina de podcast',
-    capacidad: 'Hasta 4 personas',
-    descripcion: 'Micrófonos, insonorización, aro de luz y fondo verde para grabar podcast o reels.',
-    foto: '/img/nodico/espacio-contenido.webp',
-    fotoPequena: '/img/nodico/espacio-contenido-800.webp',
-    alt: 'Cabina de podcast de Nódico con micrófonos, paneles acústicos y aro de luz',
-  },
-  {
-    nombre: 'Sala de fotografía',
-    cantidad: 'Estudio equipado',
-    capacidad: 'Hasta 6 personas',
-    descripcion: 'Luces profesionales y fondos removibles para fotografiar tu producto.',
-    foto: '/img/nodico/espacio-fotografia.webp',
-    fotoPequena: '/img/nodico/espacio-fotografia-800.webp',
-    alt: 'Estudio de fotografía de Nódico con softboxes, aro de luz y fondo removible',
-  },
+const DISENO_SERVICIOS = [
+  { icono: '/img/nodico/icono-espacio-colaborativo.webp', protagonista: true },
+  { icono: '/img/nodico/icono-sala-contenido.webp', protagonista: true },
+  { icono: '/img/nodico/icono-wifi.webp' },
+  { icono: '/img/nodico/icono-paqueteria.webp' },
+  { icono: '/img/nodico/icono-invitados.webp' },
+  { icono: '/img/nodico/icono-cafe-agua.webp' },
 ]
 
+/** Las dos tarjetas grandes llevan foto (inicio.servicios.foto_1 y foto_2). */
+const servicios = computed(() => {
+  const fotos = [props.contenido.servicios.foto_1, props.contenido.servicios.foto_2]
+  return (props.contenido.servicios.elementos as Array<{ titulo: string; descripcion: string }>)
+    .map((texto, i) => ({ ...DISENO_SERVICIOS[i], ...texto, foto: fotos[i] ?? null }))
+})
+
+const protagonistas = computed(() => servicios.value.filter((x) => x.protagonista))
+const compactos = computed(() => servicios.value.filter((x) => !x.protagonista))
+
 /**
- * 4.4 — paneles expansibles. Descripciones redactadas por mí, PENDIENTES de
- * validación. Las fotos son del espacio, no de cada beneficio concreto: varios
- * son conceptos abstractos y no hay material específico.
+ * Espacios reservables (inicio.espacios), cada uno con la foto de ese espacio
+ * de verdad, no una genérica del coworking: ese era el problema que tenía la
+ * tarjeta de la sala de contenido.
  */
-const beneficios = [
-  {
-    titulo: 'Descuentos en Tienda Herencia Viva',
-    tituloCorto: 'Descuentos',
-    descripcion: 'Precio preferente en artesanía yucateca, para ti y para los regalos de tu negocio.',
-    foto: '/img/nodico/salon-detalle.webp',
-    acento: '#FFDD00',
-  },
-  {
-    titulo: 'Directorio de miembros Nódico',
-    tituloCorto: 'Directorio',
-    descripcion: 'Tu proyecto visible ante toda la comunidad, y la comunidad disponible para ti.',
-    foto: '/img/nodico/mision.webp',
-    acento: '#D6E265',
-  },
-  {
-    titulo: 'Acceso preferente a eventos y talleres',
-    tituloCorto: 'Eventos y talleres',
-    descripcion: 'Te avisamos antes y apartas lugar antes de que se abra al público.',
-    foto: '/img/nodico/comunidad-fondo.webp',
-    acento: '#EF7E88',
-  },
-  {
-    titulo: 'Conexión con el ecosistema emprendedor',
-    tituloCorto: 'Ecosistema',
-    descripcion: 'Programas del IYEM, CANIETI y la red de incubación, a un paso de tu escritorio.',
-    foto: '/img/nodico/salon-yucatan-emprende-1.webp',
-    acento: '#864B95',
-  },
-  {
-    titulo: 'Espacio pet friendly',
-    tituloCorto: 'Pet friendly',
-    descripcion: 'Tu perro también tiene lugar aquí. Sin permisos ni explicaciones.',
-    foto: '/img/nodico/nosotros-hero.webp',
-    acento: '#FFE124',
-  },
-]
+const espacios = computed(() => props.contenido.espacios.elementos as Array<Record<string, any>>)
+
+/**
+ * 4.4 — paneles expansibles (inicio.beneficios). El color es de la paleta y
+ * va por posición; con un sexto panel se repite el primero.
+ */
+const ACENTOS_BENEFICIOS = ['#FFDD00', '#D6E265', '#EF7E88', '#864B95', '#FFE124']
+
+const beneficios = computed(() =>
+  (props.contenido.beneficios.elementos as Array<{ titulo: string; titulo_corto: string; descripcion: string; foto: any }>)
+    .map((b, i) => ({
+      titulo: b.titulo,
+      tituloCorto: b.titulo_corto,
+      descripcion: b.descripcion,
+      foto: b.foto,
+      acento: ACENTOS_BENEFICIOS[i % ACENTOS_BENEFICIOS.length],
+    })),
+)
 
 /** Si la BD viniera vacía, la portada sigue mostrando los cuatro planes reales. */
 const planesFallback = [
@@ -201,6 +114,12 @@ const fichaSalon = computed(() => {
   <PublicLayout>
     <!-- ═══ HERO — aprobado, no se modifica ═══ -->
     <HeroVideo
+      :video-id="contenido.hero.video_youtube"
+      :antetitulo="contenido.hero.antetitulo"
+      :titulo="contenido.hero.titulo"
+      :subtitulo="contenido.hero.subtitulo"
+      :imagen="contenido.hero.imagen"
+      :telefono-e164="nodico.telefonoE164"
       :direccion="nodico.direccionCorta"
       :horarios="nodico.horarios"
       :telefono="nodico.telefono"
@@ -213,7 +132,7 @@ const fichaSalon = computed(() => {
         <ScrollReveal>
           <SectionHeading
             etiqueta="Servicios"
-            titulo="Todo incluido en tu membresía"
+            :titulo="contenido.servicios.titulo"
             align="center"
             tamano="lg"
           />
@@ -229,11 +148,12 @@ const fichaSalon = computed(() => {
           >
             <article class="group relative isolate flex h-full min-h-[300px] flex-col justify-end overflow-hidden rounded-3xl p-8">
               <img
-                :src="servicio.foto"
+                :src="servicio.foto.src"
+                :srcset="servicio.foto.srcset ?? undefined"
                 alt=""
                 aria-hidden="true"
-                width="1920"
-                height="1079"
+                :width="servicio.foto.width"
+                :height="servicio.foto.height"
                 loading="lazy"
                 decoding="async"
                 class="absolute inset-0 -z-20 h-full w-full object-cover transition-transform duration-700 ease-salida group-hover:scale-105"
@@ -292,13 +212,13 @@ const fichaSalon = computed(() => {
     </section>
 
     <!-- Espacios — qué puedes reservar, con foto de cada uno -->
-    <section class="bg-cream-50 py-20 lg:py-28">
+    <section v-if="contenido.espacios.visible" class="bg-cream-50 py-20 lg:py-28">
       <div class="mx-auto max-w-7xl px-5 sm:px-8">
         <ScrollReveal>
           <SectionHeading
             etiqueta="Espacios"
-            titulo="Lo que puedes reservar"
-            descripcion="Tu membresía incluye horas para usarlos. Reservas desde tu portal o desde la app."
+            :titulo="contenido.espacios.titulo"
+            :descripcion="contenido.espacios.descripcion"
             align="center"
             tamano="lg"
           />
@@ -316,12 +236,12 @@ const fichaSalon = computed(() => {
             >
               <div class="relative aspect-[4/3] overflow-hidden">
                 <img
-                  :src="espacio.foto"
-                  :srcset="`${espacio.fotoPequena} 800w, ${espacio.foto} 1600w`"
+                  :src="espacio.foto.src"
+                  :srcset="espacio.foto.srcset ?? undefined"
                   sizes="(min-width: 640px) 50vw, 100vw"
-                  :alt="espacio.alt"
-                  width="1600"
-                  height="1200"
+                  :alt="espacio.foto.alt"
+                  :width="espacio.foto.width"
+                  :height="espacio.foto.height"
                   loading="lazy"
                   decoding="async"
                   class="h-full w-full object-cover transition-transform duration-700 ease-salida group-hover:scale-105"
@@ -351,12 +271,12 @@ const fichaSalon = computed(() => {
     </section>
 
     <!-- 4.4 · Beneficios — paneles expansibles -->
-    <section class="bg-tinta py-20 lg:py-28">
+    <section v-if="contenido.beneficios.visible" class="bg-tinta py-20 lg:py-28">
       <div class="mx-auto max-w-7xl px-5 sm:px-8">
         <ScrollReveal>
           <SectionHeading
             etiqueta="Beneficios"
-            titulo="Y otras cosas que solo pasan aquí"
+            :titulo="contenido.beneficios.titulo"
             tono="claro"
             tamano="lg"
           />
@@ -374,8 +294,8 @@ const fichaSalon = computed(() => {
         <ScrollReveal>
           <SectionHeading
             etiqueta="Membresías"
-            titulo="Elige tu plan ideal"
-            descripcion="El éxito comienza con el entorno correcto. Cada membresía te da la flexibilidad, los recursos y la comunidad que necesitas para hacer crecer tu proyecto."
+            :titulo="contenido.membresias.titulo"
+            :descripcion="contenido.membresias.descripcion"
             align="center"
             tamano="lg"
           />
@@ -392,17 +312,17 @@ const fichaSalon = computed(() => {
     </section>
 
     <!-- 4.6 · Day-pass — sello giratorio, parallax y bloque estampado -->
-    <section class="overflow-hidden bg-nodo-400 py-20 lg:py-24">
+    <section v-if="contenido.daypass.visible" class="overflow-hidden bg-nodo-400 py-20 lg:py-24">
       <div class="mx-auto grid max-w-7xl items-center gap-14 px-5 sm:px-8 lg:grid-cols-2 lg:gap-20">
         <ScrollReveal from="left">
           <div ref="fotoDaypass" class="relative">
             <img
-              src="/img/nodico/daypass-emprendedor.webp"
-              srcset="/img/nodico/daypass-emprendedor-640.webp 640w, /img/nodico/daypass-emprendedor-1280.webp 1280w, /img/nodico/daypass-emprendedor.webp 1677w"
+              :src="contenido.daypass.imagen.src"
+              :srcset="contenido.daypass.imagen.srcset ?? undefined"
               sizes="(min-width: 1024px) 50vw, 100vw"
-              alt="Emprendedores del interior del estado trabajando en Nódico"
-              width="1677"
-              height="1920"
+              :alt="contenido.daypass.imagen.alt"
+              :width="contenido.daypass.imagen.width"
+              :height="contenido.daypass.imagen.height"
               loading="lazy"
               decoding="async"
               class="aspect-[4/3] w-full rounded-3xl object-cover shadow-sombra-lg will-change-transform"
@@ -411,7 +331,7 @@ const fichaSalon = computed(() => {
 
             <!-- Sello giratorio superpuesto en la esquina -->
             <div class="absolute bottom-4 right-4 sm:bottom-6 sm:right-6">
-              <SelloGiratorio />
+              <SelloGiratorio :texto="contenido.daypass.sello_giratorio" />
             </div>
           </div>
         </ScrollReveal>
@@ -419,23 +339,22 @@ const fichaSalon = computed(() => {
         <ScrollReveal from="right">
           <p class="etiqueta-tecnica mb-5 flex items-center gap-3 text-dark/70">
             <span class="h-1.5 w-1.5 rounded-full bg-dark" aria-hidden="true" />
-            Day-pass emprendedor
+            {{ contenido.daypass.etiqueta }}
           </p>
 
           <h2 class="font-display text-display-md font-extrabold text-dark">
-            ¿Eres emprendedor o artesano del interior del estado?
+            {{ contenido.daypass.titulo }}
           </h2>
 
           <!-- Entra como sello estampado, después del titular -->
           <ScrollReveal from="scale" :delay="220">
             <p class="mt-8 inline-block rotate-[-1.5deg] rounded-2xl bg-dark px-7 py-6 font-display text-2xl font-extrabold text-nodo-400 sm:text-3xl">
-              Tu day-pass siempre es gratuito.
+              {{ contenido.daypass.sello }}
             </p>
           </ScrollReveal>
 
           <p class="mt-7 max-w-lg font-body text-cuerpo-lg text-dark/80">
-            Si tu negocio está fuera de Mérida y necesitas un lugar para tener una junta,
-            trabajar un rato o presentar tu proyecto, el espacio es tuyo sin costo.
+            {{ contenido.daypass.texto }}
           </p>
 
           <Boton href="#hablemos" variante="secundario" tamano="lg" class="mt-8" flecha>
@@ -447,14 +366,14 @@ const fichaSalon = computed(() => {
 
     <!-- ═══ SALONES — Fase 4.G.5: más altura y aire para que la foto respire
          en 1366 y 1920 px (antes quedaba aplastada) ═══ -->
-    <section class="relative isolate flex min-h-[560px] items-center overflow-hidden bg-tinta lg:min-h-[680px]">
+    <section v-if="contenido.salones.visible" class="relative isolate flex min-h-[560px] items-center overflow-hidden bg-tinta lg:min-h-[680px]">
       <img
-        src="/img/nodico/salon-yucatan-emprende-2.webp"
-        srcset="/img/nodico/salon-yucatan-emprende-2-640.webp 640w, /img/nodico/salon-yucatan-emprende-2-1280.webp 1280w, /img/nodico/salon-yucatan-emprende-2.webp 1920w"
+        :src="contenido.salones.imagen.src"
+        :srcset="contenido.salones.imagen.srcset ?? undefined"
         sizes="100vw"
-        alt="Salón de eventos de Nódico montado para una conferencia"
-        width="1920"
-        height="1440"
+        :alt="contenido.salones.imagen.alt"
+        :width="contenido.salones.imagen.width"
+        :height="contenido.salones.imagen.height"
         loading="lazy"
         decoding="async"
         class="absolute inset-0 -z-20 h-full w-full object-cover"
@@ -465,8 +384,8 @@ const fichaSalon = computed(() => {
         <ScrollReveal class="max-w-2xl">
           <SectionHeading
             etiqueta="Salones"
-            titulo="Espacios listos para tu evento"
-            descripcion="Talleres, conferencias o reuniones. Modernos, cómodos y equipados para que cada idea cobre vida."
+            :titulo="contenido.salones.titulo"
+            :descripcion="contenido.salones.descripcion"
             tono="claro"
             tamano="lg"
           />
@@ -486,11 +405,11 @@ const fichaSalon = computed(() => {
     </section>
 
     <!-- Aliados -->
-    <section class="bg-cream-50 py-16 lg:py-20">
+    <section v-if="$page.props.comun.aliados.visible" class="bg-cream-50 py-16 lg:py-20">
       <div class="mx-auto max-w-7xl px-5 sm:px-8">
         <ScrollReveal>
           <p class="etiqueta-tecnica mb-10 text-center text-dark/70">
-            Con el respaldo de
+            {{ $page.props.comun.aliados.etiqueta }}
           </p>
           <AliadosSection />
         </ScrollReveal>
@@ -498,7 +417,7 @@ const fichaSalon = computed(() => {
     </section>
 
     <!-- Instagram -->
-    <InstagramSection :handle="nodico.instagram" />
+    <InstagramSection v-if="$page.props.comun.instagram.visible_inicio" :handle="nodico.instagram" />
 
     <ContactSection />
   </PublicLayout>

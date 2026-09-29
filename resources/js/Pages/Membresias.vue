@@ -9,8 +9,11 @@ import type { Plan } from '@/tipos'
 import { Check, CreditCard, ShieldCheck, Users } from 'lucide-vue-next'
 import { computed } from 'vue'
 
-/** `pasarela`: quién procesa el cobro con tarjeta (Stripe, Openpay…), según el servidor. */
-const props = defineProps<{ planes?: Plan[]; pasarela?: string }>()
+const props = defineProps<{
+  planes?: Plan[]
+  /** Secciones del módulo «Página Web», ya con su respaldo. */
+  contenido: Record<string, any>
+}>()
 
 /** SEO-03 — cada membresía como Offer dentro de un catálogo. */
 const ofertas = computed(() => ({
@@ -28,24 +31,18 @@ const ofertas = computed(() => ({
   })),
 }))
 
-const incluidoEnTodas = [
-  'Acceso a la comunidad emprendedora de Nódico',
-  'Agua y café durante tu estancia',
-  'Wifi con 200 MB de velocidad',
-  'Espacio pet friendly',
-]
+/** Siempre incluido (membresias.incluido), del módulo «Página Web». */
+const incluidoEnTodas = computed(() =>
+  (props.contenido.incluido.elementos as Array<{ texto: string }>).map((i) => i.texto),
+)
 
-const comoFunciona = computed(() => [
-  {
-    icono: CreditCard,
-    titulo: 'Elige y paga en línea',
-    texto: props.pasarela
-      ? `El cobro con tarjeta lo procesa ${props.pasarela}. Nódico no almacena datos de tarjeta.`
-      : 'Paga con tarjeta, transferencia o en recepción. Nódico no almacena datos de tarjeta.',
-  },
-  { icono: Users, titulo: 'Registra tu acceso', texto: 'Pasa a recepción para dar de alta tu Face ID y activar la membresía.' },
-  { icono: ShieldCheck, titulo: 'Usa el espacio', texto: 'Reserva salas y estudio de contenido desde la plataforma, según tu plan.' },
-])
+/** Cómo funciona (membresias.pasos): el texto del módulo, el icono por posición. */
+const ICONOS_PASOS = [CreditCard, Users, ShieldCheck]
+
+const comoFunciona = computed(() =>
+  (props.contenido.pasos.elementos as Array<{ titulo: string; texto: string }>)
+    .map((p, i) => ({ ...p, icono: ICONOS_PASOS[i] })),
+)
 </script>
 
 <template>
@@ -59,16 +56,15 @@ const comoFunciona = computed(() => [
       <div class="mx-auto max-w-7xl px-5 sm:px-8">
         <p class="etiqueta-tecnica mb-5 flex items-center gap-3 text-dark/70">
           <span class="h-1.5 w-1.5 rounded-full bg-dark" aria-hidden="true" />
-          Membresías
+          {{ contenido.portada.etiqueta }}
         </p>
 
         <h1 class="max-w-[16ch] font-display text-display-lg font-extrabold text-dark">
-          Precios competitivos
+          {{ contenido.portada.titulo }}
         </h1>
 
         <p class="mt-7 max-w-2xl font-body text-cuerpo-lg text-dark/80">
-          Cuatro planes para etapas distintas: desde un día suelto hasta acceso ilimitado para dos
-          personas. Todos incluyen comunidad, café y wifi.
+          {{ contenido.portada.texto }}
         </p>
       </div>
     </section>
@@ -80,8 +76,8 @@ const comoFunciona = computed(() => [
 
         <div v-else class="mx-auto max-w-xl">
           <SectionHeading
-            titulo="Membresías en actualización"
-            descripcion="Estamos afinando los planes. Escríbenos y con gusto te compartimos los precios vigentes."
+            :titulo="contenido.vacio.titulo"
+            :descripcion="contenido.vacio.descripcion"
             align="center"
           />
         </div>
@@ -94,8 +90,8 @@ const comoFunciona = computed(() => [
         <ScrollReveal from="left">
           <SectionHeading
             etiqueta="Siempre incluido"
-            titulo="Da igual el plan que elijas"
-            descripcion="Hay cosas que no dependen de la membresía: vienen con el simple hecho de ser parte de Nódico."
+            :titulo="contenido.incluido.titulo"
+            :descripcion="contenido.incluido.descripcion"
             tamano="lg"
           />
         </ScrollReveal>
@@ -121,7 +117,7 @@ const comoFunciona = computed(() => [
         <ScrollReveal>
           <SectionHeading
             etiqueta="Cómo funciona"
-            titulo="De la compra al escritorio"
+            :titulo="contenido.pasos.titulo"
             tono="claro"
             align="center"
             tamano="lg"
@@ -148,9 +144,8 @@ const comoFunciona = computed(() => [
           </div>
         </ScrollReveal>
 
-        <p class="mx-auto mt-12 max-w-2xl text-center font-body text-sm text-white/65">
-          ¿Eres emprendedor o artesano del interior del estado? Tu day-pass siempre es gratuito:
-          escríbenos y te damos acceso sin costo.
+        <p v-if="contenido.pasos.nota" class="mx-auto mt-12 max-w-2xl text-center font-body text-sm text-white/65">
+          {{ contenido.pasos.nota }}
         </p>
       </div>
     </section>

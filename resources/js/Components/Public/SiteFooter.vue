@@ -1,11 +1,14 @@
 <script setup lang="ts">
 import Boton from '@/Components/Public/Boton.vue'
+import { useAliados } from '@/composables/useAliados'
 import { Link, usePage } from '@inertiajs/vue3'
 import { ArrowUp, Clock, Facebook, Instagram, Linkedin, Mail, MapPin, Phone } from 'lucide-vue-next'
 import { computed } from 'vue'
 
 const page = usePage()
 const nodico = computed(() => (page.props.nodico ?? {}) as any)
+/** Textos del pie, del módulo «Página Web» (comun.pie). */
+const pie = computed(() => (page.props as any).comun.pie)
 const anio = new Date().getFullYear()
 
 const enlaces = [
@@ -22,11 +25,7 @@ const redes = computed(() => [
   { label: 'LinkedIn',  href: nodico.value.redes?.linkedin,  icono: Linkedin },
 ].filter((r) => r.href))
 
-const aliados = [
-  { nombre: 'Instituto Yucateco de Emprendedores', logo: '/img/nodico/logo-iyem.png', ancho: 452, alto: 75, clase: 'h-8' },
-  { nombre: 'Herencia Viva', logo: '/img/nodico/logo-herencia-viva.png', ancho: 418, alto: 63, clase: 'h-7' },
-  { nombre: 'CANIETI', logo: '/img/nodico/logo-canieti.png', ancho: 255, alto: 99, clase: 'h-9' },
-]
+const aliados = useAliados({ iyem: 'h-8', herencia: 'h-7', canieti: 'h-9' })
 
 function volverArriba() {
   const sinMovimiento = window.matchMedia('(prefers-reduced-motion: reduce)').matches
@@ -42,10 +41,10 @@ function volverArriba() {
         <div class="flex flex-col gap-10 lg:flex-row lg:items-center lg:justify-between">
           <div>
             <h2 class="max-w-2xl font-display text-display-md font-extrabold text-dark">
-              ¿Listo para empezar?
+              {{ pie.llamado_titulo }}
             </h2>
             <p class="mt-4 max-w-lg font-body text-cuerpo-lg text-dark/85">
-              Elige tu membresía y trabaja desde el primer día en la comunidad emprendedora de Yucatán.
+              {{ pie.llamado_texto }}
             </p>
           </div>
 
@@ -71,8 +70,7 @@ function volverArriba() {
               class="h-11 w-auto"
             />
             <p class="mt-6 max-w-sm font-body text-sm leading-relaxed text-white/60">
-              El coworking del Instituto Yucateco de Emprendedores en Mérida: espacio, comunidad
-              y contenido para quienes están construyendo algo propio.
+              {{ pie.marca }}
             </p>
 
             <ul v-if="redes.length" class="mt-8 flex gap-3">
@@ -160,7 +158,7 @@ function volverArriba() {
         <!-- Aliados + facturación -->
         <div class="mt-16 grid gap-10 border-t border-white/10 pt-10 lg:grid-cols-[1.4fr_1fr]">
           <div>
-            <h2 class="etiqueta-tecnica text-white/60">Con el respaldo de</h2>
+            <h2 class="etiqueta-tecnica text-white/60">{{ ($page.props as any).comun.aliados.etiqueta }}</h2>
             <ul class="mt-6 flex flex-wrap items-center gap-x-10 gap-y-6">
               <li v-for="aliado in aliados" :key="aliado.nombre">
                 <img
@@ -177,12 +175,12 @@ function volverArriba() {
           </div>
 
           <p class="font-body text-sm leading-relaxed text-white/65">
-            Para solicitar su factura, escriba a
+            {{ pie.facturacion_antes }}
             <a
               :href="`mailto:${nodico.email}?subject=Solicitud%20de%20factura`"
               class="text-nodo-400 underline underline-offset-2 hover:text-nodo-300"
             >{{ nodico.email }}</a>
-            con el asunto “Solicitud de factura”, incluyendo sus datos fiscales completos.
+            {{ pie.facturacion_despues }}
           </p>
         </div>
       </div>
@@ -191,8 +189,7 @@ function volverArriba() {
       <div class="border-t border-white/10">
         <div class="pb-segura mx-auto flex max-w-7xl flex-col gap-4 px-5 pt-6 sm:px-8 lg:flex-row lg:items-center lg:justify-between">
           <p class="max-w-2xl font-body text-xs leading-relaxed text-white/60">
-            Nódico es una marca registrada del Instituto Yucateco de Emprendedores.
-            Todos los derechos reservados. © {{ anio }}
+            {{ pie.leyenda }} © {{ anio }}
           </p>
 
           <div class="flex flex-wrap items-center gap-x-6">

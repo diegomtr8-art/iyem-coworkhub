@@ -5,6 +5,8 @@ import { computed, reactive, ref, watch, onMounted, onBeforeUnmount } from 'vue'
 
 const page = usePage()
 const nodico = computed(() => (page.props.nodico ?? {}) as any)
+/** Textos del bloque, del módulo «Página Web» (comun.hablemos). */
+const hablemos = computed(() => (page.props as any).comun.hablemos)
 
 const form = useForm({
   nombre: '',
@@ -116,14 +118,13 @@ const telefonoHref = computed(
       <div class="max-w-2xl">
         <p class="etiqueta-tecnica mb-5 flex items-center gap-3 text-dark/70">
           <span class="h-1.5 w-1.5 rounded-full bg-nodo-400" aria-hidden="true" />
-          Contacto
+          {{ hablemos.etiqueta }}
         </p>
 
-        <h2 class="font-display text-display-lg font-extrabold text-dark">Hablemos</h2>
+        <h2 class="font-display text-display-lg font-extrabold text-dark">{{ hablemos.titulo }}</h2>
 
         <p class="mt-6 font-body text-cuerpo-lg text-dark/70">
-          ¿Quieres conocer el espacio, cotizar un salón o resolver una duda sobre las
-          membresías? Escríbenos y te respondemos a la brevedad.
+          {{ hablemos.texto }}
         </p>
       </div>
 

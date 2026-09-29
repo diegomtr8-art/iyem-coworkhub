@@ -320,6 +320,34 @@ de cada entorno.
    `EncabezadosDeSeccionTest` para que no se repita.
 9. **Sala de juntas:** «1 disponible» (`4ae69ec`).
 
+## 4 bis. Cómo quedó la migración (Fase 4, 29-sep-2026)
+
+Cinco pasos (`07f780a` a `2430e61`). Después de cada uno se comparó la
+«huella» de las siete páginas públicas contra la de antes de empezar: texto
+visible, cada `<img>` (src, srcset, alt, medidas) y cada enlace, y el
+`<head>` del servidor (título, descripción, `og:`) y el JSON-LD. Con `ajustes`
+vacía, todas quedaron **idénticas**. La única diferencia fue buscada: el
+`tel:` de la portada ahora lleva `+52`, como el resto.
+
+Dónde vive cada cosa: `app/Servicios/Sitio/Paginas/*` (una clase por página;
+`Fotos.php` guarda las fotos fijas). El diseño que va por posición (iconos,
+colores de los paneles, tamaño de celda) sigue en los componentes.
+
+Diferencias con lo acordado en la sección 4, y su motivo:
+
+| Punto | Acordado | Cómo quedó | Por qué |
+|---|---|---|---|
+| Valores | 3 a 9 | **3 o 6** | Hay seis iconos y van por posición (decisión 2): un séptimo valor saldría sin icono. |
+| Descripción SEO | 160 caracteres | **220** | Las de hoy ya pasan de 160. Con 160, el propio respaldo no cumpliría su regla y la sección no se podría guardar. |
+| «120 personas» en Comunidad | Salir de la BD | **Texto editable**, con aviso en la ayuda | Es una frase, no un dato suelto; partirla en trozos para meter la cifra complica el campo más de lo que aporta. |
+| Beneficios | 3 a 6 | 3 a 6; con 6, **el sexto repite el color del primero** | La paleta tiene cinco acentos. |
+| Aliados: apagar | La sección | Solo la **franja de la portada** | Los logos del pie son parte del pie. |
+
+Tipos de campo: texto, párrafo, correo, teléfono, URL (https y host
+permitido), usuario de Instagram, id de YouTube, número en rango, interruptor,
+foto (formato, alt obligatorio salvo decorativas) y lista (mínimo, máximo y
+múltiplo). Una prueba exige que **todo respaldo cumpla sus propias reglas**.
+
 ## 5. Lo que quedará fuera (resumen)
 
 - Constructor de páginas, bloques móviles, HTML libre, tipografías y colores.

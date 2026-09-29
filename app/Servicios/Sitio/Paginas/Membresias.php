@@ -1,0 +1,82 @@
+<?php
+
+namespace App\Servicios\Sitio\Paginas;
+
+use App\Servicios\Pagos\Contratos\PasarelaDePagos;
+use App\Servicios\Sitio\Campo;
+
+/** `/membresias` (`Membresias.vue`). Los planes en sí se editan en Configurar → Planes. */
+final class Membresias
+{
+    public static function secciones(): array
+    {
+        return [
+            'membresias.portada' => [
+                'pagina'  => 'membresias',
+                'titulo'  => 'Portada',
+                'aparece' => 'La banda amarilla de arriba.',
+                'ancla'   => null,
+                'campos'  => [
+                    'etiqueta' => Campo::texto('Etiqueta', 30, 'Membresías'),
+                    'titulo'   => Campo::texto('Titular', 40, 'Precios competitivos'),
+                    'texto'    => Campo::parrafo('Texto', 260,
+                        'Cuatro planes para etapas distintas: desde un día suelto hasta acceso ilimitado para dos personas. Todos incluyen comunidad, café y wifi.',
+                        'Si cambia el número de planes en Configurar → Planes, revisa este texto.'),
+                ],
+            ],
+            'membresias.vacio' => [
+                'pagina'  => 'membresias',
+                'titulo'  => 'Sin planes publicados',
+                'aparece' => 'Solo se ve si no hay ningún plan publicado.',
+                'ancla'   => null,
+                'campos'  => [
+                    'titulo'      => Campo::texto('Título', 60, 'Membresías en actualización'),
+                    'descripcion' => Campo::parrafo('Texto', 200, 'Estamos afinando los planes. Escríbenos y con gusto te compartimos los precios vigentes.'),
+                ],
+            ],
+            'membresias.incluido' => [
+                'pagina'  => 'membresias',
+                'titulo'  => 'Siempre incluido',
+                'aparece' => 'La lista con palomitas, después de los planes.',
+                'ancla'   => null,
+                'campos'  => [
+                    'titulo'      => Campo::texto('Título de la sección', 60, 'Da igual el plan que elijas'),
+                    'descripcion' => Campo::parrafo('Texto bajo el título', 200,
+                        'Hay cosas que no dependen de la membresía: vienen con el simple hecho de ser parte de Nódico.'),
+                    'elementos' => Campo::lista('Lo que incluye', [
+                        'texto' => Campo::texto('Texto', 60, ''),
+                    ], 2, 8, [
+                        ['texto' => 'Acceso a la comunidad emprendedora de Nódico'],
+                        ['texto' => 'Agua y café durante tu estancia'],
+                        ['texto' => 'Wifi con 200 MB de velocidad'],
+                        ['texto' => 'Espacio pet friendly'],
+                    ], elemento: 'Punto'),
+                ],
+            ],
+            'membresias.pasos' => [
+                'pagina'  => 'membresias',
+                'titulo'  => 'Cómo funciona',
+                'aparece' => 'Los tres pasos sobre fondo oscuro.',
+                'ancla'   => null,
+                'campos'  => [
+                    'titulo' => Campo::texto('Título de la sección', 60, 'De la compra al escritorio'),
+                    // Tres fijos: cada paso tiene su icono.
+                    'elementos' => Campo::lista('Pasos', [
+                        'titulo' => Campo::texto('Paso', 40, ''),
+                        'texto'  => Campo::parrafo('Explicación', 160, ''),
+                    ], 3, 3, fn () => [
+                        // Quién cobra cambia con PAGOS_PASARELA (Stripe, Openpay…):
+                        // el respaldo lo lee en cada visita en vez de decir «Stripe».
+                        ['titulo' => 'Elige y paga en línea', 'texto' => 'El cobro con tarjeta lo procesa '
+                            . app(PasarelaDePagos::class)->etiqueta() . '. Nódico no almacena datos de tarjeta.'],
+                        ['titulo' => 'Registra tu acceso', 'texto' => 'Pasa a recepción para dar de alta tu Face ID y activar la membresía.'],
+                        ['titulo' => 'Usa el espacio', 'texto' => 'Reserva salas y estudio de contenido desde la plataforma, según tu plan.'],
+                    ], 'El primer paso nombra la pasarela que cobra y la sigue sola. Si lo editas aquí, ya no cambia cuando cambie la pasarela.', 'Paso'),
+                    'nota'   => Campo::parrafo('Nota al pie', 240,
+                        '¿Eres emprendedor o artesano del interior del estado? Tu day-pass siempre es gratuito: escríbenos y te damos acceso sin costo.',
+                        'Línea pequeña bajo los tres pasos. Vacía no se muestra.', requerido: false),
+                ],
+            ],
+        ];
+    }
+}
