@@ -335,6 +335,15 @@ no cambian.
 
 ## 5. La IP del cliente (`X-Forwarded-For`)
 
+> **Resuelto el 29-sep-2026 en `prueba.nodico.com.mx`.** Hostinger pone la IP
+> real en `REMOTE_ADDR`, pero deja pasar la cabecera del visitante: con
+> `X-Forwarded-For: 1.2.3.4`, el servidor recibe `1.2.3.4, <IP real>` y
+> `$request->ip()` devuelve **`1.2.3.4`**. `PasarelaBbva` usa ahora
+> `REMOTE_ADDR` (prueba `test_una_ip_inventada_en_la_cabecera_no_llega_al_antifraude`).
+> **Pendiente, fuera de pagos:** lo mismo afecta a todo lo que usa
+> `$request->ip()` en el sitio, como los límites de intentos por IP. Conviene
+> revisar `trustProxies` aparte.
+
 `bootstrap/app.php` tiene `$middleware->trustProxies(at: '*')`: **Laravel confía
 en cualquier `X-Forwarded-For` que llegue**. Dos escenarios, y no sé cuál es el
 de Hostinger:
