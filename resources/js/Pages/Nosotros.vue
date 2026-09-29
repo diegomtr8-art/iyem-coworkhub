@@ -6,6 +6,9 @@ import ScrollReveal from '@/Components/Public/ScrollReveal.vue'
 import SectionHeading from '@/Components/Public/SectionHeading.vue'
 import PublicLayout from '@/Layouts/PublicLayout.vue'
 
+/** Secciones del módulo «Página Web», ya con su respaldo. */
+defineProps<{ contenido: Record<string, any> }>()
+
 /**
  * Descripciones redactadas para esta versión: el original de Odoo solo tenía
  * los nombres sueltos. PENDIENTE de validación por Nódico.
@@ -68,17 +71,15 @@ const valores = [
       <div class="mx-auto w-full max-w-7xl px-5 pb-16 pt-36 sm:px-8 lg:pb-20">
         <p class="etiqueta-tecnica mb-5 flex items-center gap-3 text-nodo-400">
           <span class="h-1.5 w-1.5 rounded-full bg-nodo-400" aria-hidden="true" />
-          Nódico MX
+          {{ contenido.portada.etiqueta }}
         </p>
 
         <h1 class="max-w-[14ch] font-display text-display-lg font-extrabold text-white">
-          ¿Quiénes somos?
+          {{ contenido.portada.titulo }}
         </h1>
 
         <p class="mt-7 max-w-2xl font-body text-cuerpo-lg text-white/90">
-          Más allá de un espacio físico, Nódico es una comunidad profesional donde se fomenta la
-          colaboración, la vinculación estratégica y el desarrollo de habilidades a través de
-          experiencias compartidas, eventos y formación continua.
+          {{ contenido.portada.texto }}
         </p>
 
         <Boton :href="route('actividades')" variante="primario" tamano="lg" class="mt-9" flecha>
@@ -105,17 +106,10 @@ const valores = [
         </ScrollReveal>
 
         <ScrollReveal from="right">
-          <SectionHeading etiqueta="Misión" titulo="Convertir ideas en proyectos de impacto" tamano="lg" />
+          <SectionHeading etiqueta="Misión" :titulo="contenido.mision.titulo" tamano="lg" />
           <div class="mt-8 space-y-5 font-body text-cuerpo-lg text-dark/70">
-            <p>
-              Ser el espacio donde los emprendedores encuentran las herramientas, conexiones y
-              experiencias necesarias para transformar sus ideas en proyectos de impacto.
-            </p>
-            <p>
-              En Nódico impulsamos la creatividad, la colaboración y la innovación mediante espacios
-              funcionales, contenido de valor y una comunidad vibrante que reta el pensamiento y
-              promueve el crecimiento.
-            </p>
+            <p>{{ contenido.mision.parrafo1 }}</p>
+            <p v-if="contenido.mision.parrafo2">{{ contenido.mision.parrafo2 }}</p>
           </div>
         </ScrollReveal>
       </div>
@@ -141,15 +135,13 @@ const valores = [
         <ScrollReveal>
           <SectionHeading
             etiqueta="Visión"
-            titulo="El referente del sureste de México"
+            :titulo="contenido.vision.titulo"
             tono="claro"
             align="center"
             tamano="lg"
           />
           <p class="mx-auto mt-8 max-w-3xl font-body text-cuerpo-lg text-white/75">
-            Consolidarnos como el espacio referente en el sureste de México para el desarrollo de la
-            creatividad, el emprendimiento y la innovación, reconocido por ser el punto de encuentro
-            donde convergen las nuevas generaciones de creadores, emprendedores y agentes de cambio.
+            {{ contenido.vision.texto }}
           </p>
         </ScrollReveal>
       </div>
@@ -159,7 +151,7 @@ const valores = [
     <section class="bg-cream-50 py-20 lg:py-28">
       <div class="mx-auto max-w-7xl px-5 sm:px-8">
         <ScrollReveal>
-          <SectionHeading etiqueta="Valores" titulo="Lo que nos mueve" align="center" tamano="lg" />
+          <SectionHeading etiqueta="Valores" :titulo="contenido.valores.titulo" align="center" tamano="lg" />
         </ScrollReveal>
 
         <ScrollReveal :stagger="70" as="ul" class="mt-14 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">

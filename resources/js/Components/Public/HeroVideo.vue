@@ -5,8 +5,11 @@ import { Clock, MapPin, Pause, Phone, Play, Volume2, VolumeX, X } from 'lucide-v
 import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
 
 const props = withDefaults(defineProps<{
-  /** Sale del módulo «Página Web» (inicio.hero); el respaldo vive allí. */
+  /** Del módulo «Página Web» (inicio.hero); el respaldo vive allí. */
   videoId: string
+  antetitulo: string
+  titulo: string
+  subtitulo: string
   poster?: string
   posterAlt?: string
   direccion?: string
@@ -199,14 +202,14 @@ onBeforeUnmount(() => {
     />
 
     <div class="mx-auto flex w-full max-w-7xl flex-1 flex-col justify-end px-5 pb-8 pt-32 sm:px-8">
-      <p class="font-display text-lg font-bold text-nodo-400 sm:text-xl">Bienvenidos al lugar</p>
+      <p class="font-display text-lg font-bold text-nodo-400 sm:text-xl">{{ antetitulo }}</p>
 
       <h1 class="mt-4 max-w-[17ch] font-display text-display-xl font-extrabold text-white">
-        Donde el trabajo es un pretexto para crear
+        {{ titulo }}
       </h1>
 
       <p class="mt-7 max-w-lg font-body text-cuerpo-lg text-white/80">
-        El coworking del Instituto Yucateco de Emprendedores en Mérida.
+        {{ subtitulo }}
       </p>
 
       <div class="mt-9 flex flex-wrap items-center gap-3">

@@ -28,7 +28,10 @@ class WelcomeController extends Controller
 
     public function nosotros()
     {
-        return Inertia::render('Nosotros', $this->authProps());
+        return Inertia::render('Nosotros', [
+            ...$this->authProps(),
+            'contenido' => app(ContenidoDelSitio::class)->pagina('nosotros'),
+        ]);
     }
 
     public function membresias()
@@ -36,6 +39,7 @@ class WelcomeController extends Controller
         return Inertia::render('Membresias', [
             ...$this->authProps(),
             'planes' => Plane::publicos()->get(),
+            'contenido' => app(ContenidoDelSitio::class)->pagina('membresias'),
         ]);
     }
 
@@ -45,6 +49,10 @@ class WelcomeController extends Controller
         return Inertia::render('Salones', [
             ...$this->authProps(),
             'salones' => Espacio::salonesPublicados()->get(),
+            'contenido' => app(ContenidoDelSitio::class)->pagina('salones'),
+            // Los mismos tramos que usa el cotizador: antes estaban escritos a
+            // mano en la vista y podían no coincidir con lo que se cobra.
+            'coffee' => config('nodico.salones.coffee'),
         ]);
     }
 
@@ -62,6 +70,7 @@ class WelcomeController extends Controller
             'destacado'      => DirectorioEmprendedor::deLaSemana()->first(),
             // Lugar de los eventos en el JSON-LD: la misma dirección de la ficha.
             'lugarEventos'   => $this->lugarEventos(),
+            'contenido'      => app(ContenidoDelSitio::class)->pagina('comunidad'),
         ]);
     }
 

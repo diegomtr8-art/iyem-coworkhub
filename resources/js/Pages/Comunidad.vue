@@ -21,6 +21,8 @@ const props = defineProps<{
   destacado?: Emprendedor | null
   /** Dirección de la ficha del negocio («Página Web» → Datos generales). */
   lugarEventos: string
+  /** Secciones del módulo «Página Web», ya con su respaldo. */
+  contenido: Record<string, any>
 }>()
 
 const page = usePage()
@@ -74,16 +76,15 @@ const fechaLarga = (valor: string) =>
       <div class="mx-auto w-full max-w-7xl px-5 pb-16 pt-36 sm:px-8 lg:pb-20">
         <p class="etiqueta-tecnica mb-5 flex items-center gap-3 text-nodo-400">
           <span class="h-1.5 w-1.5 rounded-full bg-nodo-400" aria-hidden="true" />
-          Comunidad
+          {{ contenido.portada.etiqueta }}
         </p>
 
         <h1 class="max-w-[18ch] font-display text-display-lg font-extrabold text-white">
-          Aquí pasan cosas todo el mes
+          {{ contenido.portada.titulo }}
         </h1>
 
         <p class="mt-7 max-w-2xl font-body text-cuerpo-lg text-white/90">
-          Talleres, encuentros y una red de emprendedores que ya forman parte de los programas de
-          incubación del Instituto Yucateco de Emprendedores.
+          {{ contenido.portada.texto }}
         </p>
       </div>
     </section>
@@ -96,15 +97,12 @@ const fechaLarga = (valor: string) =>
             <div class="lg:sticky lg:top-28">
               <SectionHeading
                 etiqueta="Talleres"
-                titulo="Conoce los talleres del mes"
+                :titulo="contenido.talleres.titulo"
                 tono="claro"
                 tamano="lg"
               />
               <p class="mt-7 font-body text-cuerpo leading-relaxed text-white/65">
-                En Nódico creemos que el conocimiento se multiplica cuando se comparte. Nuestros
-                talleres están pensados para impulsar tu desarrollo profesional y personal,
-                conectándote con expertos y otros emprendedores que, como tú, buscan transformar
-                sus ideas en proyectos de impacto.
+                {{ contenido.talleres.texto }}
               </p>
             </div>
           </ScrollReveal>
@@ -163,8 +161,8 @@ const fechaLarga = (valor: string) =>
         <ScrollReveal>
           <SectionHeading
             etiqueta="Directorio"
-            titulo="Conoce a la comunidad"
-            descripcion="Emprendedores y empresas que forman parte o han egresado de nuestros programas de incubación del IYEM."
+            :titulo="contenido.directorio.titulo"
+            :descripcion="contenido.directorio.descripcion"
             align="center"
             tamano="lg"
           />
@@ -210,10 +208,10 @@ const fechaLarga = (valor: string) =>
         <div class="flex flex-col gap-8 lg:flex-row lg:items-center lg:justify-between">
           <div>
             <h2 class="max-w-2xl font-display text-display-md font-extrabold text-dark">
-              ¿Organizas un evento?
+              {{ contenido.teaser.titulo }}
             </h2>
             <p class="mt-4 max-w-lg font-body text-cuerpo-lg text-dark/70">
-              Nuestros salones tienen capacidad para 120 personas, con proyector, sonido y mobiliario incluido.
+              {{ contenido.teaser.texto }}
             </p>
           </div>
 

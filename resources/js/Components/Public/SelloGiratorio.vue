@@ -3,11 +3,10 @@ import { onMounted, ref } from 'vue'
 
 withDefaults(defineProps<{
   /** Texto que sigue la circunferencia. Conviene que termine en separador. */
-  texto?: string
+  texto: string
   /** Contenido del centro del sello. */
   centro?: string
 }>(), {
-  texto: 'DAY-PASS GRATUITO · INTERIOR DEL ESTADO · ',
   centro: '$0',
 })
 

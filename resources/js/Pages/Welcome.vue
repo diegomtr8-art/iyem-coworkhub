@@ -204,6 +204,9 @@ const fichaSalon = computed(() => {
     <!-- ═══ HERO — aprobado, no se modifica ═══ -->
     <HeroVideo
       :video-id="contenido.hero.video_youtube"
+      :antetitulo="contenido.hero.antetitulo"
+      :titulo="contenido.hero.titulo"
+      :subtitulo="contenido.hero.subtitulo"
       :telefono-e164="nodico.telefonoE164"
       :direccion="nodico.direccionCorta"
       :horarios="nodico.horarios"
@@ -217,7 +220,7 @@ const fichaSalon = computed(() => {
         <ScrollReveal>
           <SectionHeading
             etiqueta="Servicios"
-            titulo="Todo incluido en tu membresía"
+            :titulo="contenido.servicios.titulo"
             align="center"
             tamano="lg"
           />
@@ -301,8 +304,8 @@ const fichaSalon = computed(() => {
         <ScrollReveal>
           <SectionHeading
             etiqueta="Espacios"
-            titulo="Lo que puedes reservar"
-            descripcion="Tu membresía incluye horas para usarlos. Reservas desde tu portal o desde la app."
+            :titulo="contenido.espacios.titulo"
+            :descripcion="contenido.espacios.descripcion"
             align="center"
             tamano="lg"
           />
@@ -360,7 +363,7 @@ const fichaSalon = computed(() => {
         <ScrollReveal>
           <SectionHeading
             etiqueta="Beneficios"
-            titulo="Y otras cosas que solo pasan aquí"
+            :titulo="contenido.beneficios.titulo"
             tono="claro"
             tamano="lg"
           />
@@ -378,8 +381,8 @@ const fichaSalon = computed(() => {
         <ScrollReveal>
           <SectionHeading
             etiqueta="Membresías"
-            titulo="Elige tu plan ideal"
-            descripcion="El éxito comienza con el entorno correcto. Cada membresía te da la flexibilidad, los recursos y la comunidad que necesitas para hacer crecer tu proyecto."
+            :titulo="contenido.membresias.titulo"
+            :descripcion="contenido.membresias.descripcion"
             align="center"
             tamano="lg"
           />
@@ -415,7 +418,7 @@ const fichaSalon = computed(() => {
 
             <!-- Sello giratorio superpuesto en la esquina -->
             <div class="absolute bottom-4 right-4 sm:bottom-6 sm:right-6">
-              <SelloGiratorio />
+              <SelloGiratorio :texto="contenido.daypass.sello_giratorio" />
             </div>
           </div>
         </ScrollReveal>
@@ -423,23 +426,22 @@ const fichaSalon = computed(() => {
         <ScrollReveal from="right">
           <p class="etiqueta-tecnica mb-5 flex items-center gap-3 text-dark/70">
             <span class="h-1.5 w-1.5 rounded-full bg-dark" aria-hidden="true" />
-            Day-pass emprendedor
+            {{ contenido.daypass.etiqueta }}
           </p>
 
           <h2 class="font-display text-display-md font-extrabold text-dark">
-            ¿Eres emprendedor o artesano del interior del estado?
+            {{ contenido.daypass.titulo }}
           </h2>
 
           <!-- Entra como sello estampado, después del titular -->
           <ScrollReveal from="scale" :delay="220">
             <p class="mt-8 inline-block rotate-[-1.5deg] rounded-2xl bg-dark px-7 py-6 font-display text-2xl font-extrabold text-nodo-400 sm:text-3xl">
-              Tu day-pass siempre es gratuito.
+              {{ contenido.daypass.sello }}
             </p>
           </ScrollReveal>
 
           <p class="mt-7 max-w-lg font-body text-cuerpo-lg text-dark/80">
-            Si tu negocio está fuera de Mérida y necesitas un lugar para tener una junta,
-            trabajar un rato o presentar tu proyecto, el espacio es tuyo sin costo.
+            {{ contenido.daypass.texto }}
           </p>
 
           <Boton href="#hablemos" variante="secundario" tamano="lg" class="mt-8" flecha>
@@ -469,8 +471,8 @@ const fichaSalon = computed(() => {
         <ScrollReveal class="max-w-2xl">
           <SectionHeading
             etiqueta="Salones"
-            titulo="Espacios listos para tu evento"
-            descripcion="Talleres, conferencias o reuniones. Modernos, cómodos y equipados para que cada idea cobre vida."
+            :titulo="contenido.salones.titulo"
+            :descripcion="contenido.salones.descripcion"
             tono="claro"
             tamano="lg"
           />

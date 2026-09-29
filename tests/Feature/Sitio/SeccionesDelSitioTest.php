@@ -100,6 +100,96 @@ class SeccionesDelSitioTest extends TestCase
             ->where('lugarEventos', 'Hacienda Sodzil Nte., Mérida, Yucatán'));
     }
 
+    // --- Invariantes del catálogo --------------------------------------------
+
+    /**
+     * Si un respaldo no cumple sus reglas, la sección no se puede guardar
+     * nunca (guardar valida la sección entera) y nadie lo nota hasta que
+     * alguien intenta cambiar otro campo. Pasó con las descripciones SEO.
+     */
+    public function test_todos_los_respaldos_cumplen_sus_propias_reglas(): void
+    {
+        foreach (\App\Servicios\Sitio\CatalogoDelSitio::secciones() as $clave => $seccion) {
+            $campos = $seccion['campos'];
+            $validador = \Illuminate\Support\Facades\Validator::make(
+                $this->sitio()->seccion($clave),
+                \App\Servicios\Sitio\Campo::reglas($campos),
+            );
+
+            $this->assertSame([], $validador->errors()->toArray(), "El respaldo de «{$clave}» no cumple sus reglas.");
+        }
+    }
+
+    public function test_toda_seccion_se_presenta_y_pertenece_a_una_pagina_del_panel(): void
+    {
+        $paginas = \App\Servicios\Sitio\CatalogoDelSitio::paginas();
+
+        foreach (\App\Servicios\Sitio\CatalogoDelSitio::secciones() as $clave => $seccion) {
+            $this->assertArrayHasKey($seccion['pagina'], $paginas, $clave);
+            $this->assertIsArray($this->sitio()->presentar($clave));
+        }
+    }
+
+    // --- 4.2 · Textos ---------------------------------------------------------
+
+    public function test_los_textos_de_cada_pagina_llegan_con_su_respaldo(): void
+    {
+        $casos = [
+            '/'            => ['contenido.hero.titulo', 'Donde el trabajo es un pretexto para crear'],
+            '/nosotros'    => ['contenido.vision.titulo', 'El referente del sureste de México'],
+            '/membresias'  => ['contenido.pasos.titulo', 'De la compra al escritorio'],
+            '/eventos'     => ['contenido.coffee.titulo', 'Coffee break para tu evento'],
+            '/actividades' => ['contenido.talleres.titulo', 'Conoce los talleres del mes'],
+        ];
+
+        foreach ($casos as $ruta => [$prop, $texto]) {
+            $this->get($ruta)->assertInertia(fn (AssertableInertia $page) => $page
+                ->where($prop, $texto)
+                ->where('comun.hablemos.titulo', 'Hablemos')
+                ->where('comun.pie.llamado_titulo', '¿Listo para empezar?'));
+        }
+    }
+
+    public function test_cambiar_un_texto_cambia_la_pagina(): void
+    {
+        $this->sitio()->guardar('nosotros.mision', ['parrafo2' => null]);
+        $this->sitio()->guardar('comun.pie', ['llamado_titulo' => '¿Empezamos?']);
+
+        $this->get('/nosotros')->assertInertia(fn (AssertableInertia $page) => $page
+            ->where('contenido.mision.parrafo2', null)
+            ->where('comun.pie.llamado_titulo', '¿Empezamos?'));
+    }
+
+    public function test_el_titulo_para_buscadores_sale_en_el_html_del_servidor(): void
+    {
+        $this->get('/nosotros')->assertSee('<title inertia>Nosotros — Nódico</title>', false);
+
+        $this->sitio()->guardar('buscadores.nosotros', [
+            'titulo'      => 'Quiénes somos',
+            'descripcion' => 'La comunidad de emprendedores del IYEM en Mérida.',
+        ]);
+
+        // Lo leen WhatsApp y Google sin ejecutar JavaScript: tiene que estar en el HTML.
+        $this->get('/nosotros')
+            ->assertSee('<title inertia>Quiénes somos — Nódico</title>', false)
+            ->assertSee('content="La comunidad de emprendedores del IYEM en Mérida."', false);
+    }
+
+    public function test_un_titulo_largo_para_su_hueco_se_rechaza(): void
+    {
+        $this->rechaza('inicio.hero', ['titulo' => str_repeat('palabra ', 10)], 'titulo');
+        $this->rechaza('buscadores.home', ['titulo' => str_repeat('x', 61)], 'titulo');
+    }
+
+    public function test_el_coffee_break_muestra_los_precios_del_cotizador(): void
+    {
+        config(['nodico.salones.coffee' => [['hasta_pax' => 25, 'precio' => 50], ['desde_pax' => 100, 'precio' => 40]]]);
+
+        $this->get('/eventos')->assertInertia(fn (AssertableInertia $page) => $page
+            ->where('coffee.0.precio', 50)
+            ->where('coffee.1.desde_pax', 100));
+    }
+
     public function test_cada_pagina_del_panel_se_abre(): void
     {
         $this->actingAs(User::factory()->admin()->create());

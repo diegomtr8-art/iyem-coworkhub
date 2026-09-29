@@ -201,12 +201,17 @@ class HandleInertiaRequests extends Middleware
     {
         $paginas = config('nodico.seo_paginas', []);
         $ruta = $request->route()?->getName();
+        $ruta = isset($paginas[$ruta]) ? $ruta : 'home';
 
-        $pagina = $paginas[$ruta] ?? $paginas['home'] ?? [];
+        $pagina = $paginas[$ruta] ?? [];
+
+        // Título y descripción se editan en «Página Web» → Buscadores; la imagen
+        // social sigue saliendo de config hasta que se migren las imágenes.
+        $textos = app(ContenidoDelSitio::class)->seccion("buscadores.{$ruta}");
 
         return [
-            'titulo'      => $pagina['titulo'] ?? config('nodico.sufijo_titulo'),
-            'descripcion' => $pagina['descripcion'] ?? '',
+            'titulo'      => $textos['titulo'] ?? config('nodico.sufijo_titulo'),
+            'descripcion' => $textos['descripcion'] ?? '',
             'imagen'      => $this->origenCanonico() . '/img/og/' . ($pagina['imagen'] ?? 'home') . '.jpg',
         ];
     }

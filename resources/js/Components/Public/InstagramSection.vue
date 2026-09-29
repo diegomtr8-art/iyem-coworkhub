@@ -65,7 +65,7 @@ onBeforeUnmount(() => observador?.disconnect())
           class="font-display text-display-md font-extrabold"
           :class="tono === 'oscuro' ? 'text-white' : 'text-dark'"
         >
-          Lo que pasa en Nódico
+          {{ ($page.props as any).comun.instagram.titulo }}
         </h2>
 
         <a

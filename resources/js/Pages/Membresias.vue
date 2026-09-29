@@ -9,7 +9,11 @@ import type { Plan } from '@/tipos'
 import { Check, CreditCard, ShieldCheck, Users } from 'lucide-vue-next'
 import { computed } from 'vue'
 
-const props = defineProps<{ planes?: Plan[] }>()
+const props = defineProps<{
+  planes?: Plan[]
+  /** Secciones del módulo «Página Web», ya con su respaldo. */
+  contenido: Record<string, any>
+}>()
 
 /** SEO-03 — cada membresía como Offer dentro de un catálogo. */
 const ofertas = computed(() => ({
@@ -52,16 +56,15 @@ const comoFunciona = [
       <div class="mx-auto max-w-7xl px-5 sm:px-8">
         <p class="etiqueta-tecnica mb-5 flex items-center gap-3 text-dark/70">
           <span class="h-1.5 w-1.5 rounded-full bg-dark" aria-hidden="true" />
-          Membresías
+          {{ contenido.portada.etiqueta }}
         </p>
 
         <h1 class="max-w-[16ch] font-display text-display-lg font-extrabold text-dark">
-          Precios competitivos
+          {{ contenido.portada.titulo }}
         </h1>
 
         <p class="mt-7 max-w-2xl font-body text-cuerpo-lg text-dark/80">
-          Cuatro planes para etapas distintas: desde un día suelto hasta acceso ilimitado para dos
-          personas. Todos incluyen comunidad, café y wifi.
+          {{ contenido.portada.texto }}
         </p>
       </div>
     </section>
@@ -73,8 +76,8 @@ const comoFunciona = [
 
         <div v-else class="mx-auto max-w-xl">
           <SectionHeading
-            titulo="Membresías en actualización"
-            descripcion="Estamos afinando los planes. Escríbenos y con gusto te compartimos los precios vigentes."
+            :titulo="contenido.vacio.titulo"
+            :descripcion="contenido.vacio.descripcion"
             align="center"
           />
         </div>
@@ -87,8 +90,8 @@ const comoFunciona = [
         <ScrollReveal from="left">
           <SectionHeading
             etiqueta="Siempre incluido"
-            titulo="Da igual el plan que elijas"
-            descripcion="Hay cosas que no dependen de la membresía: vienen con el simple hecho de ser parte de Nódico."
+            :titulo="contenido.incluido.titulo"
+            :descripcion="contenido.incluido.descripcion"
             tamano="lg"
           />
         </ScrollReveal>
@@ -114,7 +117,7 @@ const comoFunciona = [
         <ScrollReveal>
           <SectionHeading
             etiqueta="Cómo funciona"
-            titulo="De la compra al escritorio"
+            :titulo="contenido.pasos.titulo"
             tono="claro"
             align="center"
             tamano="lg"
@@ -141,9 +144,8 @@ const comoFunciona = [
           </div>
         </ScrollReveal>
 
-        <p class="mx-auto mt-12 max-w-2xl text-center font-body text-sm text-white/65">
-          ¿Eres emprendedor o artesano del interior del estado? Tu day-pass siempre es gratuito:
-          escríbenos y te damos acceso sin costo.
+        <p v-if="contenido.pasos.nota" class="mx-auto mt-12 max-w-2xl text-center font-body text-sm text-white/65">
+          {{ contenido.pasos.nota }}
         </p>
       </div>
     </section>

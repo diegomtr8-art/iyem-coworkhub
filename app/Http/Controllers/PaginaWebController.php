@@ -46,7 +46,7 @@ class PaginaWebController extends Controller
 
         $secciones = collect(CatalogoDelSitio::secciones())
             ->filter(fn (array $seccion) => $seccion['pagina'] === $pagina)
-            ->map(fn (array $seccion, string $clave) => $this->presentarSeccion($clave, $seccion, $datos['ruta']))
+            ->map(fn (array $seccion, string $clave) => $this->presentarSeccion($clave, $seccion, $seccion['ruta'] ?? $datos['ruta']))
             ->values();
 
         abort_if($secciones->isEmpty(), 404);

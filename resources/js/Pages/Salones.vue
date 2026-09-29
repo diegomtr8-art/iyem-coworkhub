@@ -9,7 +9,13 @@ import type { Salon } from '@/tipos'
 import { Check } from 'lucide-vue-next'
 import { computed } from 'vue'
 
-const props = defineProps<{ salones?: Salon[] }>()
+const props = defineProps<{
+  salones?: Salon[]
+  /** Secciones del módulo «Página Web», ya con su respaldo. */
+  contenido: Record<string, any>
+  /** Tramos del coffee break de config/nodico.php: los mismos que usa el cotizador. */
+  coffee: Array<{ hasta_pax?: number; desde_pax?: number; precio: number }>
+}>()
 
 /**
  * Descripción y equipamiento son idénticos en las dos salas, así que se
@@ -52,16 +58,15 @@ const ficha = (salon: Salon) => [
       <div class="mx-auto w-full max-w-7xl px-5 pb-16 pt-36 sm:px-8 lg:pb-20">
         <p class="etiqueta-tecnica mb-5 flex items-center gap-3 text-nodo-400">
           <span class="h-1.5 w-1.5 rounded-full bg-nodo-400" aria-hidden="true" />
-          Salones
+          {{ contenido.portada.etiqueta }}
         </p>
 
         <h1 class="max-w-[18ch] font-display text-display-lg font-extrabold text-white">
-          Espacios listos para tu evento
+          {{ contenido.portada.titulo }}
         </h1>
 
         <p class="mt-7 max-w-2xl font-body text-cuerpo-lg text-white/90">
-          Nuestros salones están listos para tus talleres, conferencias o reuniones. Modernos,
-          cómodos y equipados para que cada idea cobre vida.
+          {{ contenido.portada.texto }}
         </p>
 
         <Boton href="#hablemos" variante="primario" tamano="lg" class="mt-9" flecha>
@@ -138,8 +143,8 @@ const ficha = (salon: Salon) => [
 
         <ScrollReveal v-if="!salones?.length" class="mt-14">
           <SectionHeading
-            titulo="Salones en actualización"
-            descripcion="Estamos preparando la información de nuestros salones. Escríbenos y te compartimos disponibilidad y precios."
+            :titulo="contenido.vacio.titulo"
+            :descripcion="contenido.vacio.descripcion"
             align="center"
           />
         </ScrollReveal>
@@ -167,21 +172,18 @@ const ficha = (salon: Salon) => [
           <ScrollReveal from="left">
             <SectionHeading
               etiqueta="Servicio adicional"
-              titulo="Coffee break para tu evento"
+              :titulo="contenido.coffee.titulo"
               tono="claro"
               tamano="lg"
             />
           </ScrollReveal>
 
           <ScrollReveal from="right" class="grid gap-4 sm:grid-cols-2">
-            <div class="rounded-3xl bg-white/[.06] p-7 ring-1 ring-white/10">
-              <p class="etiqueta-tecnica text-white/60">Hasta 25 pax</p>
-              <p class="mt-3 font-display text-4xl font-extrabold text-nodo-400">$45</p>
-              <p class="mt-1 font-body text-sm text-white/60">MXN por persona</p>
-            </div>
-            <div class="rounded-3xl bg-white/[.06] p-7 ring-1 ring-white/10">
-              <p class="etiqueta-tecnica text-white/60">Desde 100 pax</p>
-              <p class="mt-3 font-display text-4xl font-extrabold text-nodo-400">$35</p>
+            <div v-for="tramo in coffee" :key="tramo.precio" class="rounded-3xl bg-white/[.06] p-7 ring-1 ring-white/10">
+              <p class="etiqueta-tecnica text-white/60">
+                {{ tramo.hasta_pax ? `Hasta ${tramo.hasta_pax} pax` : `Desde ${tramo.desde_pax} pax` }}
+              </p>
+              <p class="mt-3 font-display text-4xl font-extrabold text-nodo-400">${{ tramo.precio }}</p>
               <p class="mt-1 font-body text-sm text-white/60">MXN por persona</p>
             </div>
           </ScrollReveal>

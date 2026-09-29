@@ -2,9 +2,14 @@
 
 namespace App\Servicios\Sitio;
 
+use App\Servicios\Sitio\Paginas\Buscadores;
 use App\Servicios\Sitio\Paginas\Comun;
+use App\Servicios\Sitio\Paginas\Comunidad;
 use App\Servicios\Sitio\Paginas\General;
 use App\Servicios\Sitio\Paginas\Inicio;
+use App\Servicios\Sitio\Paginas\Membresias;
+use App\Servicios\Sitio\Paginas\Nosotros;
+use App\Servicios\Sitio\Paginas\Salones;
 use Closure;
 use InvalidArgumentException;
 
@@ -56,6 +61,26 @@ final class CatalogoDelSitio
                 'descripcion' => 'La portada del sitio.',
                 'ruta'        => 'home',
             ],
+            'nosotros' => [
+                'titulo'      => 'Nosotros',
+                'descripcion' => 'Quiénes somos, misión, visión y valores.',
+                'ruta'        => 'nosotros',
+            ],
+            'membresias' => [
+                'titulo'      => 'Membresías',
+                'descripcion' => 'Los textos alrededor de los planes. Los planes y precios, en Configurar → Planes.',
+                'ruta'        => 'membresias',
+            ],
+            'salones' => [
+                'titulo'      => 'Eventos',
+                'descripcion' => 'La página de salones para eventos. Las fichas de las salas, en Configurar → Espacios.',
+                'ruta'        => 'eventos',
+            ],
+            'comunidad' => [
+                'titulo'      => 'Actividades',
+                'descripcion' => 'Talleres, directorio y comunidad. Emprendedores y eventos tienen su propio módulo.',
+                'ruta'        => 'actividades',
+            ],
             'comun' => [
                 'titulo'      => 'Todas las páginas',
                 'descripcion' => 'Lo que se repite al final de cada página: aliados, «Hablemos» y pie.',
@@ -64,6 +89,11 @@ final class CatalogoDelSitio
             'general' => [
                 'titulo'      => 'Datos generales',
                 'descripcion' => 'Contacto, redes sociales y la ficha del negocio para buscadores.',
+                'ruta'        => 'home',
+            ],
+            'buscadores' => [
+                'titulo'      => 'Buscadores y enlaces compartidos',
+                'descripcion' => 'Título y descripción de cada página en Google y al compartir un enlace por WhatsApp.',
                 'ruta'        => 'home',
             ],
         ];
@@ -79,8 +109,13 @@ final class CatalogoDelSitio
     {
         return self::$secciones ??= [
             ...Inicio::secciones(),
+            ...Nosotros::secciones(),
+            ...Membresias::secciones(),
+            ...Salones::secciones(),
+            ...Comunidad::secciones(),
             ...Comun::secciones(),
             ...General::secciones(),
+            ...Buscadores::secciones(),
         ];
     }
 
