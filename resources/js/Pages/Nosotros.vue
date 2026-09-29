@@ -141,6 +141,7 @@ const valores = [
         <ScrollReveal>
           <SectionHeading
             etiqueta="Visión"
+            titulo="El referente del sureste de México"
             tono="claro"
             align="center"
             tamano="lg"

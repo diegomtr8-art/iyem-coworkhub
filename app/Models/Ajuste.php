@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Servicios\Sitio\ContenidoDelSitio;
 use Illuminate\Database\Eloquent\Model;
 
 class Ajuste extends Model
@@ -11,6 +12,19 @@ class Ajuste extends Model
     protected $fillable = ['clave', 'valor', 'descripcion'];
 
     protected $casts = ['valor' => 'array'];
+
+    /**
+     * El contenido del sitio público se lee de esta tabla con caché. Invalidarla
+     * aquí, y no en quien guarda, cubre cualquier camino de escritura: el panel,
+     * un seeder o tinker.
+     */
+    protected static function booted(): void
+    {
+        $olvidar = fn () => app(ContenidoDelSitio::class)->olvidar();
+
+        static::saved($olvidar);
+        static::deleted($olvidar);
+    }
 
     /**
      * Lee un ajuste sin reventar si la tabla aún no existe (p. ej. durante

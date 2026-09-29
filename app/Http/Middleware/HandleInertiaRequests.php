@@ -3,6 +3,8 @@
 namespace App\Http\Middleware;
 
 use App\Providers\AuthServiceProvider;
+use App\Servicios\Sitio\CatalogoDelSitio;
+use App\Servicios\Sitio\ContenidoDelSitio;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 use Inertia\Middleware;
@@ -51,19 +53,10 @@ class HandleInertiaRequests extends Middleware
             ],
 
             // Datos de contacto y redes que consumen el footer y "Hablemos".
-            'nodico' => [
-                'email'           => config('nodico.contacto_email'),
-                'telefono'        => config('nodico.telefono'),
-                'telefonoE164'    => config('nodico.telefono_e164'),
-                'direccion'       => config('nodico.direccion'),
-                'direccionCorta'  => config('nodico.direccion_corta'),
-                'mapsUrl'         => config('nodico.maps_url'),
-                'mapsEmbed'       => config('nodico.maps_embed'),
-                'horarios'        => config('nodico.horarios'),
-                'horariosDetalle' => config('nodico.horarios_detalle'),
-                'redes'           => config('nodico.redes'),
-                'instagram'       => config('nodico.instagram_handle'),
-            ],
+            // Salen del módulo «Página Web» con respaldo en config/nodico.php;
+            // la forma de la prop no cambia, porque hay componentes que ya la
+            // leen. El embed del mapa es configuración, no contenido.
+            'nodico' => $this->datosDeContacto(),
 
             // SEO-01..04 — todo lo que consume <Meta>.
             'seo' => [
@@ -72,6 +65,32 @@ class HandleInertiaRequests extends Middleware
                 'negocio'  => $this->fichaNegocio(),
                 'pagina'   => $this->metadatosDePagina($request),
             ],
+        ];
+    }
+
+    /** @return array<string, mixed> */
+    private function datosDeContacto(): array
+    {
+        $sitio = app(ContenidoDelSitio::class);
+        $contacto = $sitio->seccion('contacto');
+        $redes = $sitio->seccion('redes');
+
+        return [
+            'email'           => $contacto['email'],
+            'telefono'        => $contacto['telefono'],
+            'telefonoE164'    => CatalogoDelSitio::telefonoE164((string) $contacto['telefono']),
+            'direccion'       => $contacto['direccion'],
+            'direccionCorta'  => $contacto['direccion_corta'],
+            'mapsUrl'         => $contacto['maps_url'],
+            'mapsEmbed'       => config('nodico.maps_embed'),
+            'horarios'        => $contacto['horarios'],
+            'horariosDetalle' => $contacto['horarios_detalle'],
+            'redes'           => [
+                'instagram' => $redes['instagram'],
+                'facebook'  => $redes['facebook'],
+                'linkedin'  => $redes['linkedin'],
+            ],
+            'instagram'       => $redes['instagram_usuario'],
         ];
     }
 
@@ -186,6 +205,8 @@ class HandleInertiaRequests extends Middleware
     private function fichaNegocio(): array
     {
         $origen = $this->origenCanonico();
+        $contacto = app(ContenidoDelSitio::class)->seccion('contacto');
+        $redes = app(ContenidoDelSitio::class)->seccion('redes');
 
         return [
             '@context'    => 'https://schema.org',
@@ -195,8 +216,8 @@ class HandleInertiaRequests extends Middleware
             'url'         => $origen,
             'image'       => $origen . '/img/og/home.jpg',
             'logo'        => $origen . '/img/nodico/logo-nodico-blanco.png',
-            'email'       => config('nodico.contacto_email'),
-            'telephone'   => config('nodico.telefono_e164'),
+            'email'       => $contacto['email'],
+            'telephone'   => CatalogoDelSitio::telefonoE164((string) $contacto['telefono']),
             'address'     => [
                 '@type'           => 'PostalAddress',
                 'streetAddress'   => 'Avenida Principal, Industrias No Contaminantes 13613',
@@ -216,7 +237,7 @@ class HandleInertiaRequests extends Middleware
                 'opens'     => '09:00',
                 'closes'    => '19:00',
             ]],
-            'sameAs' => array_values(array_filter((array) config('nodico.redes'))),
+            'sameAs' => array_values(array_filter([$redes['instagram'], $redes['facebook'], $redes['linkedin']])),
         ];
     }
 

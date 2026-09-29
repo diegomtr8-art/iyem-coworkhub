@@ -7,6 +7,7 @@ use App\Mail\ContactoRecibido;
 use App\Models\Comunicado;
 use App\Models\Contacto;
 use App\Models\User;
+use App\Servicios\Sitio\ContenidoDelSitio;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
@@ -60,7 +61,7 @@ class ContactoController extends Controller
 
         // El correo no debe tumbar la petición si el SMTP falla.
         try {
-            Mail::to(config('nodico.contacto_email'))->send(new ContactoRecibido($contacto));
+            Mail::to(app(ContenidoDelSitio::class)->valor('contacto', 'email'))->send(new ContactoRecibido($contacto));
         } catch (\Throwable $e) {
             Log::error('No se pudo enviar el correo de contacto', [
                 'contacto_id' => $contacto->id,

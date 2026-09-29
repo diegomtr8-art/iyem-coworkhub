@@ -94,6 +94,7 @@ const fechaLarga = (valor: string) =>
             <div class="lg:sticky lg:top-28">
               <SectionHeading
                 etiqueta="Talleres"
+                titulo="Conoce los talleres del mes"
                 tono="claro"
                 tamano="lg"
               />
@@ -160,6 +161,8 @@ const fechaLarga = (valor: string) =>
         <ScrollReveal>
           <SectionHeading
             etiqueta="Directorio"
+            titulo="Conoce a la comunidad"
+            descripcion="Emprendedores y empresas que forman parte o han egresado de nuestros programas de incubación del IYEM."
             align="center"
             tamano="lg"
           />

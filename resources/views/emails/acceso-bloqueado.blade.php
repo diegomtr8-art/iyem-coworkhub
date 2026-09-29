@@ -36,7 +36,8 @@
     <p style="margin:0 0 28px; font-size:16px; line-height:1.6; color:#2E2D2C;">
         <strong>Si no fuiste tú</strong>, alguien está probando contraseñas contra tu cuenta.
         Cambia la tuya en cuanto puedas y escríbenos a
-        <a href="mailto:{{ config('nodico.contacto_email') }}" style="color:#2E2D2C;">{{ config('nodico.contacto_email') }}</a>.
+        @inject('sitio', 'App\Servicios\Sitio\ContenidoDelSitio')
+        <a href="mailto:{{ $sitio->valor('contacto', 'email') }}" style="color:#2E2D2C;">{{ $sitio->valor('contacto', 'email') }}</a>.
     </p>
 
 </x-correo>

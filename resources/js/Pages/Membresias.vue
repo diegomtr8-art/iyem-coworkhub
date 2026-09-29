@@ -73,6 +73,8 @@ const comoFunciona = [
 
         <div v-else class="mx-auto max-w-xl">
           <SectionHeading
+            titulo="Membresías en actualización"
+            descripcion="Estamos afinando los planes. Escríbenos y con gusto te compartimos los precios vigentes."
             align="center"
           />
         </div>
@@ -85,6 +87,8 @@ const comoFunciona = [
         <ScrollReveal from="left">
           <SectionHeading
             etiqueta="Siempre incluido"
+            titulo="Da igual el plan que elijas"
+            descripcion="Hay cosas que no dependen de la membresía: vienen con el simple hecho de ser parte de Nódico."
             tamano="lg"
           />
         </ScrollReveal>
@@ -110,6 +114,7 @@ const comoFunciona = [
         <ScrollReveal>
           <SectionHeading
             etiqueta="Cómo funciona"
+            titulo="De la compra al escritorio"
             tono="claro"
             align="center"
             tamano="lg"

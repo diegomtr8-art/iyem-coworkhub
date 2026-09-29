@@ -92,8 +92,8 @@ const espacios = [
     alt: 'Cubículo privado de Nódico con escritorio y sillas junto a una ventana',
   },
   {
-    nombre: 'Salas de juntas',
-    cantidad: '2 disponibles',
+    nombre: 'Sala de juntas',
+    cantidad: '1 disponible',
     capacidad: 'Hasta 12 personas',
     descripcion: 'Con pantalla, proyector y videoconferencia para recibir a tu equipo o a un cliente.',
     foto: '/img/nodico/espacio-salas-juntas.webp',
@@ -213,6 +213,7 @@ const fichaSalon = computed(() => {
         <ScrollReveal>
           <SectionHeading
             etiqueta="Servicios"
+            titulo="Todo incluido en tu membresía"
             align="center"
             tamano="lg"
           />
@@ -355,6 +356,7 @@ const fichaSalon = computed(() => {
         <ScrollReveal>
           <SectionHeading
             etiqueta="Beneficios"
+            titulo="Y otras cosas que solo pasan aquí"
             tono="claro"
             tamano="lg"
           />
@@ -372,6 +374,8 @@ const fichaSalon = computed(() => {
         <ScrollReveal>
           <SectionHeading
             etiqueta="Membresías"
+            titulo="Elige tu plan ideal"
+            descripcion="El éxito comienza con el entorno correcto. Cada membresía te da la flexibilidad, los recursos y la comunidad que necesitas para hacer crecer tu proyecto."
             align="center"
             tamano="lg"
           />
@@ -461,6 +465,8 @@ const fichaSalon = computed(() => {
         <ScrollReveal class="max-w-2xl">
           <SectionHeading
             etiqueta="Salones"
+            titulo="Espacios listos para tu evento"
+            descripcion="Talleres, conferencias o reuniones. Modernos, cómodos y equipados para que cada idea cobre vida."
             tono="claro"
             tamano="lg"
           />
