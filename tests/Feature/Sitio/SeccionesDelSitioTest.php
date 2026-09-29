@@ -120,6 +120,45 @@ class SeccionesDelSitioTest extends TestCase
         }
     }
 
+    /**
+     * Cada archivo que anuncia una foto fija (src y cada tamaño del srcset)
+     * tiene que existir. El srcset de la portada anunciaba un -1280 que nunca
+     * estuvo en el repositorio y la foto salía rota en pantallas anchas; la
+     * comparación de atributos no lo veía, porque no carga las imágenes.
+     */
+    public function test_todos_los_archivos_de_las_fotos_fijas_existen(): void
+    {
+        $faltan = [];
+
+        $revisar = function (array $campos, string $clave) use (&$revisar, &$faltan): void {
+            foreach ($campos as $nombre => $campo) {
+                if ($campo['tipo'] === 'lista') {
+                    $revisar($campo['campos'], $clave);
+                } elseif ($campo['tipo'] === 'imagen') {
+                    foreach (array_filter([$campo['fija'], ...($campo['fijas'] ?? [])]) as $fija) {
+                        $rutas = [$fija['src']];
+
+                        foreach (array_filter(array_map('trim', explode(',', (string) $fija['srcset']))) as $tamano) {
+                            $rutas[] = explode(' ', $tamano)[0];
+                        }
+
+                        foreach ($rutas as $ruta) {
+                            if (! file_exists(public_path($ruta))) {
+                                $faltan[] = "{$clave}.{$nombre}: {$ruta}";
+                            }
+                        }
+                    }
+                }
+            }
+        };
+
+        foreach (\App\Servicios\Sitio\CatalogoDelSitio::secciones() as $clave => $seccion) {
+            $revisar($seccion['campos'], $clave);
+        }
+
+        $this->assertSame([], array_values(array_unique($faltan)));
+    }
+
     public function test_toda_seccion_se_presenta_y_pertenece_a_una_pagina_del_panel(): void
     {
         $paginas = \App\Servicios\Sitio\CatalogoDelSitio::paginas();
