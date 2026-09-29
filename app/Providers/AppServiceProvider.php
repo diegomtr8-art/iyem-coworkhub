@@ -27,6 +27,10 @@ class AppServiceProvider extends ServiceProvider
         // path, una apuntando a su controller «pelado».
         \Laravel\Cashier\Cashier::ignoreRoutes();
 
+        // Una instancia por petición: guarda en memoria lo ya resuelto para que
+        // el middleware, el correo y la vista no lean la caché tres veces.
+        $this->app->scoped(\App\Servicios\Sitio\ContenidoDelSitio::class);
+
         // Una sola pasarela de tarjeta a la vez, elegida en el .env
         // (config/pagos.php). Se resuelve en cada petición, no al arrancar,
         // para que las pruebas puedan cambiarla con `config()`.

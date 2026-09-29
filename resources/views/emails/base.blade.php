@@ -52,9 +52,10 @@
                     <tr>
                         <td style="padding:24px 32px 32px; border-top:1px solid #E8E1D1;">
                             <p style="margin:0; font-size:13px; line-height:1.6; color:#2E2D2C; opacity:0.75;">
-                                Nódico · {{ config('nodico.direccion_corta') }}<br>
-                                <a href="mailto:{{ config('nodico.contacto_email') }}" style="color:#2E2D2C;">{{ config('nodico.contacto_email') }}</a>
-                                · {{ config('nodico.telefono') }}
+                                @inject('sitio', 'App\Servicios\Sitio\ContenidoDelSitio')
+                                Nódico · {{ $sitio->valor('contacto', 'direccion_corta') }}<br>
+                                <a href="mailto:{{ $sitio->valor('contacto', 'email') }}" style="color:#2E2D2C;">{{ $sitio->valor('contacto', 'email') }}</a>
+                                · {{ $sitio->valor('contacto', 'telefono') }}
                             </p>
                         </td>
                     </tr>
