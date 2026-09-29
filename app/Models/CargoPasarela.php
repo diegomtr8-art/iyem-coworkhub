@@ -7,7 +7,8 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
- * Un cargo con tarjeta que Nódico mandó a cobrar a la pasarela (hoy, BBVA).
+ * Un cargo con tarjeta que Nódico mandó a cobrar a la pasarela (Openpay o
+ * Ecommerce BBVA).
  *
  * Se crea **antes** de mandar a la persona al banco. Es lo que permite
  * confirmar consultando la API: solo se aceptan ids que estén aquí, de esa
@@ -30,7 +31,7 @@ class CargoPasarela extends Model
     protected $table = 'cargos_pasarela';
 
     protected $fillable = [
-        'user_id', 'plan_id', 'pasarela', 'order_id', 'transaccion_id',
+        'user_id', 'plan_id', 'pasarela', 'order_id', 'transaccion_id', 'cliente_pasarela_id',
         'importe', 'moneda', 'estado', 'estado_pasarela', 'operacion',
         'origen', 'url_pago', 'url_vuelta', 'ip_cliente',
         'tarjeta_marca', 'tarjeta_ultimos4', 'error_codigo', 'error_mensaje',

@@ -1,16 +1,17 @@
 <?php
 
-namespace App\Servicios\Pagos\Bbva;
+namespace App\Servicios\Pagos\Openpay;
 
 /**
- * Los errores de BBVA dichos en español claro y con algo que hacer.
+ * Los errores de Openpay (y de Ecommerce BBVA, que comparte los códigos)
+ * dichos en español claro y con algo que hacer.
  *
  * Códigos de https://docs.ecommercebbva.com/#c-digos-de-error. «Fondos
  * insuficientes» y «tarjeta reportada» no se le dicen igual a nadie, y ninguno
  * de los dos es «Error 3005». A una tarjeta reportada como robada no se le
  * acusa: se le pide otra forma de pago.
  */
-final class MensajesDeBbva
+final class MensajesDeOpenpay
 {
     private const OTRA_TARJETA = 'Usa otra tarjeta o paga por referencia.';
 
@@ -47,13 +48,13 @@ final class MensajesDeBbva
         return 'No pudimos iniciar el pago con tarjeta en este momento. Intenta de nuevo en unos minutos o paga por referencia.';
     }
 
-    public static function paraError(ErrorDeBbva $e): string
+    public static function paraError(ErrorDeOpenpay $e): string
     {
         return self::paraCodigo($e->codigo);
     }
 
     /**
-     * Un cargo que BBVA marcó como fallido. En el cobro con formulario del
+     * Un cargo que la pasarela marcó como fallido. En el cobro con formulario del
      * banco, lo que llega es `error_message` (texto): la documentación no
      * asegura que traiga el código numérico. Si lo trae, se traduce; si no,
      * mensaje general más lo que dijo el banco.

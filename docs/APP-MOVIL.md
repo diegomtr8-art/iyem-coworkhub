@@ -43,7 +43,7 @@ Sin la variable, la app usa `https://prueba.nodico.com.mx/api/v1`. Los builds de
 **Pagos con tarjeta:** el servidor local no tiene llaves de ninguna pasarela, así que ahí la opción «Tarjeta» sale deshabilitada. El pago con tarjeta se prueba contra el servidor de pruebas. La pasarela la decide el servidor (`PAGOS_PASARELA`, ver `docs/PAGOS-BBVA.md`):
 
 - **Stripe:** la hoja de pago nativa. Stripe avisa del cobro (webhook) a `prueba.nodico.com.mx`, no a esta computadora.
-- **BBVA:** la app abre el formulario del banco en el navegador del sistema (`expo-web-browser`, `openAuthSessionAsync`). Ahí se teclea la tarjeta y se pasa el 3-D Secure. BBVA regresa a `pago/bbva/regreso-app` en el servidor, que devuelve a la app (`nodico://regreso-banco`, o `exp://…` en Expo Go). La app pregunta por el cargo hasta que el servidor lo confirma con la API del banco. No hay SDK: el navegador del sistema, y no una WebView, porque algunos bancos bloquean el 3-D Secure dentro de vistas embebidas.
+- **BBVA:** la app abre el formulario del banco en el navegador del sistema (`expo-web-browser`, `openAuthSessionAsync`). Ahí se teclea la tarjeta y se pasa el 3-D Secure. BBVA regresa a `pago/banco/regreso-app` en el servidor, que devuelve a la app (`nodico://regreso-banco`, o `exp://…` en Expo Go). La app pregunta por el cargo hasta que el servidor lo confirma con la API del banco. No hay SDK: el navegador del sistema, y no una WebView, porque algunos bancos bloquean el 3-D Secure dentro de vistas embebidas.
 
 **4. Arrancar Expo:**
 

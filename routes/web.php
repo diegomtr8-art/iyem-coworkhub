@@ -353,9 +353,9 @@ Route::middleware(['auth', 'verified', 'portal:miembro', 'no.suspendida', 'conse
     Route::post('contratar/{plan}/tarjeta/token', [CheckoutController::class, 'cobrarConToken'])
         ->middleware('throttle:10,1')
         ->name('contratar.tarjeta.token');
-    Route::get('pago/bbva/regreso', [CheckoutController::class, 'regresoBbva'])
+    Route::get('pago/banco/regreso', [CheckoutController::class, 'regresoDelBanco'])
         ->middleware('throttle:30,1')
-        ->name('pago.bbva.regreso');
+        ->name('pago.banco.regreso');
     Route::get('pago/confirmando', [CheckoutController::class, 'confirmando'])->name('pago.confirmando');
     Route::get('pago/estado', [CheckoutController::class, 'estado'])->name('pago.estado');
 
@@ -434,6 +434,6 @@ Route::post('stripe/webhook', [\App\Http\Controllers\StripeWebhookController::cl
 // Migración a BBVA — regreso del formulario del banco cuando el pago se inició
 // en la app. Sin sesión web (la app usa token): solo consulta el cargo, que ya
 // dice de quién es y por cuánto, y devuelve a la app por `nodico://`.
-Route::get('pago/bbva/regreso-app', \App\Http\Controllers\RegresoBbvaAppController::class)
+Route::get('pago/banco/regreso-app', \App\Http\Controllers\RegresoDelBancoAppController::class)
     ->middleware('throttle:30,1')
-    ->name('pago.bbva.regreso-app');
+    ->name('pago.banco.regreso-app');

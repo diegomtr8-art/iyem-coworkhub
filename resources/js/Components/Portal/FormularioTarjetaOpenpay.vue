@@ -6,8 +6,9 @@ import { Lock } from 'lucide-vue-next'
 /**
  * La tarjeta se teclea **en Nódico**, pero nunca llega a Nódico.
  *
- * openpay.js (la librería de la plataforma sobre la que corre BBVA) lee estos
- * campos en el navegador y los manda **directo a BBVA**, que devuelve un token
+ * openpay.js (la librería de Openpay, y de Ecommerce BBVA, que corre sobre
+ * ella) lee estos campos en el navegador y los manda **directo a la
+ * pasarela**, que devuelve un token
  * de un solo uso. Al servidor de Nódico solo viajan el token y el
  * `device_session_id` del antifraude (openpay-data.js). Por eso los campos no
  * llevan `name` ni viven en un `<form>` que se envíe: no hay manera de que el
@@ -16,11 +17,17 @@ import { Lock } from 'lucide-vue-next'
  * Si el banco pide 3-D Secure, el servidor manda a la persona a la página de
  * su banco (esa autenticación es siempre del emisor) y la regresa.
  */
-const props = defineProps<{
+const props = withDefaults(defineProps<{
   planId: number
   importe: string
   openpay: { merchant_id: string; llave_publica: string; sandbox: boolean }
-}>()
+  /** Plan que se renueva: la tarjeta queda guardada en la pasarela (no en Nódico). */
+  guardaTarjeta?: boolean
+  etiqueta?: string
+}>(), {
+  guardaTarjeta: false,
+  etiqueta: 'Openpay',
+})
 
 const listo = ref(false)
 const procesando = ref(false)
@@ -219,6 +226,9 @@ const claseCampo = (conError: string | null, mono = true) => [
         {{ procesando ? 'Procesando…' : 'Pagar ' + importe }}
       </button>
 
+      <p v-if="guardaTarjeta" class="font-body text-xs text-dark/60">
+        Guardaremos tu tarjeta de forma segura en {{ etiqueta }} (no en Nódico) para cobrar cada periodo de tu membresía.
+      </p>
       <p class="font-body text-xs text-dark/60">
         Si tu banco lo pide, te llevaremos un momento a su página para confirmar el pago y regresarás aquí.
       </p>

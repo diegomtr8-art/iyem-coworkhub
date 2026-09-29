@@ -33,7 +33,12 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(
             \App\Servicios\Pagos\Contratos\PasarelaDePagos::class,
             fn ($app) => match (config('pagos.pasarela')) {
-                'bbva'  => $app->make(\App\Servicios\Pagos\PasarelaBbva::class),
+                // Openpay y Ecommerce BBVA son la misma plataforma: mismo
+                // código, distintas llaves y direcciones (config/pagos.php).
+                'openpay', 'bbva' => new \App\Servicios\Pagos\PasarelaOpenpay(
+                    config('pagos.pasarela'),
+                    $app->make(\App\Servicios\Pagos\Openpay\ConfirmadorDeCargo::class),
+                ),
                 default => $app->make(\App\Servicios\Pagos\PasarelaStripe::class),
             },
         );
