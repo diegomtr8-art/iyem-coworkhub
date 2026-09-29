@@ -3,7 +3,8 @@ import { usePage } from '@inertiajs/vue3'
 import { computed } from 'vue'
 
 const page = usePage()
-const esStaging = computed(() => Boolean(page.props.isStaging))
+// Durante una vista previa manda la franja de VistaPreviaBanner, en el mismo sitio.
+const esStaging = computed(() => Boolean(page.props.isStaging) && !page.props.vistaPrevia)
 </script>
 
 <template>

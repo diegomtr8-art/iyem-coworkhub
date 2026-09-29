@@ -5,7 +5,7 @@ import {
   LayoutDashboard, Users, CalendarDays, Clock, Receipt,
   Megaphone, BarChart3, Building2, Tag, LogOut, Menu, X, Home, UserCheck, PartyPopper,
   ScrollText, ShieldCheck, ShieldAlert, Lightbulb, Newspaper, Wallet, DoorOpen,
-  Monitor as MonitorIcon, QrCode
+  Monitor as MonitorIcon, QrCode, Globe
 } from 'lucide-vue-next'
 import { Toaster } from 'vue-sonner'
 import BuscadorMiembro from '@/Components/Panel/BuscadorMiembro.vue'
@@ -74,6 +74,7 @@ const grupos = computed(() => [
       { label: 'Temas de asesoría', href: route('temas.index'),    icon: Lightbulb,   active: 'temas*',    ver: puede('gestionar-catalogos') },
       { label: 'Contenido web', href: route('eventos.admin.index'), icon: Newspaper,  active: 'eventos*',  ver: puede('gestionar-eventos') },
       { label: 'Emprendedores', href: route('emprendedores.index'), icon: PartyPopper, active: 'emprendedores*', ver: puede('gestionar-eventos') },
+      { label: 'Página Web',   href: route('pagina-web.index'),    icon: Globe,       active: 'pagina-web*', ver: puede('gestionar-sitio') },
     ],
   },
   {

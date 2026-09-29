@@ -2,6 +2,7 @@
 import SiteFooter from '@/Components/Public/SiteFooter.vue'
 import SiteHeader from '@/Components/Public/SiteHeader.vue'
 import StagingBanner from '@/Components/Public/StagingBanner.vue'
+import VistaPreviaBanner from '@/Components/Public/VistaPreviaBanner.vue'
 import Lenis from 'lenis'
 import { onBeforeUnmount, onMounted } from 'vue'
 
@@ -61,5 +62,6 @@ onBeforeUnmount(() => {
 
     <SiteFooter />
     <StagingBanner />
+    <VistaPreviaBanner />
   </div>
 </template>
