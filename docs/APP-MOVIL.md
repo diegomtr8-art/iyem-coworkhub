@@ -82,8 +82,7 @@ Cada fila está verificada contra la documentación de Expo **SDK 57** (septiemb
 | Descargar facturas y CSV y compartirlos (`expo-file-system`, `expo-sharing`) | ✅ | ✅ | [sharing](https://docs.expo.dev/versions/latest/sdk/sharing/) — «Included in Expo Go» |
 | Datos sin conexión (`async-storage`, `netinfo`) | ✅ | ✅ | [async-storage](https://docs.expo.dev/versions/latest/sdk/async-storage/), [netinfo](https://docs.expo.dev/versions/latest/sdk/netinfo/) |
 | Copiar referencia y CLABE (`expo-clipboard`) | ✅ | ✅ | [clipboard](https://docs.expo.dev/versions/latest/sdk/clipboard/) |
-| **Pago con tarjeta — Stripe** (`@stripe/stripe-react-native`, PaymentSheet) | ✅ con tarjeta | ✅ | [stripe](https://docs.expo.dev/versions/latest/sdk/stripe/) — «Included in Expo Go». Solo con `PAGOS_PASARELA=stripe`. |
-| **Pago con tarjeta — BBVA** (formulario del banco en `expo-web-browser`) | ✅ con tarjeta | ✅ | Sin SDK nativo: el formulario lo sirve BBVA. Solo con `PAGOS_PASARELA=bbva`. Sin probar aún contra el sandbox de BBVA. |
+| **Pago con tarjeta — en la web de Nódico** (`expo-web-browser`, `openAuthSessionAsync`) | ✅ con tarjeta | ✅ | La app **no cobra con tarjeta**: abre la página de pago del portal con un enlace de un solo uso (`POST /pagos/tarjeta/enlace`) y vuelve por `nodico://regreso-banco`. Vale para cualquier pasarela (Openpay, BBVA, Stripe). |
 | Apple Pay / Google Pay | ❌ | ✅ | misma página: «Apple Pay is not supported in Expo Go», «Google Pay is not supported in Expo Go» |
 | Bloqueo con **huella** (Android) | ✅ | ✅ | [local-authentication](https://docs.expo.dev/versions/latest/sdk/local-authentication/) |
 | Bloqueo con **Face ID** (iPhone) | ⚠️ pide el código del teléfono en su lugar | ✅ | misma página: «FaceID authentication for iOS is not supported in Expo Go» |

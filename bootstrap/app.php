@@ -38,7 +38,7 @@ return Application::configure(basePath: dirname(__DIR__))
         // Fase 4.A — el webhook de Stripe no trae token CSRF (lo manda Stripe,
         // no un navegador). Su autenticidad se comprueba con la firma del
         // webhook, no con CSRF.
-        $middleware->validateCsrfTokens(except: ['stripe/webhook']);
+        $middleware->validateCsrfTokens(except: ['stripe/webhook', 'openpay/webhook']);
 
         $middleware->web(append: [
             // B — Va la primera para que las cabeceras salgan tambien en las

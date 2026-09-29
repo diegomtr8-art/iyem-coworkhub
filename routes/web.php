@@ -443,6 +443,20 @@ Route::middleware(\App\Http\Middleware\CompartirMarcaDeAcceso::class)
 Route::post('stripe/webhook', [\App\Http\Controllers\StripeWebhookController::class, 'handleWebhook'])
     ->name('cashier.webhook');
 
+// Migración a Openpay — paso 4: avisos de Openpay. Sin sesión ni CSRF (los
+// manda Openpay); HTTP Basic obligatorio y cada aviso se confirma consultando
+// a Openpay (OpenpayWebhookController).
+Route::post('openpay/webhook', \App\Http\Controllers\OpenpayWebhookController::class)
+    ->middleware('throttle:120,1')
+    ->name('openpay.webhook');
+
+// Migración a Openpay — paso 6: la app abre aquí el pago con tarjeta con un
+// enlace de un solo uso (5 min) que inicia la sesión web y lleva a pagar.
+Route::get('pago/desde-app/{token}', [\App\Http\Controllers\PagoDesdeAppController::class, 'entrar'])
+    ->middleware('throttle:20,1')
+    ->where('token', '[A-Za-z0-9]{64}')
+    ->name('pago.desde-app');
+
 // Migración a BBVA — regreso del formulario del banco cuando el pago se inició
 // en la app. Sin sesión web (la app usa token): solo consulta el cargo, que ya
 // dice de quién es y por cuánto, y devuelve a la app por `nodico://`.

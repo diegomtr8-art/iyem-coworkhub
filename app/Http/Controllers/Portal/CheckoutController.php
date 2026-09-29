@@ -57,6 +57,8 @@ class CheckoutController extends Controller
             'pasarela'     => $this->pasarela->nombre(),
             'etiqueta'     => $this->pasarela->etiqueta(),
             'volverA'      => route('portal.suscripcion'),
+            // Llegó desde la app (paso 6): se le ofrece volver a ella.
+            'volverALaApp' => $request->session()->get('pago_desde_app.vuelta'),
             'clientSecret' => null,
             'stripeKey'    => null,
             // Openpay/BBVA: `token` = la tarjeta se teclea aquí (openpay.js);
@@ -199,8 +201,10 @@ class CheckoutController extends Controller
     public function confirmando(Request $request): Response
     {
         return Inertia::render('Portal/PagoConfirmando', [
-            'cargo'    => $request->integer('cargo') ?: null,
-            'etiqueta' => $this->pasarela->etiqueta(),
+            'cargo'        => $request->integer('cargo') ?: null,
+            'etiqueta'     => $this->pasarela->etiqueta(),
+            // Llegó desde la app (paso 6): al terminar se vuelve a ella.
+            'volverALaApp' => $request->session()->get('pago_desde_app.vuelta'),
         ]);
     }
 

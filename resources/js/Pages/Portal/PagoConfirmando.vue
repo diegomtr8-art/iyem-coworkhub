@@ -14,10 +14,20 @@ const props = withDefaults(defineProps<{
   /** BBVA: el cargo que se está confirmando. Con Stripe no hay. */
   cargo?: number | null
   etiqueta?: string
+  /** Llegó desde la app (paso 6): al terminar se vuelve a ella. */
+  volverALaApp?: string | null
 }>(), {
   cargo: null,
   etiqueta: 'el banco',
+  volverALaApp: null,
 })
+
+/** La dirección de la app con el resultado, para que la app sepa qué pasó. */
+const aLaApp = (resultado: 'ok' | 'pendiente' | 'fallido') => {
+  if (!props.volverALaApp) return null
+  const separador = props.volverALaApp.includes('?') ? '&' : '?'
+  return `${props.volverALaApp}${separador}resultado=${resultado}${props.cargo ? `&cargo=${props.cargo}` : ''}`
+}
 
 type Estado = {
   activa: boolean
@@ -45,7 +55,9 @@ async function consultar() {
     if (datos.activa) {
       fase.value = 'listo'
       clearInterval(timer)
-      setTimeout(() => router.visit(route('portal.suscripcion')), 1500)
+      // Desde la app, se regresa a ella; si no, a «Mi membresía».
+      const destino = aLaApp('ok')
+      setTimeout(() => (destino ? window.location.assign(destino) : router.visit(route('portal.suscripcion'))), 1500)
       return
     }
 
@@ -98,7 +110,7 @@ onUnmounted(() => clearInterval(timer))
           <template v-else-if="fase === 'listo'">
             <CheckCircle2 :size="40" class="mb-4 text-nodo-600" aria-hidden="true" />
             <h1 class="font-display text-xl font-bold text-dark">¡Listo! Tu membresía está activa</h1>
-            <p class="mt-2 font-body text-sm text-dark/60">Te llevamos a tu membresía…</p>
+            <p class="mt-2 font-body text-sm text-dark/60">{{ volverALaApp ? 'Te regresamos a la app…' : 'Te llevamos a tu membresía…' }}</p>
           </template>
 
           <template v-else-if="fase === 'problema'">
@@ -112,7 +124,8 @@ onUnmounted(() => clearInterval(timer))
               >
                 Intentar de nuevo
               </button>
-              <a :href="route('portal.suscripcion')" class="font-body text-sm text-dark/60 underline hover:text-dark">Volver a mi membresía</a>
+              <a v-if="volverALaApp" :href="aLaApp('fallido') ?? undefined" class="font-body text-sm text-dark/60 underline hover:text-dark">Volver a la app</a>
+              <a v-else :href="route('portal.suscripcion')" class="font-body text-sm text-dark/60 underline hover:text-dark">Volver a mi membresía</a>
             </div>
           </template>
 
@@ -133,6 +146,9 @@ onUnmounted(() => clearInterval(timer))
               <button type="button" @click="empezarDeNuevo" class="font-body text-sm text-dark/60 underline hover:text-dark">
                 Empezar de nuevo
               </button>
+              <a v-if="volverALaApp" :href="aLaApp('pendiente') ?? undefined" class="font-body text-sm text-dark/60 underline hover:text-dark">
+                Volver a la app
+              </a>
             </div>
           </template>
         </div>

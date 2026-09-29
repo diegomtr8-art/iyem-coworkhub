@@ -16,6 +16,8 @@ const props = withDefaults(defineProps<{
   clientSecret: string | null
   stripeKey: string | null
   volverA: string
+  /** Llegó desde la app (paso 6): dirección para volver a ella. */
+  volverALaApp?: string | null
   /** Sin llaves de la pasarela: se ve el flujo, pero la tarjeta y el cobro
    *  están deshabilitados, con su motivo, hasta configurarlas. */
   vistaPrevia?: boolean
@@ -27,6 +29,7 @@ const props = withDefaults(defineProps<{
   openpay?: { merchant_id: string; llave_publica: string; sandbox: boolean } | null
 }>(), {
   vistaPrevia: false,
+  volverALaApp: null,
   captura: 'vpos',
   guardaTarjeta: false,
   openpay: null,
@@ -262,7 +265,8 @@ async function pagar() {
       </TarjetaPortal>
 
       <div class="mt-4 text-center">
-        <a :href="volverA" class="font-body text-sm text-dark/60 underline hover:text-dark">Volver a mi membresía</a>
+        <a v-if="volverALaApp" :href="volverALaApp" class="font-body text-sm text-dark/60 underline hover:text-dark">Volver a la app sin pagar</a>
+        <a v-else :href="volverA" class="font-body text-sm text-dark/60 underline hover:text-dark">Volver a mi membresía</a>
       </div>
     </div>
   </PortalLayout>

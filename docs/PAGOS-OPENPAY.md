@@ -19,9 +19,9 @@ quedó resuelta: se usa Openpay. Plan acordado con Diego:
 | 1 | Pasarela Openpay: cobro con la tarjeta tecleada en Nódico (openpay.js + antifraude), 3-D Secure si el antifraude lo pide | **Hecho** |
 | 2 | Cliente de Openpay por miembro; tarjeta guardada **en Openpay** en planes que se renuevan | **Hecho** |
 | 3 | Suscripciones: planes en Openpay, alta al pagar, protección contra duplicados, cancelar/reactivar | **Hecho** |
-| 4 | Webhooks: Basic Auth + consulta del cargo antes de activar; renovación y rechazo automáticos | Pendiente |
+| 4 | Webhooks: Basic Auth + consulta del cargo antes de activar; renovación y rechazo automáticos | **Hecho** (falta registrarlo en el panel de Openpay) |
 | 5 | Revisión periódica de suscripciones (renovación, impago, cancelación) | **Hecho** con el paso 3 (`nodico:sincronizar-suscripciones`, cada hora) |
-| 6 | App: la página de pago de Nódico dentro de la app | Pendiente (hoy abre el formulario de Openpay) |
+| 6 | App: la tarjeta se paga en la página web de Nódico, no en la app | **Hecho** |
 | 7 | Pruebas en sandbox, incluida una renovación | Pendiente |
 
 **Decisión de reintentos (Diego, 29-sep-2026):** 2 reintentos y la suscripción
@@ -76,6 +76,39 @@ comparten código):
 - **App:** hasta el paso 6 la app paga el periodo sin suscripción (su pago es
   el formulario de Openpay, que no guarda la tarjeta).
 - Pruebas: `tests/Feature/Pagos/SuscripcionesOpenpayTest.php`.
+
+**Webhook (paso 4)** — `OpenpayWebhookController`, `POST /openpay/webhook`:
+
+- **Dos cerrojos.** HTTP Basic obligatorio (`OPENPAY_WEBHOOK_USUARIO` y
+  `OPENPAY_WEBHOOK_CONTRASENA`, comparados con `hash_equals`; sin los dos se
+  rechaza todo) y **nunca se cree el cuerpo**: de un `charge.*` se toma el id y
+  se consulta el cargo con `ConfirmadorDeCargo`; si no es un cargo de Nódico
+  (el cobro mensual lo crea Openpay) o es `subscription.charge.failed`, se
+  sincronizan las suscripciones de ese cliente. Un aviso falso no activa nada.
+- `verification`: el código queda en la bitácora (`storage/logs/laravel.log`,
+  «código de verificación») para pegarlo en el panel.
+- Siempre 200 a un aviso auténtico, aunque falle la consulta: la red son
+  `nodico:confirmar-cargos` y `nodico:sincronizar-suscripciones`.
+- **Registro en Openpay:** Desarrolladores → Webhooks → Agregar, URL
+  `https://<dominio>/openpay/webhook`, autenticación básica con el usuario y la
+  contraseña del `.env`, eventos `charge.succeeded`, `charge.failed`,
+  `charge.cancelled`, `charge.refunded`, `subscription.charge.failed`,
+  `chargeback.created`, `chargeback.accepted`, `chargeback.rejected`. Luego
+  «Verificar» con el código de la bitácora.
+- Pruebas: `tests/Feature/Pagos/WebhookOpenpayTest.php`.
+
+**App (paso 6)** — la app **no cobra con tarjeta** (decisión de Diego,
+29-sep-2026): «Pagar con tarjeta» pide `POST /api/v1/pagos/tarjeta/enlace` y
+abre en el navegador del teléfono un enlace de un solo uso (5 minutos, huella
+sha256 en caché) que inicia la sesión web y lleva a la pantalla de pago del
+portal. Al confirmarse el pago, la página regresa a la app
+(`nodico://regreso-banco?resultado=ok|pendiente|fallido`). Así el pago con
+tarjeta de la app es exactamente el de la web, con suscripciones incluidas.
+Nota: las reglas de Apple (3.1.3(e)) no piden su sistema de compras para
+servicios físicos como una membresía de coworking; ir a la web evita cualquier
+discusión en la revisión. `@stripe/stripe-react-native` ya no se usa en ninguna
+pantalla; se puede quitar del proyecto de la app en la limpieza de Stripe.
+Pruebas: `tests/Feature/Pagos/PagoDesdeAppTest.php`.
 
 **Puesta en marcha en un servidor:** `php artisan migrate` y
 `php artisan nodico:sincronizar-planes-pasarela` (una vez, y cada que cambie el

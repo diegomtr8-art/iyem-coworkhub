@@ -57,12 +57,10 @@ class PagosController extends ControladorMovil
                     'recurrente'  => (bool) $plan->cobro_recurrente,
                     'es_el_actual' => $propia?->plan_id === $plan->id,
                     'tarjeta_disponible' => $this->tarjeta->disponiblePara($plan),
-                    // Con BBVA un plan recurrente se paga por periodo. Con
-                    // Openpay, la app todavía paga con el formulario de
-                    // Openpay (sin guardar tarjeta): la renovación automática
-                    // se contrata desde la web hasta el paso 6.
-                    'renueva_sola' => $this->tarjeta->renuevaSola($plan)
-                        && ! $this->tarjeta instanceof \App\Servicios\Pagos\PasarelaOpenpay,
+                    // Con BBVA un plan recurrente se paga por periodo. La app
+                    // paga con tarjeta en la web (paso 6), así que la
+                    // renovación automática es la misma que en el portal.
+                    'renueva_sola' => $this->tarjeta->renuevaSola($plan),
                 ];
             })->values(),
             'metodos' => [

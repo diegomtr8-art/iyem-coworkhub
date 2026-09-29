@@ -1,4 +1,3 @@
-import { handleNextAction, initPaymentSheet, initStripe, presentPaymentSheet } from '@/lib/stripe';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import * as Crypto from 'expo-crypto';
 import * as Haptics from 'expo-haptics';
@@ -15,21 +14,18 @@ import { api, ErrorApi } from '@/lib/api';
 import { claves } from '@/lib/consultas';
 import { dinero } from '@/lib/formato';
 import { useEstadoServidor } from '@/lib/ganchos';
-import type { Contratables, EstadoCobroTarjeta, OrdenPago, PreparacionTarjeta, ResultadoSuscripcion } from '@/lib/tipos';
-import { espacio, marca, radio, useTema } from '@/tema';
+import type { Contratables, EnlacePagoWeb, OrdenPago } from '@/lib/tipos';
+import { espacio, radio, useTema } from '@/tema';
 
 type Metodo = 'tarjeta' | 'transferencia' | 'efectivo';
 
-const esperar = (ms: number) => new Promise((r) => setTimeout(r, ms));
-
-/** Estados del cargo de BBVA con los que ya no hay nada que esperar. */
-const CARGO_TERMINADO = ['fallido', 'cancelado', 'abandonado', 'en_revision', 'devuelto', 'desconocido'];
-
 /**
  * Elegir cómo pagar, con la consecuencia de cada opción escrita antes de
- * pulsar. **La app nunca activa nada**: con tarjeta, lo activa el servidor
- * cuando la pasarela confirma el cobro (webhook de Stripe, o la consulta del
- * cargo a BBVA); con referencia, caja al confirmar el pago.
+ * pulsar. **La app nunca activa nada** y **nunca cobra con tarjeta dentro de
+ * la app** (decisión de Diego, 29-sep-2026): la tarjeta se paga en la página
+ * web de Nódico, en el navegador del teléfono, y la membresía la activa el
+ * servidor cuando la pasarela confirma el cobro. Con referencia, caja al
+ * confirmar el pago.
  */
 export default function Pagar() {
   const { p } = useTema();
@@ -40,12 +36,11 @@ export default function Pagar() {
   const plan = data?.planes.find((x) => String(x.id) === plan_id);
   const tarjetaDisponible =
     !!data?.metodos.tarjeta && plan?.tarjeta_disponible !== false && estado.data?.pagos?.tarjeta !== false;
-  const conBanco = (data?.metodos.pasarela ?? estado.data?.pagos?.pasarela) === 'bbva';
   const referenciaDisponible = (data?.metodos.referencia?.length ?? 0) > 0 && estado.data?.pagos?.referencia !== false;
 
   const [metodo, setMetodo] = useState<Metodo>(tarjetaDisponible ? 'tarjeta' : 'transferencia');
   const [factura, setFactura] = useState(false);
-  const [fase, setFase] = useState<'elegir' | 'procesando' | 'confirmando' | 'listo' | 'pendiente'>('elegir');
+  const [fase, setFase] = useState<'elegir' | 'procesando' | 'listo' | 'pendiente'>('elegir');
   const [error, setError] = useState<string | null>(null);
   const [faltanFiscales, setFaltanFiscales] = useState(false);
   const clave = useRef(Crypto.randomUUID());
@@ -70,157 +65,48 @@ export default function Pagar() {
   };
 
   /**
-   * Tarjeta. Según la pasarela del servidor:
+   * Tarjeta: en la página de pago de Nódico, en el navegador del teléfono.
    *
-   * - **BBVA** (`modo: redireccion`): se abre el formulario del banco en el
-   *   navegador del sistema. Ahí se teclea la tarjeta y se pasa el 3-D Secure;
-   *   BBVA regresa a Nódico, que devuelve a la app (`vuelta`). Luego se pregunta
-   *   por el cargo hasta que el servidor lo confirme con la API del banco.
-   * - **Stripe**: la hoja de pago nativa (ver `pagarConStripe`).
+   * La app pide un enlace de un solo uso (vence en 5 minutos) que abre la
+   * sesión web sin volver a pedir la contraseña y lleva directo a pagar este
+   * plan. Al terminar, la página regresa a la app (`vuelta`) diciendo cómo
+   * salió. Si la persona cierra el navegador antes, no pasa nada: si pagó, el
+   * servidor lo confirma solo.
    */
   const pagarConTarjeta = async () => {
     setFase('procesando');
     setError(null);
     try {
-      const prep = await api<PreparacionTarjeta>('/pagos/tarjeta', {
+      const vuelta = Linking.createURL('regreso-banco');
+      const enlace = await api<EnlacePagoWeb>('/pagos/tarjeta/enlace', {
         metodo: 'POST',
-        idempotencia: clave.current,
-        // A dónde vuelve la app desde el banco. Con Stripe se ignora.
-        cuerpo: { plan_id: Number(plan_id), vuelta: Linking.createURL('regreso-banco') },
+        cuerpo: { plan_id: Number(plan_id), vuelta },
       });
 
-      if (prep.modo === 'redireccion') {
-        await pagarEnElBanco(prep.url, prep.cargo_id);
-        return;
-      }
+      const resultado = await WebBrowser.openAuthSessionAsync(enlace.url, vuelta);
+      const como = resultado.type === 'success' ? Linking.parse(resultado.url).queryParams?.resultado : null;
 
-      await pagarConStripe(prep);
+      void cliente.invalidateQueries();
+
+      if (como === 'ok') {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+        setFase('listo');
+      } else if (como === 'fallido') {
+        setFase('elegir');
+        setError('No se completó el pago. Puedes intentarlo otra vez o pagar por referencia.');
+      } else if (como === 'pendiente') {
+        setFase('pendiente');
+      } else {
+        // Cerró el navegador sin terminar (o antes de que la página regresara).
+        setFase('elegir');
+      }
     } catch (e) {
       setFase('elegir');
-      setError(e instanceof ErrorApi ? e.primero : e instanceof Error ? e.message : 'No pudimos procesar el pago.');
-      clave.current = Crypto.randomUUID();
+      setError(e instanceof ErrorApi ? e.primero : 'No pudimos abrir el pago. Revisa tu conexión e inténtalo de nuevo.');
     }
   };
 
-  /**
-   * BBVA. Cerrar el navegador a medias no es un error: el pago puede haberse
-   * autorizado igual. Se pregunta al servidor y él decide con lo que diga el
-   * banco. Si sigue pendiente, se dice claro que no hace falta pagar otra vez.
-   */
-  const pagarEnElBanco = async (url: string, cargoId: number) => {
-    await WebBrowser.openAuthSessionAsync(url, Linking.createURL('regreso-banco'));
-
-    setFase('confirmando');
-    let ultimo: EstadoCobroTarjeta | null = null;
-    for (let i = 0; i < 12; i++) {
-      try {
-        ultimo = await api<EstadoCobroTarjeta>(`/pagos/tarjeta/estado?cargo_id=${cargoId}`);
-        if (ultimo.activa || (ultimo.estado && CARGO_TERMINADO.includes(ultimo.estado))) break;
-      } catch {
-        // Se sigue esperando.
-      }
-      await esperar(2500);
-    }
-
-    clave.current = Crypto.randomUUID();
-    if (ultimo?.activa) {
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
-      void cliente.invalidateQueries();
-      setFase('listo');
-    } else if (ultimo?.estado && CARGO_TERMINADO.includes(ultimo.estado)) {
-      setFase('elegir');
-      setError(ultimo.mensaje ?? 'No se completó el pago.');
-    } else {
-      setFase('pendiente');
-    }
-  };
-
-  /**
-   * Stripe, con la hoja de pago nativa. Dos caminos, según el plan:
-   *
-   * - **Recurrente** (`tipo_intent: setup`): la hoja guarda la tarjeta con un
-   *   SetupIntent; luego el servidor crea la suscripción con ella. Si el banco
-   *   pide 3-D Secure, el servidor devuelve `requiere_accion` y la app lo
-   *   resuelve con `handleNextAction`.
-   * - **Pago único** (`tipo_intent: payment`): la hoja confirma el PaymentIntent.
-   *
-   * En los dos casos, después se espera a que el webhook active la membresía.
-   */
-  const pagarConStripe = async (prep: Extract<PreparacionTarjeta, { tipo_intent: string }>) => {
-    const retorno = Linking.createURL('stripe-redirect');
-    await initStripe({
-      publishableKey: prep.llave_publica || estado.data?.pagos?.llave_publica || '',
-      urlScheme: retorno,
-      merchantIdentifier: 'merchant.mx.com.nodico',
-    });
-
-    const esSetup = prep.tipo_intent === 'setup' || prep.client_secret.startsWith('seti_');
-    const base = {
-      merchantDisplayName: prep.nombre_comercio || 'Nódico',
-      returnURL: retorno,
-      appearance: {
-        colors: {
-          primary: marca.amarillo,
-          background: p.superficie,
-          componentBackground: p.fondo,
-          primaryText: p.texto,
-          secondaryText: p.textoSuave,
-          placeholderText: p.textoTenue,
-          componentText: p.texto,
-          icon: p.textoSuave,
-        },
-        primaryButton: { colors: { background: marca.amarillo, text: marca.tinta } },
-        shapes: { borderRadius: 14 },
-      },
-    };
-    const init = await initPaymentSheet(
-      esSetup ? { ...base, setupIntentClientSecret: prep.client_secret } : { ...base, paymentIntentClientSecret: prep.client_secret },
-    );
-    if (init.error) throw new Error(init.error.message);
-
-    const res = await presentPaymentSheet();
-    if (res.error) {
-      setFase('elegir');
-      // Cerrar la hoja no es un error.
-      if (res.error.code !== 'Canceled') setError(res.error.message);
-      clave.current = Crypto.randomUUID();
-      return;
-    }
-
-    if (esSetup) {
-      // «seti_XXX_secret_YYY» → el id del SetupIntent es lo de antes de «_secret_».
-      const setupIntentId = prep.client_secret.split('_secret_')[0];
-      const sus = await api<ResultadoSuscripcion>('/pagos/tarjeta/suscribir', {
-        metodo: 'POST',
-        // Clave fija por SetupIntent: si la red se corta y se reintenta con la
-        // misma tarjeta guardada, el servidor devuelve la misma respuesta en
-        // vez de crear una segunda suscripción.
-        idempotencia: `suscribir-${setupIntentId}`,
-        cuerpo: { plan_id: Number(plan_id), setup_intent_id: setupIntentId },
-      });
-      if (sus.requiere_accion && sus.client_secret) {
-        const accion = await handleNextAction(sus.client_secret, retorno);
-        if (accion.error) throw new Error(accion.error.message);
-      }
-    }
-
-    // El cobro salió; ahora se espera a que el webhook active la membresía.
-    setFase('confirmando');
-    for (let i = 0; i < 20; i++) {
-      await esperar(2500);
-      try {
-        const r = await api<{ activa: boolean }>('/pagos/tarjeta/estado');
-        if (r.activa) break;
-      } catch {
-        // Se sigue esperando.
-      }
-    }
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
-    void cliente.invalidateQueries();
-    setFase('listo');
-  };
-
-  if (fase === 'confirmando' || fase === 'listo' || fase === 'pendiente') {
+  if (fase === 'listo' || fase === 'pendiente') {
     return (
       <View style={[estilos.hoja, { alignItems: 'center', justifyContent: 'center', flex: 1 }]}>
         <View style={[estilos.circulo, { backgroundColor: fase === 'listo' ? p.acento : p.superficieAlta }]}>
@@ -232,18 +118,14 @@ export default function Pagar() {
           />
         </View>
         <Texto variante="titulo" centrado>
-          {fase === 'listo' ? '¡Bienvenido!' : fase === 'pendiente' ? 'Tu pago sigue pendiente' : 'Confirmando tu pago…'}
+          {fase === 'listo' ? '¡Bienvenido!' : 'Tu pago sigue pendiente'}
         </Texto>
         <Texto tono="suave" centrado>
           {fase === 'listo'
             ? 'Tu pago quedó registrado. Si tu membresía aún no aparece activa, se actualizará en unos minutos.'
-            : fase === 'pendiente'
-              ? 'Tu banco todavía no confirma el pago. Si ya lo autorizaste, en unos minutos se activa solo: no hace falta pagar otra vez.'
-              : 'Tu banco nos está confirmando el cobro. No cierres esta pantalla.'}
+            : 'Tu banco todavía no confirma el pago. Si ya lo autorizaste, en unos minutos se activa solo: no hace falta pagar otra vez.'}
         </Texto>
-        {fase === 'listo' || fase === 'pendiente' ? (
-          <Boton titulo="Ir al inicio" alPulsar={() => router.dismissTo('/')} estilo={{ alignSelf: 'stretch', marginTop: espacio.xl }} />
-        ) : null}
+        <Boton titulo="Ir al inicio" alPulsar={() => router.dismissTo('/')} estilo={{ alignSelf: 'stretch', marginTop: espacio.xl }} />
       </View>
     );
   }
@@ -269,9 +151,11 @@ export default function Pagar() {
           titulo="Tarjeta"
           detalle={
             tarjetaDisponible
-              ? plan?.recurrente && plan?.renueva_sola === false
-                ? 'Pagas este periodo; te avisamos antes de que venza. Sin factura.'
-                : 'Se activa al instante. Sin factura.'
+              ? plan?.recurrente && plan?.renueva_sola
+                ? 'Pagas en nuestra página web y se renueva sola cada mes. Sin factura.'
+                : plan?.recurrente
+                  ? 'Pagas este periodo en nuestra página web; te avisamos antes de que venza. Sin factura.'
+                  : 'Pagas en nuestra página web y se activa al instante. Sin factura.'
               : 'El pago con tarjeta no está disponible por ahora. Paga con transferencia o en caja.'
           }
           activa={metodo === 'tarjeta'}
@@ -322,15 +206,15 @@ export default function Pagar() {
       ) : null}
 
       <Boton
-        titulo={metodo === 'tarjeta' ? `Pagar ${dinero(plan?.precio)}` : 'Generar referencia'}
+        titulo={metodo === 'tarjeta' ? `Pagar ${dinero(plan?.precio)} en la web` : 'Generar referencia'}
         ocupado={fase === 'procesando'}
         deshabilitado={!plan}
         alPulsar={metodo === 'tarjeta' ? pagarConTarjeta : pagarConReferencia}
       />
       <Texto variante="pequeno" tono="tenue" centrado>
-        {conBanco
-          ? 'Pagas en el formulario seguro de BBVA; tu tarjeta nunca pasa por Nódico.'
-          : 'Los datos de tu tarjeta van directo a Stripe; nunca pasan por Nódico.'}
+        {metodo === 'tarjeta'
+          ? 'Se abre la página de pago de Nódico. Al terminar, vuelves aquí.'
+          : 'Te mandamos la referencia por correo.'}
       </Texto>
     </ScrollView>
   );

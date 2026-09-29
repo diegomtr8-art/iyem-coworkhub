@@ -68,6 +68,11 @@ return [
         // suscripción al agotarlos (decisión de Diego, 29-sep-2026).
         'reintentos'         => 2,
         'estado_tras_reintentos' => 'unpaid',
+        // Webhook: Openpay no firma sus avisos; solo manda HTTP Basic con
+        // estos datos (se registran con el webhook en Openpay). Sin los dos,
+        // el endpoint rechaza todo.
+        'webhook_usuario'    => env('OPENPAY_WEBHOOK_USUARIO'),
+        'webhook_contrasena' => env('OPENPAY_WEBHOOK_CONTRASENA'),
     ]),
 
     'bbva' => $plataforma('BBVA', [

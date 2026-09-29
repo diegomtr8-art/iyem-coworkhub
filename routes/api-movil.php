@@ -103,6 +103,10 @@ Route::middleware('movil.version')->group(function () {
         Route::post('pagos/tarjeta', [PagosController::class, 'prepararTarjeta'])->middleware('movil.idempotente')->name('pagos.tarjeta');
         Route::post('pagos/tarjeta/suscribir', [PagosController::class, 'suscribir'])->middleware('movil.idempotente')->name('pagos.tarjeta.suscribir');
         Route::get('pagos/tarjeta/estado', [PagosController::class, 'estadoTarjeta'])->name('pagos.tarjeta.estado');
+        // Paso 6: la tarjeta se paga en la web de Nódico, no dentro de la app.
+        Route::post('pagos/tarjeta/enlace', [\App\Http\Controllers\PagoDesdeAppController::class, 'enlace'])
+            ->middleware('throttle:10,1')
+            ->name('pagos.tarjeta.enlace');
         Route::post('pagos/referencia', [PagosController::class, 'referencia'])->middleware('movil.idempotente')->name('pagos.referencia');
         Route::get('pagos', [PagosController::class, 'index'])->name('pagos');
         Route::get('pagos/{id}', [PagosController::class, 'mostrar'])->whereNumber('id')->name('pagos.mostrar');
