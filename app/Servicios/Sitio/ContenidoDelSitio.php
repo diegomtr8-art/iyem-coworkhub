@@ -139,11 +139,15 @@ class ContenidoDelSitio
     public function guardar(string $clave, array $valor, ?User $autor = null): bool
     {
         $datos = $this->validar($clave, $valor);
+        $respaldo = Campo::limpiar(CatalogoDelSitio::campos($clave), $this->resolver($clave));
 
-        return DB::transaction(function () use ($clave, $datos, $autor) {
+        return DB::transaction(function () use ($clave, $datos, $autor, $respaldo) {
             $anterior = Ajuste::where('clave', $clave)->lockForUpdate()->first();
 
-            if ($anterior && $anterior->valor === $datos) {
+            // Igual a lo que ya se sirve —la fila o, si no hay, el respaldo— no es
+            // un cambio: ni versión, ni bitácora, ni la sección marcada «editada»
+            // por pulsar «Guardar» sin tocar nada.
+            if (($anterior?->valor ?? $respaldo) == $datos) {
                 return false;
             }
 

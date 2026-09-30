@@ -165,11 +165,11 @@ class ContenidoDelSitioTest extends TestCase
 
     public function test_guardar_descarta_campos_que_no_estan_en_el_catalogo(): void
     {
-        $this->sitio()->guardar('redes', ['instagram_usuario' => 'nodicomx', 'inyectado' => '<b>hola</b>']);
+        $this->sitio()->guardar('redes', ['instagram_usuario' => 'otra.cuenta', 'inyectado' => '<b>hola</b>']);
 
         $guardado = Ajuste::where('clave', 'redes')->value('valor');
 
-        $this->assertSame('nodicomx', $guardado['instagram_usuario']);
+        $this->assertSame('otra.cuenta', $guardado['instagram_usuario']);
         $this->assertArrayNotHasKey('inyectado', $guardado);
     }
 

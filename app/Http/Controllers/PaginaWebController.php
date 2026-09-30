@@ -2,7 +2,10 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\AccionOperativa;
+use App\Models\EntradaBitacora;
 use App\Servicios\Sitio\CatalogoDelSitio;
+use App\Servicios\Sitio\ComprobadorDeEnlaces;
 use App\Servicios\Sitio\ContenidoDelSitio;
 use App\Servicios\Sitio\FormatosDeImagen;
 use App\Servicios\Sitio\ProcesadorDeImagenes;
@@ -60,33 +63,126 @@ class PaginaWebController extends Controller
         ]);
     }
 
-    public function guardar(Request $request, string $seccion): RedirectResponse
+    public function guardar(Request $request, string $seccion, ComprobadorDeEnlaces $enlaces): RedirectResponse
     {
         CatalogoDelSitio::existe($seccion) || abort(404);
 
-        $cambio = $this->sitio->guardar($seccion, $this->valores($request, $seccion), $request->user());
+        $antes = $this->sitio->seccion($seccion);
 
-        return back()->with($cambio ? 'success' : 'info', $cambio
-            ? '«' . CatalogoDelSitio::secciones()[$seccion]['titulo'] . '» guardado. Ya se ve en el sitio.'
-            : 'No había cambios que guardar.');
+        if (! $this->sitio->guardar($seccion, $this->valores($request, $seccion), $request->user())) {
+            return back()->with('info', 'No había cambios que guardar.');
+        }
+
+        $despues = $this->sitio->seccion($seccion);
+        $this->registrar(AccionOperativa::EdicionSitio, $seccion, $antes, $despues, $request);
+
+        $titulo = CatalogoDelSitio::secciones()[$seccion]['titulo'];
+        $rotos = $this->enlacesQueNoResponden($seccion, $antes, $despues, $enlaces);
+
+        // Se guarda igual: un sitio caído un rato no debe impedir el cambio. Pero
+        // quien lo puso tiene que saberlo, porque en el pie está roto para todos.
+        if ($rotos) {
+            return back()->with('warning', "«{$titulo}» guardado, pero estos enlaces no respondieron: "
+                . implode(', ', $rotos) . '. Revisa que estén bien escritos.');
+        }
+
+        return back()->with('success', "«{$titulo}» guardado. Ya se ve en el sitio.");
     }
 
-    public function deshacer(string $seccion): RedirectResponse
+    public function deshacer(Request $request, string $seccion): RedirectResponse
     {
         CatalogoDelSitio::existe($seccion) || abort(404);
 
-        return $this->sitio->deshacer($seccion)
-            ? back()->with('success', 'Cambio deshecho. El sitio ya muestra la versión anterior.')
-            : back()->with('info', 'No hay cambios anteriores que deshacer.');
+        $antes = $this->sitio->seccion($seccion);
+
+        if (! $this->sitio->deshacer($seccion)) {
+            return back()->with('info', 'No hay cambios anteriores que deshacer.');
+        }
+
+        $this->registrar(AccionOperativa::DeshacerSitio, $seccion, $antes, $this->sitio->seccion($seccion), $request);
+
+        return back()->with('success', 'Cambio deshecho. El sitio ya muestra la versión anterior.');
     }
 
     public function restablecer(Request $request, string $seccion): RedirectResponse
     {
         CatalogoDelSitio::existe($seccion) || abort(404);
 
-        return $this->sitio->restablecer($seccion, $request->user())
-            ? back()->with('success', 'Se volvió al texto original. Puedes deshacerlo si fue un error.')
-            : back()->with('info', 'Esta sección ya tiene el texto original.');
+        $antes = $this->sitio->seccion($seccion);
+
+        if (! $this->sitio->restablecer($seccion, $request->user())) {
+            return back()->with('info', 'Esta sección ya tiene el texto original.');
+        }
+
+        $this->registrar(AccionOperativa::RestablecerSitio, $seccion, $antes, $this->sitio->seccion($seccion), $request);
+
+        return back()->with('success', 'Se volvió al texto original. Puedes deshacerlo si fue un error.');
+    }
+
+    /**
+     * Una línea en la bitácora por cambio: quién, qué sección, qué campos, y el
+     * valor anterior y el nuevo de cada uno. Es lo que permite contestar
+     * «¿quién cambió el teléfono del pie y cuándo?» sin adivinar.
+     *
+     * @param  array<string, mixed>  $antes
+     * @param  array<string, mixed>  $despues
+     */
+    private function registrar(AccionOperativa $accion, string $seccion, array $antes, array $despues, Request $request): void
+    {
+        $campos = CatalogoDelSitio::campos($seccion);
+        $cambios = [];
+
+        foreach ($campos as $nombre => $campo) {
+            if (($antes[$nombre] ?? null) !== ($despues[$nombre] ?? null)) {
+                $cambios[$nombre] = [
+                    'antes'   => $this->resumir($antes[$nombre] ?? null),
+                    'despues' => $this->resumir($despues[$nombre] ?? null),
+                ];
+            }
+        }
+
+        $nombres = implode(', ', array_map(fn (string $n) => mb_strtolower($campos[$n]['etiqueta']), array_keys($cambios)));
+        $titulo = CatalogoDelSitio::secciones()[$seccion]['titulo'];
+        $pagina = CatalogoDelSitio::paginas()[CatalogoDelSitio::secciones()[$seccion]['pagina']]['titulo'];
+
+        EntradaBitacora::registrar(
+            $accion,
+            "{$pagina} · «{$titulo}»" . ($nombres !== '' ? ": {$nombres}" : ''),
+            $request->user(),
+            contexto: ['seccion' => $seccion, 'cambios' => $cambios],
+        );
+    }
+
+    /** Lo bastante para reconocer el valor, sin llenar la bitácora con listas enteras. */
+    private function resumir(mixed $valor): mixed
+    {
+        if (is_array($valor)) {
+            $valor = json_encode($valor, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        }
+
+        return is_string($valor) ? mb_strimwidth($valor, 0, 500, '…') : $valor;
+    }
+
+    /**
+     * Los enlaces de la sección que cambiaron y no responden, por su etiqueta.
+     *
+     * @param  array<string, mixed>  $antes
+     * @param  array<string, mixed>  $despues
+     * @return array<int, string>
+     */
+    private function enlacesQueNoResponden(string $seccion, array $antes, array $despues, ComprobadorDeEnlaces $enlaces): array
+    {
+        $rotos = [];
+
+        foreach (CatalogoDelSitio::campos($seccion) as $nombre => $campo) {
+            $url = $despues[$nombre] ?? null;
+
+            if ($campo['tipo'] === 'url' && is_string($url) && $url !== '' && $url !== ($antes[$nombre] ?? null) && ! $enlaces->responde($url)) {
+                $rotos[] = "«{$campo['etiqueta']}»";
+            }
+        }
+
+        return $rotos;
     }
 
     /**

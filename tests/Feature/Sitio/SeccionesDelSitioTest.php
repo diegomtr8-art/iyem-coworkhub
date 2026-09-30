@@ -159,6 +159,20 @@ class SeccionesDelSitioTest extends TestCase
         $this->assertSame([], array_values(array_unique($faltan)));
     }
 
+    public function test_la_portada_precarga_la_misma_foto_que_pinta(): void
+    {
+        $this->get('/')
+            ->assertSee('imagesrcset="/img/nodico/hero-inicio-640.webp 640w, /img/nodico/hero-inicio.webp 1079w"', false)
+            ->assertDontSee('hero-inicio-1280', false);
+
+        \Illuminate\Support\Facades\Storage::fake('medios', ['url' => '/medios']);
+        $foto = app(\App\Servicios\Sitio\ProcesadorDeImagenes::class)
+            ->subir(\Illuminate\Http\UploadedFile::fake()->image('portada.jpg', 1200, 2200), 'retrato');
+        $this->sitio()->guardar('inicio.hero', ['imagen' => ['id' => $foto->id, 'alt' => 'La barra del café']]);
+
+        $this->get('/')->assertSee('href="/medios/sitio/' . $foto->carpeta . '/1080.webp"', false);
+    }
+
     public function test_toda_seccion_se_presenta_y_pertenece_a_una_pagina_del_panel(): void
     {
         $paginas = \App\Servicios\Sitio\CatalogoDelSitio::paginas();
@@ -355,7 +369,8 @@ class SeccionesDelSitioTest extends TestCase
     {
         $this->rechaza('inicio.daypass', ['imagen' => ['id' => null, 'alt' => '  ']], 'imagen');
 
-        $this->sitio()->guardar('nosotros.vision', ['imagen' => ['id' => null, 'alt' => '']]);
+        // La decorativa se guarda sin descripción (con otro cambio, para que lo sea).
+        $this->sitio()->guardar('nosotros.vision', ['titulo' => 'Hacia dónde vamos', 'imagen' => ['id' => null, 'alt' => '']]);
         $this->assertTrue($this->sitio()->personalizada('nosotros.vision'));
     }
 
