@@ -101,6 +101,11 @@ class ReservasController extends Controller
             // El horizonte de reserva, ya resuelto: el front no tiene que saber
             // sumar los 90 días ni recortar por la vigencia de la membresía.
             'horizonte'   => $suscripcion ? $this->reservas->horizonte($suscripcion) : null,
+
+            // Vencida o a punto: la pantalla lo dice y ofrece renovar, en vez
+            // de un calendario sin días.
+            'vigencia'    => $suscripcion ? $this->reservas->vigencia($suscripcion) : null,
+            'renovarA'    => $suscripcion?->plan ? route('portal.contratar', $suscripcion->plan) : route('membresias'),
         ]);
     }
 
@@ -119,14 +124,32 @@ class ReservasController extends Controller
 
         $espacio = Espacio::findOrFail($datos['espacio_id']);
 
+        // Cada «no» lleva su porqué: la pantalla lo enseña tal cual. Un 403 o
+        // un 404 sin texto dejaba el calendario vacío sin explicación.
         if (! $espacio->esReservablePorMiembro()) {
-            abort(404);
+            return response()->json(['motivo' => 'no_reservable', 'mensaje' => 'Este espacio no se reserva en línea. Pregunta en recepción.'], 404);
         }
 
         $suscripcion = $this->membresias->vigente($request->user());
 
-        if (! $suscripcion || ! $espacio->bolsa()?->incluidaEn($suscripcion->plan)) {
-            abort(403);
+        if (! $suscripcion) {
+            return response()->json(['motivo' => 'sin_membresia', 'mensaje' => 'Necesitas una membresía activa para reservar.'], 403);
+        }
+
+        if (! $espacio->bolsa()?->incluidaEn($suscripcion->plan)) {
+            return response()->json([
+                'motivo'  => 'plan_no_incluye',
+                'mensaje' => "Tu plan {$suscripcion->plan?->nombre} no incluye {$espacio->bolsa()?->etiqueta()}.",
+            ], 403);
+        }
+
+        // «Activa» no basta: nada cambia el estatus al pasar la fecha de fin, y
+        // una vencida dejaba el rango del mes al revés (hoy > su último día).
+        if ($suscripcion->vencida()) {
+            return response()->json([
+                'motivo'  => 'membresia_vencida',
+                'mensaje' => $this->reservas->vigencia($suscripcion)['mensaje'],
+            ], 409);
         }
 
         $dia = CarbonImmutable::parse($datos['fecha']);

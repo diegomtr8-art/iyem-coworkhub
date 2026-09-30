@@ -56,6 +56,10 @@ class AsesoriasController extends Controller
                 ->first(['id', 'nombre', 'precio', 'periodo_label', 'stripe_url']),
 
             'vigenciaHasta' => $suscripcion?->fecha_fin->toDateString(),
+            // Vencida: el selector de fecha quedaba con el mínimo (hoy) después
+            // del máximo (su fin) y no dejaba elegir nada, sin explicación.
+            'vencida'       => (bool) $suscripcion?->vencida(),
+            'renovarA'      => $suscripcion?->plan ? route('portal.contratar', $suscripcion->plan) : route('membresias'),
 
             // D.3 — la oferta: temas por categoría, cada uno con los asesores que
             // lo imparten. Solo si el plan incluye asesoría, para no consultar de

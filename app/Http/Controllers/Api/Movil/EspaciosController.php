@@ -97,6 +97,12 @@ class EspaciosController extends ControladorMovil
             throw new ErrorDeApi(403, 'sin_membresia', 'Necesitas una membresía activa para reservar.');
         }
 
+        // «Activa» no basta: una vencida dejaba la disponibilidad vacía.
+        if ($suscripcion->vencida()) {
+            throw new ErrorDeApi(409, 'membresia_vencida', 'Tu membresía venció el '
+                . $suscripcion->fecha_fin->translatedFormat('j \d\e F') . '. Renuévala para volver a reservar.');
+        }
+
         return $suscripcion;
     }
 

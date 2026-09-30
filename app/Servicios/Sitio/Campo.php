@@ -120,7 +120,7 @@ final class Campo
      * @param  array<string, array>  $campos
      * @param  array<int, array<string, mixed>>  $respaldo
      */
-    public static function lista(string $etiqueta, array $campos, int $minimo, int $maximo, array $respaldo, ?string $ayuda = null, ?string $elemento = null, int $multiplo = 1): array
+    public static function lista(string $etiqueta, array $campos, int $minimo, int $maximo, array|Closure $respaldo, ?string $ayuda = null, ?string $elemento = null, int $multiplo = 1): array
     {
         $reglas = ['required', 'array', "min:{$minimo}", "max:{$maximo}"];
 
@@ -143,7 +143,9 @@ final class Campo
             'maximo'   => $maximo,
             'multiplo' => $multiplo,
             'reglas'   => $reglas,
-            'respaldo' => fn () => $respaldo,
+            // Un Closure se evalúa en cada visita: para respaldos que dependen
+            // de la configuración (p. ej. qué pasarela cobra).
+            'respaldo' => $respaldo instanceof Closure ? $respaldo : fn () => $respaldo,
         ];
     }
 

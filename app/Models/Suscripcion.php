@@ -102,6 +102,44 @@ class Suscripcion extends Model
         return $candidato;
     }
 
+    /**
+     * ¿La membresía cubre ese día? Es decir, no ha pasado su último día
+     * pagado (`fecha_fin`), contado en el calendario de Mérida como el resto
+     * de las reservas.
+     *
+     * Es la única regla para no consumir horas de una membresía vencida: el
+     * estatus «Activa» no basta, porque nada lo cambia cuando pasa la fecha de
+     * fin (solo cuando se contrata otra). Recepción reservaba, confirmaba
+     * asesorías y ajustaba horas sobre membresías vencidas, y el libro los
+     * guardaba en un ciclo que ya no existe (revisión del 29-sep-2026).
+     */
+    public function cubreElDia(\DateTimeInterface|string $dia): bool
+    {
+        $zona = Reserva::zonaDelCalendario();
+        $fecha = is_string($dia) ? $dia : $dia->format('Y-m-d');
+
+        return CarbonImmutable::parse($fecha, $zona)->startOfDay()
+            ->lte(CarbonImmutable::parse($this->fecha_fin->toDateString(), $zona)->startOfDay());
+    }
+
+    /** Ya pasó su último día pagado. */
+    public function vencida(): bool
+    {
+        return ! $this->cubreElDia(Reserva::hoy());
+    }
+
+    /**
+     * El día con el que el libro de horas mide esta membresía: hoy, o, si ya
+     * venció, su último día pagado. Así una membresía vencida se evalúa en su
+     * último ciclo real y no en uno que empieza después de su fecha de fin.
+     */
+    public function diaDeReferencia(): CarbonImmutable
+    {
+        return $this->vencida()
+            ? CarbonImmutable::parse($this->fecha_fin->toDateString())
+            : CarbonImmutable::today();
+    }
+
     /** Último día del ciclo vigente: la víspera del siguiente aniversario. */
     public function cicloFin(?CarbonImmutable $en = null): CarbonImmutable
     {

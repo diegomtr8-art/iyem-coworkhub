@@ -2,6 +2,7 @@
 
 namespace App\Servicios\Sitio\Paginas;
 
+use App\Servicios\Pagos\Contratos\PasarelaDePagos;
 use App\Servicios\Sitio\Campo;
 
 /** `/membresias` (`Membresias.vue`). Los planes en sí se editan en Configurar → Planes. */
@@ -63,11 +64,14 @@ final class Membresias
                     'elementos' => Campo::lista('Pasos', [
                         'titulo' => Campo::texto('Paso', 40, ''),
                         'texto'  => Campo::parrafo('Explicación', 160, ''),
-                    ], 3, 3, [
-                        ['titulo' => 'Elige y paga en línea', 'texto' => 'El cobro se procesa por Stripe. Nódico no almacena datos de tarjeta.'],
+                    ], 3, 3, fn () => [
+                        // Quién cobra cambia con PAGOS_PASARELA (Stripe, Openpay…):
+                        // el respaldo lo lee en cada visita en vez de decir «Stripe».
+                        ['titulo' => 'Elige y paga en línea', 'texto' => 'El cobro con tarjeta lo procesa '
+                            . app(PasarelaDePagos::class)->etiqueta() . '. Nódico no almacena datos de tarjeta.'],
                         ['titulo' => 'Registra tu acceso', 'texto' => 'Pasa a recepción para dar de alta tu Face ID y activar la membresía.'],
                         ['titulo' => 'Usa el espacio', 'texto' => 'Reserva salas y estudio de contenido desde la plataforma, según tu plan.'],
-                    ], 'El primer paso menciona Stripe: revísalo si el cobro pasa a otra pasarela.', 'Paso'),
+                    ], 'El primer paso nombra la pasarela que cobra y la sigue sola. Si lo editas aquí, ya no cambia cuando cambie la pasarela.', 'Paso'),
                     'nota'   => Campo::parrafo('Nota al pie', 240,
                         '¿Eres emprendedor o artesano del interior del estado? Tu day-pass siempre es gratuito: escríbenos y te damos acceso sin costo.',
                         'Línea pequeña bajo los tres pasos. Vacía no se muestra.', requerido: false),

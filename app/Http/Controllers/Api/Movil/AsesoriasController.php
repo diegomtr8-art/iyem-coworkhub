@@ -65,6 +65,9 @@ class AsesoriasController extends ControladorMovil
                 ?->only(['id', 'nombre', 'precio', 'periodo_label']),
 
             'vigencia_hasta' => $suscripcion?->fecha_fin->toDateString(),
+            // Vencida: no hay día que elegir; la app lo dice en vez de un
+            // selector vacío.
+            'vencida'        => (bool) $suscripcion?->vencida(),
 
             'oferta' => $incluida ? $this->oferta() : [],
 
@@ -96,6 +99,11 @@ class AsesoriasController extends ControladorMovil
 
         if (! $suscripcion) {
             throw new ErrorDeApi(403, 'sin_membresia', 'Necesitas una membresía activa para pedir asesoría.');
+        }
+
+        if ($suscripcion->vencida()) {
+            throw new ErrorDeApi(409, 'membresia_vencida', 'Tu membresía venció el '
+                . $suscripcion->fecha_fin->translatedFormat('j \d\e F') . '. Renuévala para pedir asesoría.');
         }
 
         // Se guarda el nombre del catálogo más el detalle: la bandeja lee una

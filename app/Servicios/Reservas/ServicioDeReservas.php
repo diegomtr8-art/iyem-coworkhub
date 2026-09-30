@@ -66,6 +66,36 @@ class ServicioDeReservas
             ->values();
     }
 
+    /**
+     * Lo que la pantalla necesita saber de la vigencia para no quedarse muda
+     * (pruebas de servicio social, 29-sep-2026: con la membresía vencida el
+     * calendario salía sin días y sin una palabra).
+     *
+     *  - `vencida`: ya pasó su último día pagado; no se reserva nada.
+     *  - `limita`: sigue vigente, pero su fin llega antes que la antelación
+     *    máxima; el calendario se corta en `fecha_fin` y hay que decirlo.
+     *
+     * @return array{fecha_fin: string, vencida: bool, limita: bool, mensaje: ?string}
+     */
+    public function vigencia(Suscripcion $suscripcion): array
+    {
+        $vencida = $suscripcion->vencida();
+        $limita = ! $vencida
+            && $this->ultimoDiaReservable($suscripcion)->toDateString() === $suscripcion->fecha_fin->toDateString();
+        $fin = $suscripcion->fecha_fin->translatedFormat('j \d\e F');
+
+        return [
+            'fecha_fin' => $suscripcion->fecha_fin->toDateString(),
+            'vencida'   => $vencida,
+            'limita'    => $limita,
+            'mensaje'   => match (true) {
+                $vencida => "Tu membresía venció el {$fin}. Renuévala para volver a reservar.",
+                $limita  => "Tu membresía vence el {$fin}: no puedes reservar después de esa fecha.",
+                default  => null,
+            },
+        ];
+    }
+
     /** @return array{desde: string, hasta: string} */
     public function horizonte(Suscripcion $suscripcion): array
     {

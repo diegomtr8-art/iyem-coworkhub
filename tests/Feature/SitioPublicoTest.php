@@ -56,6 +56,27 @@ class SitioPublicoTest extends TestCase
                 ->has('planes.0.beneficios', 3));
     }
 
+    /**
+     * El «quién cobra» de la página sale de la pasarela activa, no de un texto
+     * fijo. Desde el CMS es el respaldo del primer paso de «Cómo funciona»
+     * (Paginas/Membresias.php), evaluado en cada visita.
+     */
+    public function test_membresias_dice_que_pasarela_procesa_el_cobro(): void
+    {
+        $primerPaso = fn () => 'contenido.pasos.elementos.0.texto';
+
+        config(['pagos.pasarela' => 'stripe']);
+        $this->get(route('membresias'))->assertInertia(fn (AssertableInertia $page) => $page
+            ->where($primerPaso(), fn ($texto) => str_contains($texto, 'lo procesa Stripe')));
+
+        // Otra visita: `ContenidoDelSitio` es una instancia por petición y, en
+        // la prueba, las dos peticiones comparten contenedor.
+        config(['pagos.pasarela' => 'openpay']);
+        $this->app->forgetScopedInstances();
+        $this->get(route('membresias'))->assertInertia(fn (AssertableInertia $page) => $page
+            ->where($primerPaso(), fn ($texto) => str_contains($texto, 'lo procesa Openpay')));
+    }
+
     public function test_los_salones_publicados_llegan_a_la_vista(): void
     {
         $this->seed(\Database\Seeders\NodicoWebSeeder::class);

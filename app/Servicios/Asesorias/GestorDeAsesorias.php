@@ -112,6 +112,14 @@ class GestorDeAsesorias
                 ]);
             }
 
+            // La asesoría se descuenta de la membresía: tiene que cubrir ese día.
+            if ($fresca->suscripcion && ! $fresca->suscripcion->cubreElDia(CarbonImmutable::parse($fechaConfirmada))) {
+                throw ValidationException::withMessages([
+                    'fecha_confirmada' => 'Esa fecha cae fuera de la membresía, que termina el '
+                        . $fresca->suscripcion->fecha_fin->translatedFormat('j \d\e F') . '.',
+                ]);
+            }
+
             $this->verificarCupo(
                 $fresca->suscripcion,
                 $fresca->horas,

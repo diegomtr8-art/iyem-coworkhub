@@ -30,6 +30,13 @@ php artisan migrate --force
 echo "==> Contenido público del sitio (idempotente)"
 php artisan db:seed --class=NodicoWebSeeder --force
 
+echo "==> Cuentas de demostración al día (este script es del servidor de pruebas)"
+# DemoSeeder siembra fechas relativas al día en que corre; si no se vuelve a
+# sembrar, las membresías demo vencen y el calendario de reservas sale vacío
+# (pruebas de servicio social, 29-sep-2026). Solo resiembra si ya envejeció, y
+# va antes del control de saldos: el demo nuevo nace cuadrado.
+php artisan nodico:demo-al-dia
+
 echo "==> Libro de horas: saldo de arranque (solo la primera vez)"
 # Sin esto, la primera consulta al libro devuelve cero para todo el mundo y
 # cada miembro se encuentra la bolsa llena: un regalo de horas el dia del

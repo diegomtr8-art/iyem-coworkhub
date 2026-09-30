@@ -173,6 +173,14 @@ class AgendaController extends Controller
             comoOperativo: true,
         );
 
+        // No se mueve una reserva fuera de la vigencia de su membresía.
+        if ($reserva->suscripcion && ! $reserva->suscripcion->cubreElDia($datos['fecha'])) {
+            throw \Illuminate\Validation\ValidationException::withMessages([
+                'fecha' => 'Esa fecha cae fuera de la membresía, que termina el '
+                    . $reserva->suscripcion->fecha_fin->translatedFormat('j \d\e F') . '.',
+            ]);
+        }
+
         DB::transaction(function () use ($reserva, $espacio, $datos, $request) {
             $antes = [
                 'espacio' => $reserva->espacio?->nombre,

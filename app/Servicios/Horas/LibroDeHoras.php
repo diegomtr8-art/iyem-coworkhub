@@ -129,6 +129,8 @@ class LibroDeHoras
      */
     public function reconstruirCache(Suscripcion $suscripcion, ?CarbonImmutable $en = null): array
     {
+        // Vencida: su último ciclo real, no uno posterior a su fecha de fin.
+        $en ??= $suscripcion->diaDeReferencia();
         $cambios = [];
 
         foreach (BolsaDeHoras::cases() as $bolsa) {
@@ -154,6 +156,10 @@ class LibroDeHoras
      */
     public function verificarConsistencia(Suscripcion $suscripcion, ?CarbonImmutable $en = null): array
     {
+        // Vencida: se mide en su último ciclo real. Sin esto, el ciclo
+        // «siguiente» a su fecha de fin daba 0 en el libro y el contador (que
+        // se quedó con el último ciclo) salía como divergente.
+        $en ??= $suscripcion->diaDeReferencia();
         $divergencias = [];
 
         foreach (BolsaDeHoras::cases() as $bolsa) {

@@ -31,6 +31,10 @@ const props = defineProps<{
   medidores: any[]
   operacion: Record<string, any>
   horizonte: { desde: string; hasta: string } | null
+  /** Vencida, o con su fin antes de la antelación máxima: se dice, no se calla. */
+  vigencia: { fecha_fin: string; vencida: boolean; limita: boolean; mensaje: string | null } | null
+  /** A dónde ir para renovar el plan de la membresía. */
+  renovarA: string
 }>()
 
 const GRANULARIDAD = props.operacion.granularidad_minutos ?? 30
@@ -66,6 +70,20 @@ const mesVisible = ref(new Date())
 const diasDelMes = ref<any[]>([])
 const cargandoMes = ref(false)
 const fecha = ref<string | null>(null)
+/**
+ * Por qué no hay días. Antes, cualquier respuesta que no fuera 200 dejaba el
+ * calendario vacío y callado (pruebas de servicio social, 29-sep-2026).
+ */
+const avisoCalendario = ref<string | null>(null)
+
+/** El mensaje que manda el servidor con cada «no», o uno genérico si no llegó. */
+async function mensajeDe(respuesta: Response): Promise<string> {
+  try {
+    const cuerpo = await respuesta.json()
+    if (cuerpo?.mensaje) return cuerpo.mensaje
+  } catch { /* sin cuerpo JSON */ }
+  return 'No pudimos cargar la disponibilidad. Recarga la página o inténtalo en un momento.'
+}
 
 const claveDia = (d: Date) =>
   `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
@@ -79,8 +97,22 @@ async function cargarMes() {
     url.searchParams.set('fecha', claveDia(mesVisible.value))
     url.searchParams.set('mes', '1')
 
+    avisoCalendario.value = null
     const respuesta = await fetch(url, { headers: { Accept: 'application/json' } })
-    diasDelMes.value = respuesta.ok ? (await respuesta.json()).dias : []
+
+    if (!respuesta.ok) {
+      diasDelMes.value = []
+      avisoCalendario.value = await mensajeDe(respuesta)
+      return
+    }
+
+    diasDelMes.value = (await respuesta.json()).dias
+    if (!diasDelMes.value.length) {
+      avisoCalendario.value = 'Este mes ya no tiene días que puedas reservar. Prueba con el mes siguiente.'
+    }
+  } catch {
+    diasDelMes.value = []
+    avisoCalendario.value = 'No pudimos conectar para ver la disponibilidad. Revisa tu conexión e inténtalo de nuevo.'
   } finally {
     cargandoMes.value = false
   }
@@ -151,6 +183,10 @@ async function cargarDia() {
 
     const respuesta = await fetch(url, { headers: { Accept: 'application/json' } })
     dia.value = respuesta.ok ? await respuesta.json() : null
+    if (!respuesta.ok) avisoCalendario.value = await mensajeDe(respuesta)
+  } catch {
+    dia.value = null
+    avisoCalendario.value = 'No pudimos conectar para ver los horarios. Revisa tu conexión e inténtalo de nuevo.'
   } finally {
     cargandoDia.value = false
   }
@@ -316,6 +352,19 @@ const DIAS = ['L', 'M', 'X', 'J', 'V', 'S', 'D']
       >Ver los planes</Link>
     </TarjetaPortal>
 
+    <TarjetaPortal v-else-if="vigencia?.vencida" fondo="crema">
+      <div class="flex items-start gap-3" role="status">
+        <CalendarX2 :size="22" class="mt-0.5 shrink-0 text-dark" aria-hidden="true" />
+        <p class="font-body text-cuerpo text-dark">{{ vigencia.mensaje }}</p>
+      </div>
+      <Link
+        :href="renovarA"
+        class="mt-4 inline-flex min-h-[48px] items-center border-2 border-dark bg-nodo-400 px-5
+               font-display text-sm font-bold text-dark hover:-translate-y-0.5 hover:shadow-dura-sm
+               transition-all duration-200 ease-salida"
+      >Renovar mi membresía</Link>
+    </TarjetaPortal>
+
     <TarjetaPortal v-else-if="!espacios.length" fondo="crema">
       <p class="font-body text-cuerpo text-dark/70">
         Tu plan no incluye espacios reservables. El área de coworking es de acceso libre:
@@ -444,6 +493,24 @@ const DIAS = ['L', 'M', 'X', 'J', 'V', 'S', 'D']
                 />
               </button>
             </template>
+          </div>
+
+          <p
+            v-if="vigencia?.limita && !cargandoMes"
+            class="mt-3 flex flex-wrap items-center gap-x-2 gap-y-1 font-body text-xs text-dark/70"
+          >
+            <CalendarX2 :size="14" class="shrink-0" aria-hidden="true" />
+            {{ vigencia.mensaje }}
+            <Link :href="renovarA" class="font-bold text-dark underline underline-offset-2 hover:no-underline">Renovar</Link>
+          </p>
+
+          <div
+            v-if="avisoCalendario && !cargandoMes"
+            class="mt-3 flex items-start gap-2.5 border-2 border-dark/20 bg-cream-50 p-3"
+            role="alert"
+          >
+            <AlertCircle :size="17" class="mt-0.5 shrink-0 text-dark" aria-hidden="true" />
+            <span class="font-body text-sm text-dark">{{ avisoCalendario }}</span>
           </div>
 
           <p v-if="cargandoMes" class="mt-3 flex items-center gap-2 font-body text-xs text-dark/70">

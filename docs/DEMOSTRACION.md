@@ -27,6 +27,19 @@ El `DemoSeeder` es repetible sin `migrate:fresh`: borra y rehace los usuarios de
 demo (los de sufijo `.demo@nodico.com.mx`) en cada pasada, y usa `updateOrCreate`
 para los catálogos.
 
+**Las fechas del demo envejecen.** El seeder las pone relativas al día en que
+corre (una membresía que empezó hace 20 días, otra que vence en 3…), así que un
+mes después todas han vencido y el calendario de reservas no ofrece días (lo
+encontraron las pruebas de servicio social el 29-sep-2026). Para eso está:
+
+```bash
+php artisan nodico:demo-al-dia            # resiembra si el demo tiene 7 días o más
+php artisan nodico:demo-al-dia --forzar   # resiembra ya (p. ej. antes de una tanda de pruebas)
+```
+
+En el servidor de pruebas corre solo: en cada despliegue (`deploy.sh`, antes del
+control de saldos) y a diario a las 4:30. Nunca en producción.
+
 ## Accesos
 
 Todas las cuentas de demostración usan la contraseña **`demo1234`**.

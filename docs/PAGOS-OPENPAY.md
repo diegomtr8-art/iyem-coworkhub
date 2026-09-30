@@ -110,6 +110,21 @@ discusión en la revisión. `@stripe/stripe-react-native` ya no se usa en ningun
 pantalla; se puede quitar del proyecto de la app en la limpieza de Stripe.
 Pruebas: `tests/Feature/Pagos/PagoDesdeAppTest.php`.
 
+**Prueba de renovación en el sandbox (29-sep-2026)** con la suscripción de un
+miembro de prueba (Nodo Match, $799):
+
+- Openpay **no deja** poner `trial_end_date` en el pasado al actualizar
+  (`1003`, «Could not set a date before today»).
+- **Crear** una suscripción con `trial_end_date` en el pasado **cobra al
+  momento**: quedó `active`, periodo 1, y un cargo de $799 con descripción
+  «Subscription charge of period 1…». Resuelve el punto 4 de «Lo que no pude
+  confirmar».
+- La transacción de un cobro de suscripción **trae `subscription_id`** (y
+  `order_id` nulo). Resuelve el punto 3.
+- De punta a punta: cargo de Openpay 20:22:57 → aviso `charge.succeeded`
+  recibido y autenticado 20:23:01 → consulta de la suscripción → membresía
+  renovada (nueva del 29-oct al 28-nov, `auto_renovar`). Sin intervención.
+
 **Puesta en marcha en un servidor:** `php artisan migrate` y
 `php artisan nodico:sincronizar-planes-pasarela` (una vez, y cada que cambie el
 precio de Nodo Pro o Nodo Match).
