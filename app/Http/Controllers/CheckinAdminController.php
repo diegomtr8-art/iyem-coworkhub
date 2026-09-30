@@ -63,7 +63,7 @@ class CheckinAdminController extends Controller
         $acceso = $this->accesos->salida($checkin->user);
 
         return back()->with('success', $acceso
-            ? 'Check-out registrado. Duración: ' . $acceso->duracion_minutos . ' minutos.'
+            ? 'Check-out registrado. Duración: ' . Checkin::duracionEnPalabras($acceso->duracion_minutos) . '.'
             : 'Ese miembro ya no tenía un acceso abierto.');
     }
 }

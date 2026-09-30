@@ -36,6 +36,7 @@ const fechaCorta = (iso: string) =>
 
 const duracion = (minutos: number | null) => {
   if (minutos === null) return null
+  if (minutos < 1) return 'menos de un minuto'
   const h = Math.floor(minutos / 60)
   const m = minutos % 60
   return h > 0 ? `${h} h ${m} min` : `${m} min`

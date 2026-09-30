@@ -35,6 +35,14 @@ onMounted(() => {
 })
 onUnmounted(() => clearInterval(timer))
 
+/** Igual que `Checkin::duracionEnPalabras`: «0 min» parecía un error. */
+function duracion(minutos: number) {
+  if (minutos < 1) return 'menos de un minuto'
+  const h = Math.floor(minutos / 60)
+  const m = minutos % 60
+  return h > 0 ? (m ? `${h} h ${m} min` : `${h} h`) : `${m} min`
+}
+
 function hora(dt: string) {
   return new Date(dt).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' })
 }
@@ -53,7 +61,7 @@ function hora(dt: string) {
           <LogIn :size="18" class="text-violet-600" /> Registrar entrada
         </h2>
         <form @submit.prevent="entrada" class="flex gap-3 flex-wrap">
-          <select v-model="form.user_id" required class="flex-1 min-w-40 border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:ring-2 focus:ring-violet-500 outline-none">
+          <select v-model="form.user_id" required aria-label="Miembro" @change="form.clearErrors()" class="flex-1 min-w-40 border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:ring-2 focus:ring-violet-500 outline-none">
             <option value="">Selecciona miembro</option>
             <option v-for="m in miembros" :key="m.id" :value="m.id">{{ m.name }} {{ m.empresa ? '— ' + m.empresa : '' }}</option>
           </select>
@@ -66,6 +74,12 @@ function hora(dt: string) {
             <LogIn :size="15" /> Check-in
           </button>
         </form>
+        <!-- Pruebas de servicio social (29-sep-2026): una entrada rechazada
+             (membresía pendiente, vencida, sin días) no decía nada; parecía
+             que la pantalla había dejado de aceptar personas. -->
+        <p v-for="(msg, campo) in form.errors" :key="campo" role="alert" class="mt-3 text-sm font-medium text-red-600">
+          {{ msg }}
+        </p>
       </div>
 
       <!-- Activos ahora -->
@@ -115,7 +129,7 @@ function hora(dt: string) {
             </div>
             <div class="text-xs text-right text-gray-500 flex-shrink-0">
               <div>{{ hora(c.hora_entrada) }} – {{ hora(c.hora_salida) }}</div>
-              <div class="font-semibold text-gray-900">{{ c.duracion_minutos }} min</div>
+              <div class="font-semibold text-gray-900">{{ duracion(c.duracion_minutos) }}</div>
             </div>
           </div>
         </div>

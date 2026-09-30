@@ -25,4 +25,25 @@ class Checkin extends Model
     public function reserva() { return $this->belongsTo(Reserva::class); }
 
     public function estaActivo(): bool { return is_null($this->hora_salida); }
+
+    /**
+     * La duración como la lee una persona. Diez segundos son cero minutos y el
+     * cálculo es correcto, pero «0 minutos» parece un error (pruebas de
+     * servicio social, 29-sep-2026): se dice «menos de un minuto».
+     */
+    public static function duracionEnPalabras(int $minutos): string
+    {
+        if ($minutos < 1) {
+            return 'menos de un minuto';
+        }
+
+        if ($minutos < 60) {
+            return $minutos === 1 ? '1 minuto' : "{$minutos} minutos";
+        }
+
+        $horas = intdiv($minutos, 60);
+        $resto = $minutos % 60;
+
+        return $resto ? "{$horas} h {$resto} min" : "{$horas} h";
+    }
 }

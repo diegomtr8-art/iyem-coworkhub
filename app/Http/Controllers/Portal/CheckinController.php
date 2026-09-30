@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Portal;
 
 use App\Http\Controllers\Controller;
+use App\Models\Checkin;
 use App\Models\Espacio;
 use App\Servicios\Accesos\RegistroDeAcceso;
 use Illuminate\Http\Request;
@@ -40,14 +41,6 @@ class CheckinController extends Controller
         }
 
         return back()->with('success', 'Check-out registrado. Estuviste '
-            . $this->enPalabras($acceso->duracion_minutos) . ' en Nódico. ¡Hasta pronto!');
-    }
-
-    private function enPalabras(int $minutos): string
-    {
-        $horas   = intdiv($minutos, 60);
-        $resto   = $minutos % 60;
-
-        return $horas > 0 ? "{$horas} h {$resto} min" : "{$minutos} min";
+            . Checkin::duracionEnPalabras($acceso->duracion_minutos) . ' en Nódico. ¡Hasta pronto!');
     }
 }
