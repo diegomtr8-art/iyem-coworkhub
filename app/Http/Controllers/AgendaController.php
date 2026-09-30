@@ -81,6 +81,8 @@ class AgendaController extends Controller
                             ->map(fn (Reserva $r) => [
                                 'id'      => $r->id,
                                 'tipo'    => 'reserva',
+                                // Para precargar «Mover» con el espacio actual.
+                                'espacio_id' => $r->espacio_id,
                                 'titulo'  => $r->user?->name ?? 'Miembro',
                                 'inicio'  => substr($r->hora_inicio, 0, 5),
                                 'fin'     => substr($r->hora_fin, 0, 5),
@@ -135,6 +137,11 @@ class AgendaController extends Controller
             'hora_fin'    => ['required', 'date_format:H:i', 'after:hora_inicio'],
             'autoriza_sobrecupo' => ['boolean'],
             'motivo_sobrecupo'   => ['nullable', 'string', 'max:500'],
+        ], [
+            // Recepción trabaja con nombres: «el campo user id es obligatorio»
+            // no le dice qué hacer (pruebas de servicio social, 29-sep-2026).
+            'user_id.required' => 'Busca a la persona por nombre, correo o teléfono y elígela de la lista.',
+            'user_id.exists'   => 'Busca a la persona por nombre, correo o teléfono y elígela de la lista.',
         ]);
 
         $resultado = $this->reservas->crear(

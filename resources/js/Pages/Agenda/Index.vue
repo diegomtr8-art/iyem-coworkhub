@@ -37,6 +37,39 @@ const bloqueoForm = useForm({
 
 const cancelacion = useForm({ devolver_horas: true, motivo: '' })
 
+/**
+ * Mover una reserva (pruebas de servicio social, 29-sep-2026): la ruta
+ * existía, pero ninguna pantalla la usaba. Se precarga con lo que ya tiene.
+ */
+const movimiento = useForm({ espacio_id: '' as string | number, fecha: '', hora_inicio: '', hora_fin: '' })
+
+function verDetalle(evento: any, espacio: string, fecha: string) {
+  detalle.value = { ...evento, espacio, fecha }
+  movimiento.clearErrors()
+  movimiento.espacio_id = evento.espacio_id ?? ''
+  movimiento.fecha = fecha
+  movimiento.hora_inicio = evento.inicio
+  movimiento.hora_fin = evento.fin
+}
+
+function mover() {
+  movimiento.patch(route('agenda.mover', detalle.value.id), {
+    preserveScroll: true,
+    onSuccess: () => { detalle.value = null },
+  })
+}
+
+/** Recepción escribió un nombre pero no lo eligió de la lista. */
+const MENSAJE_ELEGIR = 'Busca a la persona por nombre, correo o teléfono y elígela de la lista.'
+
+function reservar() {
+  if (!elegido.value) {
+    reserva.setError('user_id', MENSAJE_ELEGIR)
+    return
+  }
+  reserva.post(route('agenda.reservar'), { preserveScroll: true, onSuccess: () => { nuevaReserva.value = false } })
+}
+
 /** Sugerencias del buscador de miembro dentro del formulario. */
 const busqueda = ref('')
 const sugerencias = ref<any[]>([])
@@ -193,7 +226,7 @@ const espaciosDelDia = computed(() =>
                       :class="evento.tipo === 'bloqueo'
                         ? 'border-l-red-600 bg-red-50 hover:bg-red-100'
                         : 'border-l-dark bg-nodo-400/70 hover:bg-nodo-400'"
-                      @click="detalle = { ...evento, espacio: espacio.nombre, fecha: dia.fecha }"
+                      @click="verDetalle(evento, espacio.nombre, dia.fecha)"
                     >
                       <span class="block font-mono text-[0.625rem] text-dark">{{ evento.inicio }}–{{ evento.fin }}</span>
                       <span class="block truncate text-[0.6875rem] text-dark">{{ evento.titulo }}</span>
@@ -261,7 +294,7 @@ const espaciosDelDia = computed(() =>
                   :class="evento.tipo === 'bloqueo'
                     ? 'border-l-red-600 bg-red-50 hover:bg-red-100'
                     : 'border-l-dark bg-nodo-400/60 hover:bg-nodo-400'"
-                  @click="detalle = { ...evento, espacio: espacio.nombre, fecha: diaSel.fecha }"
+                  @click="verDetalle(evento, espacio.nombre, diaSel.fecha)"
                 >
                   <span class="shrink-0 font-mono text-xs text-dark">{{ evento.inicio }}–{{ evento.fin }}</span>
                   <span class="truncate text-sm text-dark">{{ evento.titulo }}</span>
@@ -280,7 +313,7 @@ const espaciosDelDia = computed(() =>
       <div v-if="nuevaReserva" class="fixed inset-0 z-50 flex items-center justify-center bg-tinta/60 p-4" role="dialog" aria-modal="true" @click.self="nuevaReserva = false">
         <form
           class="w-full max-w-md border-2 border-dark bg-white"
-          @submit.prevent="reserva.post(route('agenda.reservar'), { preserveScroll: true, onSuccess: () => { nuevaReserva = false } })"
+          @submit.prevent="reservar"
         >
           <h2 class="border-b border-dark/15 bg-cream-50 px-4 py-3 font-display text-sm font-bold text-dark">
             Reservar desde recepción
@@ -293,7 +326,8 @@ const espaciosDelDia = computed(() =>
                 id="ag-miembro" v-model="busqueda" type="text" autocomplete="off"
                 placeholder="Nombre, correo o teléfono…"
                 class="w-full border border-dark/25 px-2.5 py-2 text-sm placeholder:text-dark/35 focus:border-dark"
-                @input="elegido = null; reserva.user_id = ''; buscarMiembro()"
+                :aria-describedby="reserva.errors.user_id ? 'ag-miembro-error' : undefined"
+                @input="elegido = null; reserva.user_id = ''; reserva.clearErrors('user_id'); buscarMiembro()"
               />
               <ul v-if="sugerencias.length" class="absolute z-10 mt-1 max-h-48 w-full overflow-y-auto border border-dark bg-white">
                 <li v-for="m in sugerencias" :key="m.id">
@@ -303,7 +337,8 @@ const espaciosDelDia = computed(() =>
                   </button>
                 </li>
               </ul>
-              <p v-if="reserva.errors.user_id" class="mt-1 text-xs text-red-700">{{ reserva.errors.user_id }}</p>
+              <p v-if="reserva.errors.user_id" id="ag-miembro-error" class="mt-1 text-xs text-red-700">{{ reserva.errors.user_id }}</p>
+              <p v-else-if="elegido" class="mt-1 text-xs text-emerald-600">✓ {{ elegido.nombre }} · {{ elegido.plan ?? 'sin plan' }}</p>
             </div>
 
             <div>
@@ -442,6 +477,25 @@ const espaciosDelDia = computed(() =>
               class="mt-2 inline-block font-display text-xs font-bold text-dark underline decoration-dark/30 underline-offset-2 hover:decoration-dark"
             >Ver la ficha del miembro</Link>
           </div>
+
+          <!-- Mover: mismo espacio u otro, mismo día u otro. El servidor aplica
+               las mismas reglas que al reservar (horario, cupo, vigencia). -->
+          <form v-if="detalle.tipo === 'reserva'" class="space-y-2 border-t border-dark/15 p-4" @submit.prevent="mover">
+            <p class="font-display text-xs font-bold text-dark">Mover la reserva</p>
+            <select v-model="movimiento.espacio_id" aria-label="Espacio" required class="w-full border border-dark/25 bg-white px-2.5 py-2 text-sm focus:border-dark">
+              <option v-for="e in espacios" :key="e.id" :value="e.id">{{ e.nombre }}</option>
+            </select>
+            <div class="grid grid-cols-3 gap-2">
+              <input v-model="movimiento.fecha" type="date" aria-label="Día" required class="w-full border border-dark/25 px-2 py-2 text-sm focus:border-dark" />
+              <input v-model="movimiento.hora_inicio" type="time" step="1800" aria-label="Desde" required class="w-full border border-dark/25 px-2 py-2 font-mono text-sm focus:border-dark" />
+              <input v-model="movimiento.hora_fin" type="time" step="1800" aria-label="Hasta" required class="w-full border border-dark/25 px-2 py-2 font-mono text-sm focus:border-dark" />
+            </div>
+            <p v-for="(msg, campo) in movimiento.errors" :key="campo" role="alert" class="text-xs text-red-700">{{ msg }}</p>
+            <button
+              type="submit" :disabled="movimiento.processing"
+              class="min-h-[36px] w-full border border-dark bg-dark px-4 font-display text-xs font-bold text-cream disabled:opacity-60"
+            >{{ movimiento.processing ? 'Moviendo…' : 'Mover' }}</button>
+          </form>
 
           <div class="border-t border-dark/15 bg-cream-50 p-4">
             <template v-if="detalle.tipo === 'reserva'">
