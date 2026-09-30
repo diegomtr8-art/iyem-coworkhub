@@ -52,13 +52,17 @@
         <link rel="preload" href="/fonts/gteestiprodisplay-regular.woff2" as="font" type="font/woff2" crossorigin>
 
         {{-- La portada pinta sobre esta foto; sin declararla aquí no se pide
-             hasta que Vue monta el hero, tres segundos más tarde. --}}
-        @if (($page['component'] ?? null) === 'Welcome')
+             hasta que Vue monta el hero, tres segundos más tarde. Es la misma
+             que manda el módulo «Página Web» (inicio.hero): si la coordinación
+             la cambia, se precarga la nueva. Antes iba escrita a mano con un
+             hero-inicio-1280.webp que no existía (404 en cada visita). --}}
+        @php($portada = ($page['component'] ?? null) === 'Welcome' ? ($page['props']['contenido']['hero']['imagen'] ?? null) : null)
+        @if ($portada)
             <link
                 rel="preload"
                 as="image"
-                href="/img/nodico/hero-inicio-1280.webp"
-                imagesrcset="/img/nodico/hero-inicio-640.webp 640w, /img/nodico/hero-inicio-1280.webp 1280w, /img/nodico/hero-inicio.webp 1079w"
+                href="{{ $portada['src'] }}"
+                @if ($portada['srcset']) imagesrcset="{{ $portada['srcset'] }}" @endif
                 imagesizes="100vw"
                 fetchpriority="high"
             >
