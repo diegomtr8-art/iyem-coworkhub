@@ -348,6 +348,28 @@ permitido), usuario de Instagram, id de YouTube, número en rango, interruptor,
 foto (formato, alt obligatorio salvo decorativas) y lista (mínimo, máximo y
 múltiplo). Una prueba exige que **todo respaldo cumpla sus propias reglas**.
 
+## 4 ter. Fases 5 y 6: comprobado en el servidor de pruebas (30-sep-2026)
+
+Con `f61ec48` publicado y un administrador temporal (autorizado por Diego,
+borrado al terminar), se ejerció el panel por HTTP contra
+prueba.nodico.com.mx: sesión, CSRF, subida y guardado, el mismo camino que el
+navegador.
+
+| Prueba (Fase 6) | Resultado |
+|---|---|
+| Con `ajustes` vacía el sitio es idéntico | Huella de las siete páginas idéntica tras cada paso (local) y pruebas automáticas |
+| Guardar cambia el sitio y deshacer lo devuelve | Day-pass con foto subida → portada la sirve; deshacer → vuelve la fija |
+| Un valor corrupto no rompe la página | Pruebas automáticas (fila basura, tabla borrada, foto que desaparece) |
+| Staff y Caja no alcanzan el módulo | 403 por pantalla y por ruta, incluida la subida de fotos |
+| Una imagen subida genera sus tamaños y se sirve | Subida por el panel → `800.webp` y `1600.webp`, 200, `image/webp`. **PHP-FPM 8.3 genera WebP.** |
+| Una imagen subida sobrevive a un despliegue | Redespliegue completo: mismos archivos, mismo peso, la portada la sigue usando |
+| `<script>` se pinta como texto | Prueba automática: sale en las props y nunca sin escapar en el HTML |
+| La caché se invalida al guardar | El cambio se vio en la petición siguiente; prueba automática |
+| Cada cambio queda en la bitácora | «Inicio · «Day-pass gratuito»: foto», con autor, antes y después |
+
+Restos de la prueba en el servidor: dos entradas de bitácora (autor vacío, al
+borrarse la cuenta temporal) y la imagen #2 de `imagenes_sitio`, sin usar.
+
 ## 5. Lo que quedará fuera (resumen)
 
 - Constructor de páginas, bloques móviles, HTML libre, tipografías y colores.
