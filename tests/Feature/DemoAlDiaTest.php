@@ -102,6 +102,38 @@ class DemoAlDiaTest extends TestCase
         $this->assertSame($miembro->id, $orden->user_id, 'La orden del miembro sigue ahí.');
     }
 
+    /**
+     * Segunda regresión del servidor de pruebas (30-sep-2026): la orden de
+     * pago de `pendiente.demo` apuntaba a su membresía (`suscripcion_id`,
+     * RESTRICT) y el borrado falló a la mitad, **después** de haber borrado
+     * seis cuentas demo. Ahora se borran sus pagos primero, y todo va en una
+     * transacción.
+     */
+    public function test_resiembra_aunque_una_cuenta_demo_tenga_ordenes_y_pagos_de_tarjeta(): void
+    {
+        Artisan::call('nodico:demo-al-dia');
+        $pendiente = User::where('email', 'pendiente.demo@nodico.com.mx')->firstOrFail();
+        // Como en el servidor: pagó Nodo Pro durante el recorrido de pruebas.
+        $membresia = \App\Models\Suscripcion::factory()
+            ->delPlan(\App\Models\Plane::where('nombre', 'Nodo Pro')->firstOrFail())
+            ->create(['user_id' => $pendiente->id, 'fecha_inicio' => today(), 'fecha_fin' => today()->addMonth()]);
+        \App\Models\OrdenPago::create([
+            'user_id' => $pendiente->id, 'plan_id' => $membresia->plan_id, 'suscripcion_id' => $membresia->id,
+            'referencia' => 'NDC-DEMO', 'referencia_normalizada' => 'NDCDEMO', 'vence_el' => now()->addWeek(),
+            'monto' => 599, 'metodo' => 'efectivo', 'estado_pago' => 'confirmada', 'confirmada_en' => now(),
+        ]);
+        \App\Models\CargoPasarela::create([
+            'user_id' => $pendiente->id, 'plan_id' => $membresia->plan_id, 'pasarela' => 'openpay',
+            'order_id' => 'nod-demo', 'importe' => 599, 'estado' => 'completado',
+        ]);
+
+        $this->artisan('nodico:demo-al-dia', ['--forzar' => true])->assertSuccessful();
+
+        $this->assertSame(0, \App\Models\OrdenPago::where('referencia', 'NDC-DEMO')->count());
+        $this->assertSame(0, \App\Models\CargoPasarela::where('order_id', 'nod-demo')->count());
+        $this->assertNotNull(User::where('email', 'pro.demo@nodico.com.mx')->first(), 'El demo quedó completo.');
+    }
+
     public function test_no_corre_en_produccion(): void
     {
         $this->app['env'] = 'production';

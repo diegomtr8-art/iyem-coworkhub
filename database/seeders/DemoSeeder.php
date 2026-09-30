@@ -10,15 +10,19 @@ use App\Enums\RolUsuario;
 use App\Support\DocumentosLegales;
 use App\Models\AnuncioCoworking;
 use App\Models\Asesor;
+use App\Models\CargoPasarela;
 use App\Models\Checkin;
+use App\Models\ClientePasarela;
 use App\Models\DatosFiscales;
 use App\Models\DirectorioEmprendedor;
 use App\Models\Espacio;
 use App\Models\Evento;
 use App\Models\Factura;
+use App\Models\OrdenPago;
 use App\Models\Plane;
 use App\Models\Reserva;
 use App\Models\SolicitudAsesoria;
+use App\Models\SuscripcionPasarela;
 use App\Models\User;
 use App\Servicios\Horas\LibroDeHoras;
 use App\Servicios\Membresias\GestorDeMembresias;
@@ -88,10 +92,30 @@ class DemoSeeder extends Seeder
 
     private function limpiarDemoAnterior(): void
     {
-        // Las FK son cascadeOnDelete: al borrar los usuarios de demo se van con
-        // ellos sus suscripciones, reservas, bloques, movimientos y check-ins.
-        User::where('email', 'like', '%.demo@nodico.com.mx')->get()
-            ->each(fn (User $u) => $u->delete());
+        $demo = User::where('email', 'like', '%.demo@nodico.com.mx')->pluck('id');
+
+        if ($demo->isEmpty()) {
+            return;
+        }
+
+        // Todo o nada. Antes se borraba usuario por usuario: en el servidor de
+        // pruebas (30-sep-2026) una FK falló a la mitad y dejó el demo sin sus
+        // primeras seis cuentas.
+        \Illuminate\Support\Facades\DB::transaction(function () use ($demo) {
+            // Lo que el recorrido de pruebas le deja a las cuentas demo y que no
+            // se va en cascada: sus órdenes de pago (su `suscripcion_id` es
+            // RESTRICT y frena el borrado de la membresía) y lo de la pasarela
+            // de tarjeta. Son datos de prueba de cuentas de prueba.
+            OrdenPago::whereIn('user_id', $demo)->delete();
+            CargoPasarela::whereIn('user_id', $demo)->delete();
+            SuscripcionPasarela::whereIn('user_id', $demo)->delete();
+            ClientePasarela::whereIn('user_id', $demo)->delete();
+
+            // El resto sí es cascadeOnDelete: al borrar los usuarios de demo se
+            // van con ellos sus suscripciones, reservas, bloques, movimientos y
+            // check-ins.
+            User::whereIn('id', $demo)->get()->each(fn (User $u) => $u->delete());
+        });
     }
 
     /**
