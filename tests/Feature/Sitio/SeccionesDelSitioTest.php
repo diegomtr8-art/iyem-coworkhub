@@ -355,7 +355,8 @@ class SeccionesDelSitioTest extends TestCase
     {
         $this->rechaza('inicio.daypass', ['imagen' => ['id' => null, 'alt' => '  ']], 'imagen');
 
-        $this->sitio()->guardar('nosotros.vision', ['imagen' => ['id' => null, 'alt' => '']]);
+        // La decorativa se guarda sin descripción (con otro cambio, para que lo sea).
+        $this->sitio()->guardar('nosotros.vision', ['titulo' => 'Hacia dónde vamos', 'imagen' => ['id' => null, 'alt' => '']]);
         $this->assertTrue($this->sitio()->personalizada('nosotros.vision'));
     }
 

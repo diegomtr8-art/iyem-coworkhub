@@ -223,6 +223,16 @@ class PanelPaginaWebTest extends TestCase
             ->assertSessionHasErrors('maps_url');
     }
 
+    public function test_pulsar_guardar_sin_tocar_nada_no_marca_la_seccion_como_editada(): void
+    {
+        $this->actingAs($this->admin())
+            ->put(route('pagina-web.guardar', 'contacto'), $this->contacto())
+            ->assertSessionHas('info');
+
+        $this->assertSame(0, Ajuste::count());
+        $this->assertSame(0, VersionContenidoSitio::count());
+    }
+
     public function test_las_versiones_no_crecen_sin_limite(): void
     {
         $this->actingAs($this->admin());

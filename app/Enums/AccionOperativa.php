@@ -52,6 +52,11 @@ enum AccionOperativa: string
     case ValidacionCredencial = 'validacion_credencial';
     case ConsultaReportes     = 'consulta_reportes';
 
+    // Módulo «Página Web»: lo que ve todo el mundo en el sitio público.
+    case EdicionSitio      = 'edicion_sitio';
+    case DeshacerSitio     = 'deshacer_sitio';
+    case RestablecerSitio  = 'restablecer_sitio';
+
     public function etiqueta(): string
     {
         return match ($this) {
@@ -76,6 +81,9 @@ enum AccionOperativa: string
             self::ReconexionTorno       => 'Reconexión manual del torno',
             self::ValidacionCredencial  => 'Validación de credencial en recepción',
             self::ConsultaReportes      => 'Consulta de reportes con datos de miembros',
+            self::EdicionSitio          => 'Cambio en la página web',
+            self::DeshacerSitio         => 'Cambio deshecho en la página web',
+            self::RestablecerSitio      => 'Sección de la página web vuelta al original',
         };
     }
 
