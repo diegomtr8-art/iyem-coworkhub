@@ -59,10 +59,13 @@ class ContactoController extends Controller
             ]);
         }
 
-        // El correo no debe tumbar la petición si el SMTP falla.
+        // El correo no debe tumbar la petición si el SMTP falla: el mensaje ya
+        // está guardado. Pero el fallo se queda en el prospecto, que es lo que
+        // el panel enseña; solo en el log no lo veía nadie.
         try {
             Mail::to(app(ContenidoDelSitio::class)->valor('contacto', 'email'))->send(new ContactoRecibido($contacto));
         } catch (\Throwable $e) {
+            $contacto->update(['correo_error' => mb_substr($e->getMessage(), 0, 500)]);
             Log::error('No se pudo enviar el correo de contacto', [
                 'contacto_id' => $contacto->id,
                 'error'       => $e->getMessage(),

@@ -132,6 +132,41 @@ class SitioPublicoTest extends TestCase
         Mail::assertSent(ContactoRecibido::class, fn ($mail) => $mail->hasTo(config('nodico.contacto_email')));
     }
 
+    /**
+     * Pruebas de servicio social (29-sep-2026): «no llegó correo». El envío
+     * iba en un `try/catch` que solo escribía en el log, así que un fallo del
+     * correo no lo veía nadie. Ahora queda en el prospecto y el panel lo
+     * enseña; el mensaje sigue guardado y la persona sigue viendo su «enviado».
+     */
+    public function test_si_el_correo_de_contacto_falla_el_panel_lo_ve(): void
+    {
+        Mail::shouldReceive('to')->andThrow(new \RuntimeException('Connection refused'));
+
+        $this->post(route('contacto.store'), [
+            'nombre' => 'Ana Pérez', 'email' => 'ana@example.com', 'comentarios' => 'Quiero rentar el salón.',
+        ])->assertRedirect()->assertSessionHas('contacto_ok', true);
+
+        $contacto = Contacto::firstOrFail();
+        $this->assertStringContainsString('Connection refused', $contacto->correo_error);
+
+        $this->actingAs(\App\Models\User::factory()->staff()->create())
+            ->get(route('salones.index'))
+            ->assertInertia(fn (AssertableInertia $page) => $page
+                ->where('prospectos.0.id', $contacto->id)
+                ->where('prospectos.0.correo_error', fn ($e) => str_contains($e, 'Connection refused')));
+    }
+
+    public function test_si_el_correo_de_contacto_sale_no_hay_error_que_mostrar(): void
+    {
+        Mail::fake();
+
+        $this->post(route('contacto.store'), [
+            'nombre' => 'Ana Pérez', 'email' => 'ana@example.com', 'comentarios' => 'Quiero rentar el salón.',
+        ]);
+
+        $this->assertNull(Contacto::firstOrFail()->correo_error);
+    }
+
     public function test_el_formulario_de_contacto_valida_los_campos_obligatorios(): void
     {
         Mail::fake();

@@ -90,7 +90,7 @@ class SalonesController extends Controller
             'prospectos' => Contacto::where('atendido', false)
                 ->latest()
                 ->limit(10)
-                ->get(['id', 'nombre', 'email', 'telefono', 'empresa', 'asunto', 'comentarios', 'created_at']),
+                ->get(['id', 'nombre', 'email', 'telefono', 'empresa', 'asunto', 'comentarios', 'correo_error', 'created_at']),
         ]);
     }
 

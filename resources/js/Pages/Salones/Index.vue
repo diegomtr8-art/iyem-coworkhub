@@ -256,6 +256,11 @@ const columnas: Columna[] = [
             <p class="font-display text-sm font-bold text-dark">{{ p.nombre }}</p>
             <p class="text-xs text-dark/60">{{ p.empresa }}</p>
             <p v-if="p.asunto" class="mt-0.5 truncate text-xs text-dark/70">{{ p.asunto }}</p>
+            <!-- El aviso por correo no salió: sin esto, nadie se enteraba de
+                 que había alguien esperando respuesta. -->
+            <p v-if="p.correo_error" class="mt-1 text-xs font-medium text-red-600" :title="p.correo_error">
+              El aviso por correo no salió. Escríbele a {{ p.email }}.
+            </p>
             <button
               type="button"
               class="mt-1.5 font-display text-xs font-bold text-dark underline decoration-dark/30

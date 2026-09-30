@@ -9,7 +9,7 @@ class Contacto extends Model
     protected $table = 'contactos';
 
     protected $fillable = [
-        'nombre', 'telefono', 'telefono_e164', 'email', 'empresa', 'asunto', 'comentarios', 'ip', 'atendido',
+        'nombre', 'telefono', 'telefono_e164', 'email', 'empresa', 'asunto', 'comentarios', 'ip', 'atendido', 'correo_error',
     ];
 
     protected $casts = [

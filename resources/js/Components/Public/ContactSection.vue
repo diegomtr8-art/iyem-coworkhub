@@ -90,8 +90,19 @@ const hayErrores = computed(() =>
 
 const contactoOk = computed(() => (page.props.flash as any)?.contacto_ok)
 
+// `immediate`: el aviso también puede llegar con la página recién cargada, no
+// solo como cambio. Pasa cuando Inertia detecta que los assets cambiaron (un
+// despliegue entre que se abrió la página y se envió el formulario) y recarga
+// la página entera. Sin `immediate` el «enviado» no se pintaba nunca, y la
+// página quedaba arriba, lejos del formulario (pruebas del 29-sep-2026).
 watch(contactoOk, (ok) => {
   if (ok) enviado.value = true
+}, { immediate: true })
+
+onMounted(() => {
+  if (contactoOk.value) {
+    document.getElementById('hablemos')?.scrollIntoView({ block: 'center', behavior: 'instant' })
+  }
 })
 
 function enviar() {
