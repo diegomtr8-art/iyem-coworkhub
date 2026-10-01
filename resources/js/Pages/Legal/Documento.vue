@@ -36,9 +36,10 @@ defineProps<{
           <AlertTriangle class="mt-0.5 h-5 w-5 shrink-0 text-dark" aria-hidden="true" />
           <p class="font-body text-sm leading-relaxed text-dark">
             <strong class="font-bold">Contenido provisional.</strong>
-            Este documento es un marcador de posición y todavía no ha sido revisado por el área
-            jurídica del Instituto Yucateco de Emprendedores. No debe considerarse el texto
-            definitivo ni tiene validez legal en su estado actual.
+            Este documento es un borrador que describe cómo funciona Nódico, pero todavía no
+            ha sido revisado por el área jurídica del Instituto Yucateco de Emprendedores.
+            Puede cambiar antes de su versión definitiva; si cambia, te pediremos aceptarlo
+            de nuevo.
           </p>
         </div>
 

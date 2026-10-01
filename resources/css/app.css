@@ -176,6 +176,33 @@
 .documento-legal a {
   @apply text-dark underline underline-offset-2;
 }
+.documento-legal h3 {
+  @apply mt-8 font-display text-lg font-bold text-dark;
+}
+.documento-legal ol {
+  @apply mt-4 list-decimal space-y-2 pl-5 font-body text-cuerpo text-dark/75;
+}
+.documento-legal strong {
+  @apply font-bold text-dark;
+}
+/* Los recuadros «Pendiente de jurídico» del borrador: tienen que verse. */
+.documento-legal blockquote {
+  @apply mt-6 border-2 border-l-8 border-dark border-l-nodo-400 bg-cream-50 px-5 py-4;
+}
+.documento-legal blockquote p {
+  @apply mt-0 text-sm text-dark/80;
+}
+/* Markdown no deja envolver la tabla: la propia tabla desborda dentro de su
+   caja, nunca la página (cero scroll horizontal a 375 px). */
+.documento-legal table {
+  @apply mt-6 block w-full overflow-x-auto border-2 border-dark text-left font-body text-sm;
+}
+.documento-legal th {
+  @apply bg-dark px-3 py-2 font-display font-bold text-cream;
+}
+.documento-legal td {
+  @apply border-t border-dark/15 bg-white px-3 py-2 align-top text-dark/80;
+}
 
 /* ── Toasts (vue-sonner) con el acabado de Nódico ──
    Esquinas rectas, sombra dura y la tipografía de marca; el color por tipo
