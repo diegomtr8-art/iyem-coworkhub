@@ -180,7 +180,7 @@ const columnas: Columna[] = [
     </div>
 
     <Teleport to="body">
-      <div v-if="cobrando" class="fixed inset-0 z-50 flex items-center justify-center bg-tinta/60 p-4" role="dialog" aria-modal="true" @click.self="cobrando = null">
+      <div v-if="cobrando" class="fixed inset-0 z-50 flex items-center justify-center bg-tinta/60 p-4" role="dialog" aria-modal="true" v-clic-fondo="() => (cobrando = null)">
         <form
           class="w-full max-w-sm border-2 border-dark bg-white"
           @submit.prevent="pago.post(route('facturas.pagar', cobrando.id), { preserveScroll: true, onSuccess: () => { cobrando = null } })"

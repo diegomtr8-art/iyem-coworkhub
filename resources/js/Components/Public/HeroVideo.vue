@@ -306,7 +306,7 @@ onBeforeUnmount(() => {
         role="dialog"
         aria-modal="true"
         aria-label="Video institucional de Nódico"
-        @click.self="cerrarModal"
+        v-clic-fondo="cerrarModal"
       >
         <button
           ref="botonCerrar"

@@ -227,7 +227,7 @@ const timeline = computed(() => {
     </div>
 
     <!-- Detalle: agenda del día -->
-    <div v-if="sel" class="modal" @click.self="cerrar">
+    <div v-if="sel" class="modal" v-clic-fondo="cerrar">
       <div class="tarjeta">
         <button class="x" @click="cerrar" aria-label="Cerrar">×</button>
         <h2>{{ sel.nombre }}</h2>

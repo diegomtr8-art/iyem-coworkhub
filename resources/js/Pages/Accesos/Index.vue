@@ -260,7 +260,7 @@ const columnas: Columna[] = [
 
     <!-- Modal vincular -->
     <Teleport to="body">
-      <div v-if="abierto" class="fixed inset-0 z-50 flex items-end justify-center bg-tinta/60 p-0 sm:items-center sm:p-4" role="dialog" aria-modal="true" @click.self="abierto = false">
+      <div v-if="abierto" class="fixed inset-0 z-50 flex items-end justify-center bg-tinta/60 p-0 sm:items-center sm:p-4" role="dialog" aria-modal="true" v-clic-fondo="() => (abierto = false)">
         <form class="w-full max-w-md border-2 border-dark bg-white" @submit.prevent="enviarVincular">
           <div class="flex items-center justify-between border-b border-dark/15 bg-cream-50 px-4 py-3">
             <h2 class="font-display text-sm font-bold text-dark">Vincular persona {{ vinc.person_id }}</h2>

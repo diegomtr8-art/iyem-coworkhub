@@ -144,7 +144,7 @@ const columnas: Columna[] = [
 
     <!-- Modal: confirmar / cancelar una orden -->
     <Teleport to="body">
-      <div v-if="abierta" class="fixed inset-0 z-50 flex items-end justify-center bg-tinta/60 p-0 sm:items-center sm:p-4" role="dialog" aria-modal="true" @click.self="abierta = null">
+      <div v-if="abierta" class="fixed inset-0 z-50 flex items-end justify-center bg-tinta/60 p-0 sm:items-center sm:p-4" role="dialog" aria-modal="true" v-clic-fondo="() => (abierta = null)">
         <div class="max-h-[92vh] w-full max-w-lg overflow-y-auto border-2 border-dark bg-white">
           <div class="flex items-center justify-between border-b border-dark/15 bg-cream-50 px-4 py-3">
             <h2 class="font-display text-sm font-bold text-dark">Orden {{ abierta.referencia }} · {{ abierta.miembro }}</h2>

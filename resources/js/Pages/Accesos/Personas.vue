@@ -304,7 +304,7 @@ function elegirCaptura(c: 'archivo' | 'camara' | 'dispositivo') {
 
     <!-- Modal ficha -->
     <Teleport to="body">
-      <div v-if="modalFicha" class="fixed inset-0 z-50 flex items-end justify-center bg-tinta/60 p-0 sm:items-center sm:p-4" role="dialog" aria-modal="true" @click.self="modalFicha = false">
+      <div v-if="modalFicha" class="fixed inset-0 z-50 flex items-end justify-center bg-tinta/60 p-0 sm:items-center sm:p-4" role="dialog" aria-modal="true" v-clic-fondo="() => (modalFicha = false)">
         <form class="max-h-[92vh] w-full max-w-lg overflow-y-auto border-2 border-dark bg-white" @submit.prevent="guardar">
           <div class="flex items-center justify-between border-b border-dark/15 bg-cream-50 px-4 py-3">
             <h2 class="font-display text-sm font-bold text-dark">{{ form.id ? 'Editar' : 'Nuevo' }} · {{ form.categoria === 'empleado' ? 'empleado' : 'servicio social' }}</h2>
@@ -352,7 +352,7 @@ function elegirCaptura(c: 'archivo' | 'camara' | 'dispositivo') {
 
     <!-- Modal FaceID -->
     <Teleport to="body">
-      <div v-if="modalFace" class="fixed inset-0 z-50 flex items-end justify-center bg-tinta/60 p-0 sm:items-center sm:p-4" role="dialog" aria-modal="true" @click.self="modalFace = false">
+      <div v-if="modalFace" class="fixed inset-0 z-50 flex items-end justify-center bg-tinta/60 p-0 sm:items-center sm:p-4" role="dialog" aria-modal="true" v-clic-fondo="() => (modalFace = false)">
         <form class="w-full max-w-md border-2 border-dark bg-white" @submit.prevent="vincularFace">
           <div class="flex items-center justify-between border-b border-dark/15 bg-cream-50 px-4 py-3">
             <h2 class="font-display text-sm font-bold text-dark">Vincular rostro · {{ faceNombre }}</h2>
@@ -374,7 +374,7 @@ function elegirCaptura(c: 'archivo' | 'camara' | 'dispositivo') {
     </Teleport>
     <!-- Modal ENROLAR rostro -->
     <Teleport to="body">
-      <div v-if="enrolAbierto" class="fixed inset-0 z-50 flex items-end justify-center bg-tinta/60 p-0 sm:items-center sm:p-4" role="dialog" aria-modal="true" @click.self="cerrarEnrolar">
+      <div v-if="enrolAbierto" class="fixed inset-0 z-50 flex items-end justify-center bg-tinta/60 p-0 sm:items-center sm:p-4" role="dialog" aria-modal="true" v-clic-fondo="cerrarEnrolar">
         <div class="max-h-[94vh] w-full max-w-lg overflow-y-auto border-2 border-dark bg-white">
           <div class="flex items-center justify-between border-b border-dark/15 bg-cream-50 px-4 py-3">
             <h2 class="font-display text-sm font-bold text-dark">Registrar rostro · {{ enrolSujeto?.nombre }}</h2>

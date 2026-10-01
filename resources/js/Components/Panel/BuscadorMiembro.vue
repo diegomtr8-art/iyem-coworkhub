@@ -126,7 +126,7 @@ onUnmounted(() => {
       v-if="abierto"
       class="fixed inset-0 z-[60] flex items-start justify-center bg-tinta/60 p-4 pt-[12vh]"
       role="dialog" aria-modal="true" aria-label="Buscar miembro"
-      @click.self="cerrar"
+      v-clic-fondo="cerrar"
     >
       <div class="w-full max-w-xl border-2 border-dark bg-white shadow-dura">
         <div class="flex items-center gap-3 border-b border-dark/15 px-4">

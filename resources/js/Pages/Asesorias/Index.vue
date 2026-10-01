@@ -205,7 +205,7 @@ const filtrar = (valor: string) =>
         v-if="confirmando"
         class="fixed inset-0 z-50 flex items-center justify-center bg-tinta/60 p-4"
         role="dialog" aria-modal="true"
-        @click.self="confirmando = null"
+        v-clic-fondo="() => (confirmando = null)"
       >
         <form
           class="w-full max-w-md border-2 border-dark bg-white"
@@ -267,7 +267,7 @@ const filtrar = (valor: string) =>
         v-if="rechazando"
         class="fixed inset-0 z-50 flex items-center justify-center bg-tinta/60 p-4"
         role="dialog" aria-modal="true"
-        @click.self="rechazando = null"
+        v-clic-fondo="() => (rechazando = null)"
       >
         <form
           class="w-full max-w-md border-2 border-dark bg-white"

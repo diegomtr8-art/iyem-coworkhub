@@ -456,7 +456,7 @@ const estadosReserva: Record<string, 'bien' | 'atencion' | 'problema' | 'neutro'
         v-if="dialogo"
         class="fixed inset-0 z-50 flex items-center justify-center bg-tinta/60 p-4"
         role="dialog" aria-modal="true"
-        @click.self="cerrar"
+        v-clic-fondo="cerrar"
       >
         <div class="w-full max-w-md border-2 border-dark bg-white">
           <!-- Ajuste de horas. `novalidate`: sin él, un motivo vacío lo frenaba

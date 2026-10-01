@@ -274,7 +274,7 @@ const columnas: Columna[] = [
 
     <!-- ── Cotizador ────────────────────────────────────────────────────── -->
     <Teleport to="body">
-      <div v-if="abierto" class="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-tinta/60 p-4" role="dialog" aria-modal="true" @click.self="abierto = false">
+      <div v-if="abierto" class="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-tinta/60 p-4" role="dialog" aria-modal="true" v-clic-fondo="() => (abierto = false)">
         <form class="my-4 w-full max-w-2xl border-2 border-dark bg-white" @submit.prevent="guardar">
           <h2 class="border-b border-dark/15 bg-cream-50 px-4 py-3 font-display text-sm font-bold text-dark">
             {{ editando ? 'Editar renta' : 'Nueva cotización' }}
@@ -473,7 +473,7 @@ const columnas: Columna[] = [
       </div>
 
       <!-- Registrar anticipo -->
-      <div v-if="cobrando" class="fixed inset-0 z-50 flex items-center justify-center bg-tinta/60 p-4" role="dialog" aria-modal="true" @click.self="cobrando = null">
+      <div v-if="cobrando" class="fixed inset-0 z-50 flex items-center justify-center bg-tinta/60 p-4" role="dialog" aria-modal="true" v-clic-fondo="() => (cobrando = null)">
         <form
           class="w-full max-w-sm border-2 border-dark bg-white"
           @submit.prevent="anticipoForm.post(route('salones.anticipo', cobrando.id), { preserveScroll: true, onSuccess: () => { cobrando = null } })"

@@ -116,7 +116,7 @@ function guardar() {
         v-if="abierto"
         class="fixed inset-0 z-50 flex items-center justify-center bg-tinta/60 p-4"
         role="dialog" aria-modal="true"
-        @click.self="abierto = false"
+        v-clic-fondo="() => (abierto = false)"
       >
         <form class="w-full max-w-md border-2 border-dark bg-white" @submit.prevent="guardar">
           <h2 class="border-b border-dark/15 bg-cream-50 px-4 py-3 font-display text-sm font-bold text-dark">

@@ -310,7 +310,7 @@ const espaciosDelDia = computed(() =>
 
     <Teleport to="body">
       <!-- ── Nueva reserva ──────────────────────────────────────────────── -->
-      <div v-if="nuevaReserva" class="fixed inset-0 z-50 flex items-center justify-center bg-tinta/60 p-4" role="dialog" aria-modal="true" @click.self="nuevaReserva = false">
+      <div v-if="nuevaReserva" class="fixed inset-0 z-50 flex items-center justify-center bg-tinta/60 p-4" role="dialog" aria-modal="true" v-clic-fondo="() => (nuevaReserva = false)">
         <form
           class="w-full max-w-md border-2 border-dark bg-white"
           @submit.prevent="reservar"
@@ -402,7 +402,7 @@ const espaciosDelDia = computed(() =>
       </div>
 
       <!-- ── Bloqueo ────────────────────────────────────────────────────── -->
-      <div v-if="bloqueo" class="fixed inset-0 z-50 flex items-center justify-center bg-tinta/60 p-4" role="dialog" aria-modal="true" @click.self="bloqueo = false">
+      <div v-if="bloqueo" class="fixed inset-0 z-50 flex items-center justify-center bg-tinta/60 p-4" role="dialog" aria-modal="true" v-clic-fondo="() => (bloqueo = false)">
         <form
           class="w-full max-w-md border-2 border-dark bg-white"
           @submit.prevent="bloqueoForm.post(route('agenda.bloquear'), { preserveScroll: true, onSuccess: () => { bloqueo = false } })"
@@ -458,7 +458,7 @@ const espaciosDelDia = computed(() =>
       </div>
 
       <!-- ── Detalle de un evento ───────────────────────────────────────── -->
-      <div v-if="detalle" class="fixed inset-0 z-50 flex items-center justify-center bg-tinta/60 p-4" role="dialog" aria-modal="true" @click.self="detalle = null">
+      <div v-if="detalle" class="fixed inset-0 z-50 flex items-center justify-center bg-tinta/60 p-4" role="dialog" aria-modal="true" v-clic-fondo="() => (detalle = null)">
         <div class="w-full max-w-sm border-2 border-dark bg-white">
           <h2 class="flex items-center justify-between border-b border-dark/15 bg-cream-50 px-4 py-3">
             <span class="font-display text-sm font-bold text-dark">

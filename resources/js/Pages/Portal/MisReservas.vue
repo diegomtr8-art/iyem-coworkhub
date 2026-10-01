@@ -196,7 +196,7 @@ function cancelar(reserva: any) {
         v-if="confirmando"
         class="fixed inset-0 z-50 flex items-end justify-center bg-tinta/70 p-4 sm:items-center"
         role="dialog" aria-modal="true" aria-labelledby="titulo-cancelar"
-        @click.self="confirmando = null"
+        v-clic-fondo="() => (confirmando = null)"
       >
         <div class="w-full max-w-md border-2 border-dark bg-cream p-6 shadow-dura pb-segura">
           <h2 id="titulo-cancelar" class="font-display text-display-sm font-extrabold text-dark">
