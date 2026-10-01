@@ -6,6 +6,57 @@
 > 2026. Cada afirmación lleva su enlace. Lo que no está documentado se dice, no se
 > deduce de Openpay.
 
+## Comprobado en el sandbox el 1-oct-2026 (lee esto primero)
+
+`prueba.nodico.com.mx` cobra con **`PAGOS_PASARELA=bbva`**, `BBVA_CAPTURA=vpos` y
+`BBVA_SUSCRIPCIONES=false`. Las llaves siguen siendo las de sandbox del comercio
+«Herencia Viva» hasta que BBVA entregue las de Nódico. Stripe sigue instalado e
+inactivo.
+
+Lo que se probó por la API, con las tarjetas de prueba publicadas y desde el
+mismo código del portal:
+
+| Prueba | Resultado |
+|---|---|
+| Cargo sin `affiliation_bbva` | Error 1003: la afiliación es obligatoria |
+| Cargo con afiliación y token (con o sin `redirect_url` o `use_3d_secure`, en las dos URL) | Siempre `charge_pending` con la página de captura del banco (`card_capture`), que **vuelve a pedir la tarjeta** |
+| Suscripción con tarjeta guardada y prueba vencida (renovación) | **Se cobra sola**, sin VPOS: `completed`, periodo 1 |
+| Cargo esperando al banco | La persona ve «pendiente de autorización», **no un rechazo** (el fallo que tenía Stripe con 4000 0025 0000 3155 no se repite) |
+
+**Conclusión.** Con este comercio, el primer pago **solo** puede hacerse en la
+página del banco. Teclear la tarjeta en Nódico (`token`) obliga a teclearla dos
+veces. La renovación automática funciona una vez guardada la tarjeta, pero para
+guardarla hace falta el token, y el token no sirve para el primer cobro.
+
+**Decisión de Diego (1-oct-2026):** mientras el ejecutivo no autorice el «cargo
+sin VPOS», se paga en la página del banco y **sin renovación automática**. Cada
+periodo se paga a mano, con los avisos de vencimiento. Encender
+`BBVA_CAPTURA=token` y `BBVA_SUSCRIPCIONES=true` cuando BBVA lo autorice; el
+código ya lo soporta (`tests/Feature/Pagos/SuscripcionesBbvaTest.php`).
+Descartado: que la suscripción cobre el primer periodo, porque saltaría el
+3-D Secure en el primer cobro.
+
+### Pruebas manuales pendientes (las hace una persona, no Claude)
+
+Pasan por la página del banco, donde se teclea la tarjeta. Con una cuenta de
+prueba en `prueba.nodico.com.mx`, contratar un Day-Pass con cada tarjeta y anotar
+lo que se ve al volver a Nódico:
+
+| Caso | Tarjeta de prueba de Openpay | Esperado en Nódico |
+|---|---|---|
+| Aprobado | 4111 1111 1111 1111 | «¡Listo! Tu pago quedó confirmado» y membresía activa |
+| Rechazado | 4000 0000 0000 0002 | Mensaje de rechazo en español; nada activado |
+| Fondos insuficientes | 4000 0000 0000 0119 | Mensaje de fondos insuficientes |
+| 3-D Secure completado | La que el simulador del banco autentique | Membresía activa al volver |
+| 3-D Secure abandonado | Cerrar la pestaña en la autenticación | «Pendiente»; a las 24 h, «no se terminó» (nunca «rechazado») |
+
+Fecha de vencimiento futura y cualquier CVV. Las tarjetas son las de la
+documentación de Openpay; si el sandbox de BBVA usa otras, preguntar al
+ejecutivo (pregunta 6 de abajo).
+
+En el servidor queda la cuenta `pagos-sandbox@example.com` (usuario #54) con
+cargos de esta comprobación. El #9 sirve para ver el abandono de 24 h.
+
 ## Estado: bloqueado por una respuesta del banco
 
 Con lo que **documenta** Ecommerce BBVA se puede cobrar un pago único con 3-D
