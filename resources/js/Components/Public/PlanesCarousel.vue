@@ -30,6 +30,12 @@ const pista = ref<HTMLElement | null>(null)
 const tarjetas = ref<HTMLElement[]>([])
 const indiceActivo = ref(0)
 const sinMovimiento = ref(false)
+// Si la pista todavía puede desplazarse hacia cada lado. Los botones se apagan
+// por esto y no por el índice: en escritorio caben 3 de 4 tarjetas, la
+// primera y la última nunca quedan centradas, y el índice decía «aún hay» con
+// la pista ya en su tope (cada flecha pedía dos clics; pruebas, 29-sep-2026).
+const puedeIrAtras = ref(false)
+const puedeIrAdelante = ref(false)
 
 let temporizador: number | undefined
 let observadorTamano: ResizeObserver | undefined
@@ -52,28 +58,68 @@ const precio = (valor: number) =>
 const titulo = (plan: Plan) =>
   (plan.personas ?? 1) > 1 ? `${plan.nombre} (${plan.personas} pax)` : plan.nombre
 
+/** Hasta dónde puede desplazarse la pista. */
+function topeDelScroll(): number {
+  const contenedor = pista.value
+  return contenedor ? Math.max(0, contenedor.scrollWidth - contenedor.clientWidth) : 0
+}
+
+/** La posición que centra la tarjeta `i`, recortada a lo que la pista permite. */
+function destinoDe(i: number): number | null {
+  const contenedor = pista.value
+  const tarjeta = tarjetas.value[i]
+  if (!contenedor || !tarjeta) return null
+
+  const centrada = tarjeta.offsetLeft - (contenedor.clientWidth - tarjeta.clientWidth) / 2
+  return Math.min(Math.max(0, centrada), topeDelScroll())
+}
+
+function actualizarLimites() {
+  const contenedor = pista.value
+  if (!contenedor) return
+  // 1 px de holgura: con zoom o pantallas de alta densidad el scroll queda en
+  // fracciones y nunca llega exacto al tope.
+  puedeIrAtras.value = contenedor.scrollLeft > 1
+  puedeIrAdelante.value = contenedor.scrollLeft < topeDelScroll() - 1
+}
+
 /** Desplaza para dejar centrada la tarjeta `i`. */
 function irA(i: number, suave = true) {
   const contenedor = pista.value
-  const tarjeta = tarjetas.value[i]
-  if (!contenedor || !tarjeta) return
+  const destino = destinoDe(i)
+  if (!contenedor || destino === null) return
 
-  const destino = tarjeta.offsetLeft - (contenedor.clientWidth - tarjeta.clientWidth) / 2
   contenedor.scrollTo({
-    left: Math.max(0, destino),
+    left: destino,
     behavior: suave && !sinMovimiento.value ? 'smooth' : 'auto',
   })
   indiceActivo.value = i
 }
 
+/**
+ * La tarjeta siguiente en ese sentido que **de verdad mueve** la pista. La
+ * vecina inmediata puede no moverla (ya está tan centrada como se puede), y
+ * entonces la pulsación se perdía.
+ */
+function pasoDesde(sentido: 1 | -1): number | null {
+  const actual = pista.value?.scrollLeft ?? 0
+  for (let i = indiceActivo.value + sentido; i >= 0 && i < total.value; i += sentido) {
+    const destino = destinoDe(i)
+    if (destino !== null && (sentido > 0 ? destino > actual + 1 : destino < actual - 1)) return i
+  }
+  return null
+}
+
 function anterior() {
   pausarTrasInteractuar()
-  irA(Math.max(0, indiceActivo.value - 1))
+  const i = pasoDesde(-1)
+  if (i !== null) irA(i)
 }
 
 function siguiente() {
   pausarTrasInteractuar()
-  irA(Math.min(total.value - 1, indiceActivo.value + 1))
+  const i = pasoDesde(1)
+  if (i !== null) irA(i)
 }
 
 /** Recalcula qué tarjeta está más cerca del centro del contenedor. */
@@ -96,6 +142,7 @@ function alDesplazar() {
   })
 
   indiceActivo.value = mejor
+  actualizarLimites()
 }
 
 // ── Autoplay ────────────────────────────────────────────────────────
@@ -175,6 +222,7 @@ onMounted(() => {
   sinMovimiento.value = window.matchMedia('(prefers-reduced-motion: reduce)').matches
 
   centrarDestacado()
+  actualizarLimites()
 
   // En onMounted las tarjetas aun no tienen su ancho final: faltan las fuentes
   // de marca y las imagenes, asi que el centrado sale descuadrado (FE-03).
@@ -191,6 +239,7 @@ onMounted(() => {
       if (ancho === anchoPrevio || arrastrando) return
       anchoPrevio = ancho
       irA(indiceActivo.value, false)
+      actualizarLimites()
     })
     observadorTamano.observe(pista.value)
   }
@@ -224,7 +273,7 @@ onBeforeUnmount(() => {
              rounded-full bg-white text-dark shadow-sombra ring-1 ring-dark/10 transition
              hover:bg-nodo-400 disabled:opacity-25 lg:flex"
       aria-label="Membresía anterior"
-      :disabled="indiceActivo === 0"
+      :disabled="!puedeIrAtras"
       @click="anterior"
     >
       <ChevronLeft class="h-6 w-6" aria-hidden="true" />
@@ -236,7 +285,7 @@ onBeforeUnmount(() => {
              rounded-full bg-white text-dark shadow-sombra ring-1 ring-dark/10 transition
              hover:bg-nodo-400 disabled:opacity-25 lg:flex"
       aria-label="Membresía siguiente"
-      :disabled="indiceActivo === total - 1"
+      :disabled="!puedeIrAdelante"
       @click="siguiente"
     >
       <ChevronRight class="h-6 w-6" aria-hidden="true" />
