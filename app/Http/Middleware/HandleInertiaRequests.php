@@ -55,10 +55,10 @@ class HandleInertiaRequests extends Middleware
             'avisosPanel' => fn () => $this->avisosDelPanel($request),
 
             // F — Que botones de acceso externo dibujar. La ruta de cada
-            // proveedor comprueba el mismo interruptor por su cuenta: esconder
-            // el boton no es control de acceso.
+            // proveedor comprueba lo mismo por su cuenta: esconder el boton no
+            // es control de acceso. Google pide interruptor y credenciales.
             'proveedores' => [
-                'google'       => (bool) config('nodico.acceso.google'),
+                'google'       => \App\Support\AccesoConGoogle::disponible(),
                 'enlaceMagico' => (bool) config('nodico.acceso.enlace_magico'),
             ],
 

@@ -18,7 +18,53 @@ acceso, y por eso el interruptor se comprueba en el servidor
 
 ## Google
 
-### Qué hace falta
+> **Estado al 1-oct-2026:** todo construido y **apagado**. El botón aparece
+> solo si se cumplen **las dos** cosas: el interruptor
+> `NODICO_GOOGLE_LOGIN_ENABLED=true` **y** las tres credenciales
+> (`GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GOOGLE_REDIRECT_URI`). Encender
+> el interruptor sin credenciales no dibuja un botón que truene: no se ve nada
+> y la ruta responde 404 (`App\Support\AccesoConGoogle`,
+> `tests/Feature/Auth/GoogleListoParaEncenderTest.php`).
+
+### Qué pedirle a quien tenga la cuenta de Google Cloud del instituto
+
+Nódico **no puede** crear estas credenciales: salen de la consola de Google
+Cloud de una cuenta del IYEM. Este es el mensaje, tal cual, para la persona que
+la administre:
+
+1. **Usar o crear un proyecto** en https://console.cloud.google.com/ a nombre
+   del IYEM (por ejemplo «Nódico»). Conviene que sea una cuenta institucional y
+   no personal: si esa persona se va, las credenciales se quedan.
+2. **APIs y servicios → Pantalla de consentimiento de OAuth**:
+   - Tipo de usuario: **Externo**.
+   - Nombre de la aplicación: **Nódico**. Logotipo: el de Nódico (opcional,
+     pero si se sube, Google lo revisa).
+   - Correo de asistencia: `contacto@nodico.com.mx`.
+   - Dominios autorizados: `nodico.com.mx`.
+   - Enlaces: página principal `https://nodico.com.mx`, política de privacidad
+     `https://nodico.com.mx/aviso-de-privacidad`, términos
+     `https://nodico.com.mx/terminos`.
+   - Permisos (scopes): solo `openid`, `email` y `profile`. Son los básicos y
+     **no requieren verificación** de Google.
+   - Al terminar, **Publicar la aplicación** (pasar de *Testing* a
+     *Producción*). En *Testing* solo pueden entrar las cuentas agregadas a mano
+     como usuarios de prueba, y las demás ven un error de Google.
+3. **APIs y servicios → Credenciales → Crear credenciales → ID de cliente de
+   OAuth → Aplicación web**, con nombre «Nódico web»:
+   - *Orígenes de JavaScript autorizados*: `https://prueba.nodico.com.mx` y
+     `https://nodico.com.mx`.
+   - *URI de redireccionamiento autorizados* (copiar exactos, sin barra final):
+     `https://prueba.nodico.com.mx/acceso/google/retorno` y
+     `https://nodico.com.mx/acceso/google/retorno`.
+4. **Entregar** el *ID de cliente* (termina en `.apps.googleusercontent.com`) y
+   el *secreto de cliente*. El secreto es una contraseña: por un canal privado
+   (gestor de contraseñas o en persona), **nunca** por correo o chat abierto.
+5. Solo si se va a usar en la **app móvil**: crear además un ID de cliente
+   **iOS** (con el *bundle ID* de la app) y uno **Android** (con el nombre del
+   paquete y la huella SHA-1 de la firma), y entregar los dos ID. Estos no
+   tienen secreto.
+
+### Qué hace falta (detalle técnico)
 
 1. En [Google Cloud Console](https://console.cloud.google.com/), crear un
    proyecto (o usar el del IYEM).
@@ -52,6 +98,35 @@ GOOGLE_REDIRECT_URI=https://prueba.nodico.com.mx/acceso/google/retorno
 
 Y después `php artisan config:cache`, **siempre**: con la caché vieja el
 interruptor no cambia y parece que el código está roto.
+
+`GOOGLE_REDIRECT_URI` cambia al pasar a producción
+(`https://nodico.com.mx/acceso/google/retorno`); el ID y el secreto son los
+mismos. Para la app móvil, además:
+
+```ini
+GOOGLE_CLIENT_ID_IOS=...apps.googleusercontent.com
+GOOGLE_CLIENT_ID_ANDROID=...apps.googleusercontent.com
+```
+
+### Lo que ve la persona
+
+- **Botón «Continuar con Google»** arriba del formulario en *Iniciar sesión* y
+  en *Registrarse*, con el logotipo oficial de Google sin alterar sobre fondo
+  blanco, como piden las reglas de marca de Google
+  (https://developers.google.com/identity/branding-guidelines).
+- **Cancela en la pantalla de Google**: vuelve al inicio de sesión con «Cancelaste
+  el acceso con Google. Puedes entrar con tu correo y contraseña.»
+- **Primera vez, sin cuenta**: se crea la cuenta con el correo ya verificado y se
+  le pide aceptar el aviso de privacidad y los términos antes de entrar.
+- **Ya tenía cuenta con contraseña y ese correo**: si Google confirma que el
+  correo está verificado, se **vincula** a su cuenta (no se duplica) y se le
+  avisa: «Listo: vinculamos tu cuenta de Google con tu cuenta de Nódico. Puedes
+  seguir entrando también con tu correo y contraseña.» Si Google no lo confirma,
+  no se vincula y se le pide entrar con su contraseña: así nadie se queda con la
+  cuenta de otra persona registrando su correo en Google.
+- **Tiene segundo factor**: Google no se lo salta; pasa al código igual.
+- Desde *Mi seguridad* puede desvincular Google, siempre que le quede otra forma
+  de entrar.
 
 ### Lo que ya está resuelto en el código
 

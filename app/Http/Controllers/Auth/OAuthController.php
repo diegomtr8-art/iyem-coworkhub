@@ -14,6 +14,7 @@ use App\Models\IdentidadSocial;
 use App\Models\User;
 use App\Servicios\Acceso\IdentidadDeProveedor;
 use App\Servicios\Acceso\PerfilExterno;
+use App\Support\AccesoConGoogle;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -58,7 +59,7 @@ class OAuthController extends Controller
      * flujo detrás sería peor que no tenerlo.
      */
     private const PROVEEDORES = [
-        'google' => 'nodico.acceso.google',
+        'google' => [AccesoConGoogle::class, 'disponible'],
     ];
 
     public function redirigir(Request $request, string $proveedor): RedirectResponse
@@ -129,6 +130,11 @@ class OAuthController extends Controller
 
         $bruto = (array) ($externo->user ?? []);
 
+        // Para avisar a quien ya tenía cuenta con contraseña de que Google
+        // quedó vinculado: no debe enterarse por sorpresa en «Mi seguridad».
+        $seVincula = ! IdentidadSocial::where('proveedor', $proveedor)->where('proveedor_id', (string) $externo->getId())->exists()
+            && User::where('email', $correo)->exists();
+
         $usuario = app(IdentidadDeProveedor::class)->resolver($proveedor, new PerfilExterno(
             id: (string) $externo->getId(),
             correo: $correo,
@@ -158,21 +164,25 @@ class OAuthController extends Controller
         // anterior. Ver `AuthenticatedSessionController`.
         $request->session()->regenerate(true);
 
-        return $this->alPortal($usuario);
+        $respuesta = $this->alPortal($usuario);
+
+        return $seVincula
+            ? $respuesta->with('success', 'Listo: vinculamos tu cuenta de Google con tu cuenta de Nódico. Puedes seguir entrando también con tu correo y contraseña.')
+            : $respuesta;
     }
 
     /**
      * Lista blanca y apagado real.
      *
-     * Con el proveedor apagado la ruta responde **404**, no un 403: para quien
-     * pruebe la URL, ese camino sencillamente no existe. Esconder el botón en
-     * el front no es control de acceso.
+     * Con el proveedor apagado —o encendido sin credenciales— la ruta responde
+     * **404**, no un 403: para quien pruebe la URL, ese camino sencillamente
+     * no existe. Esconder el botón en el front no es control de acceso.
      */
     private function asegurarQueEstaEncendido(string $proveedor): void
     {
-        $clave = self::PROVEEDORES[$proveedor] ?? null;
+        $disponible = self::PROVEEDORES[$proveedor] ?? null;
 
-        abort_if($clave === null, 404);
-        abort_unless((bool) config($clave), 404);
+        abort_if($disponible === null, 404);
+        abort_unless((bool) $disponible(), 404);
     }
 }
