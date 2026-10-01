@@ -64,6 +64,8 @@ return [
         // https://documents.openpay.mx/docs/three-d-secure. `siempre`: todos
         // los cargos pasan por la autenticación del banco.
         'tres_d_secure'  => env('OPENPAY_3DS', 'si_hace_falta'),
+        // Clientes, tarjeta guardada, planes, suscripciones y webhook.
+        'suscripciones'  => true,
         // Planes recurrentes: reintentos del cobro mensual y cómo queda la
         // suscripción al agotarlos (decisión de Diego, 29-sep-2026).
         'reintentos'         => 2,
@@ -86,6 +88,18 @@ return [
         'captura'        => env('BBVA_CAPTURA', 'vpos'),
         // BBVA aplica 3-D Secure por defecto en el servidor.
         'tres_d_secure'  => 'del_banco',
+        // Renovación automática (clientes, tarjeta guardada, planes,
+        // suscripciones y webhook), como en Openpay. La documentación de
+        // Ecommerce BBVA solo describe cargos, pero su sandbox responde a esas
+        // rutas igual que Openpay (comprobado el 1-oct-2026). Por eso se
+        // enciende aparte: en pruebas para comprobarlo de punta a punta, y en
+        // producción solo cuando el ejecutivo confirme que el comercio las
+        // tiene habilitadas. Apagado, BBVA cobra por periodo.
+        'suscripciones'  => (bool) env('BBVA_SUSCRIPCIONES', false),
+        'reintentos'             => 2,
+        'estado_tras_reintentos' => 'unpaid',
+        'webhook_usuario'    => env('BBVA_WEBHOOK_USUARIO'),
+        'webhook_contrasena' => env('BBVA_WEBHOOK_CONTRASENA'),
     ]),
 
 ];

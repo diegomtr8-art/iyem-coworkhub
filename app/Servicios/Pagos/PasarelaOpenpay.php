@@ -73,13 +73,14 @@ class PasarelaOpenpay implements PasarelaDePagos
     }
 
     /**
-     * Openpay cobra solo cada mes los planes recurrentes cuyo plan de Openpay
-     * está sincronizado a su precio (`nodico:sincronizar-planes-pasarela`).
-     * Ecommerce BBVA no tiene suscripciones: se paga por periodo.
+     * La pasarela cobra sola cada mes los planes recurrentes cuyo plan está
+     * sincronizado a su precio (`nodico:sincronizar-planes-pasarela`). Sin
+     * suscripciones (BBVA mientras no se encienda `BBVA_SUSCRIPCIONES`), se
+     * paga por periodo.
      */
     public function renuevaSola(Plane $plan): bool
     {
-        return ! $this->esBbva()
+        return $this->api->conSuscripciones()
             && (bool) $plan->cobro_recurrente
             && $this->suscripciones->planDe($plan, $this->nombre()) !== null;
     }
@@ -124,7 +125,7 @@ class PasarelaOpenpay implements PasarelaDePagos
      */
     public function guardaTarjeta(Plane $plan): bool
     {
-        return ! $this->esBbva() && (bool) $plan->cobro_recurrente;
+        return $this->api->conSuscripciones() && (bool) $plan->cobro_recurrente;
     }
 
     /**
@@ -167,7 +168,9 @@ class PasarelaOpenpay implements PasarelaDePagos
                 return $retomado;
             }
 
-            if ($this->esBbva()) {
+            // Sin suscripciones: cargo de comercio, sin cliente ni tarjeta
+            // guardada (el «cargo sin VPOS» de BBVA).
+            if (! $this->api->conSuscripciones()) {
                 return $this->crearCargo($usuario, $plan, 'web', [
                     'method' => 'card', 'source_id' => $token, 'device_session_id' => $deviceSessionId,
                 ]);
@@ -321,7 +324,7 @@ class PasarelaOpenpay implements PasarelaDePagos
      */
     public function estadoDeRenovacion(User $usuario): array
     {
-        $viva = $this->esBbva() ? null : $this->suscripciones->vivaDe($usuario, $this->nombre());
+        $viva = ! $this->api->conSuscripciones() ? null : $this->suscripciones->vivaDe($usuario, $this->nombre());
 
         $guardada = ClientePasarela::where('user_id', $usuario->id)
             ->where('pasarela', $this->nombre())
@@ -356,7 +359,7 @@ class PasarelaOpenpay implements PasarelaDePagos
      */
     public function cancelarRenovacion(User $usuario): bool
     {
-        $viva = $this->esBbva() ? null : $this->suscripciones->vivaDe($usuario, $this->nombre());
+        $viva = ! $this->api->conSuscripciones() ? null : $this->suscripciones->vivaDe($usuario, $this->nombre());
 
         if (! $viva || $viva->cancelar_al_final) {
             return false;
@@ -370,7 +373,7 @@ class PasarelaOpenpay implements PasarelaDePagos
     /** @throws ValidationException si Openpay no responde */
     public function reactivarRenovacion(User $usuario): bool
     {
-        $viva = $this->esBbva() ? null : $this->suscripciones->vivaDe($usuario, $this->nombre());
+        $viva = ! $this->api->conSuscripciones() ? null : $this->suscripciones->vivaDe($usuario, $this->nombre());
 
         return $viva ? (bool) $this->contraOpenpay(fn () => $this->suscripciones->reactivar($viva)) : false;
     }

@@ -22,23 +22,24 @@ use Illuminate\Console\Command;
 class SincronizarPlanesPasarela extends Command
 {
     protected $signature = 'nodico:sincronizar-planes-pasarela
-        {--pasarela=openpay : Solo Openpay tiene planes (Ecommerce BBVA no)}
+        {--pasarela= : openpay | bbva (por defecto, la activa en PAGOS_PASARELA)}
         {--simular : Muestra qué se crearía sin llamar a Openpay}';
 
     protected $description = 'Crea en Openpay los planes de las membresías que se renuevan solas.';
 
     public function handle(SuscripcionesOpenpay $suscripciones): int
     {
-        $pasarela = (string) $this->option('pasarela');
+        $pasarela = (string) ($this->option('pasarela') ?: config('pagos.pasarela'));
 
-        if ($pasarela !== 'openpay') {
-            $this->error('Solo Openpay tiene planes y suscripciones.');
+        if (! in_array($pasarela, ['openpay', 'bbva'], true) || ! ClienteOpenpay::para($pasarela)->conSuscripciones()) {
+            $this->error("«{$pasarela}» no usa planes ni suscripciones (en BBVA se encienden con BBVA_SUSCRIPCIONES).");
 
             return self::FAILURE;
         }
 
         if (! ClienteOpenpay::para($pasarela)->configurado()) {
-            $this->error('Faltan OPENPAY_MERCHANT_ID u OPENPAY_LLAVE_PRIVADA en el .env.');
+            $prefijo = strtoupper($pasarela);
+            $this->error("Faltan {$prefijo}_MERCHANT_ID, {$prefijo}_LLAVE_PRIVADA o la afiliación en el .env.");
 
             return self::FAILURE;
         }

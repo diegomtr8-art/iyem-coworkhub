@@ -138,7 +138,7 @@ class SuscripcionesOpenpay
      */
     public function asegurarAlta(CargoPasarela $cargo): ?SuscripcionPasarela
     {
-        if (! $cargo->suscribir || $cargo->estado !== CargoPasarela::COMPLETADO || $cargo->pasarela !== 'openpay') {
+        if (! $cargo->suscribir || $cargo->estado !== CargoPasarela::COMPLETADO || ! ClienteOpenpay::para($cargo->pasarela)->conSuscripciones()) {
             return null;
         }
 

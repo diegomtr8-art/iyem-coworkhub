@@ -40,7 +40,9 @@ class OpenpayWebhookController extends Controller
 {
     public function __invoke(Request $request, ConfirmadorDeCargo $confirmador, SuscripcionesOpenpay $suscripciones): JsonResponse
     {
-        if (! $this->autentico($request)) {
+        $plataforma = $this->autentico($request);
+
+        if (! $plataforma) {
             Log::warning('Openpay webhook: rechazado por credenciales.', [
                 'ip' => $request->server('REMOTE_ADDR'), 'tipo' => $request->input('type'),
             ]);
@@ -52,6 +54,7 @@ class OpenpayWebhookController extends Controller
         $transaccion = (array) $request->input('transaction', []);
 
         Log::info('Openpay webhook: recibido.', [
+            'plataforma'  => $plataforma,
             'tipo'        => $tipo,
             'transaccion' => $transaccion['id'] ?? null,
             'cliente'     => $transaccion['customer_id'] ?? null,
@@ -65,8 +68,8 @@ class OpenpayWebhookController extends Controller
                 $tipo === 'verification' => Log::notice('Openpay webhook: código de verificación.', [
                     'codigo' => $request->input('verification_code'),
                 ]),
-                str_starts_with($tipo, 'charge.') => $this->porCargo($transaccion, $confirmador, $suscripciones),
-                $tipo === 'subscription.charge.failed' => $this->porCliente($transaccion['customer_id'] ?? null, $suscripciones),
+                str_starts_with($tipo, 'charge.') => $this->porCargo($plataforma, $transaccion, $confirmador, $suscripciones),
+                $tipo === 'subscription.charge.failed' => $this->porCliente($plataforma, $transaccion['customer_id'] ?? null, $suscripciones),
                 str_starts_with($tipo, 'chargeback.') => Log::warning('Openpay webhook: contracargo; revisarlo en caja.', [
                     'tipo' => $tipo, 'transaccion' => $transaccion['id'] ?? null,
                 ]),
@@ -87,11 +90,11 @@ class OpenpayWebhookController extends Controller
      * consultándolo. Si no (el cobro mensual lo crea Openpay), se sincronizan
      * las suscripciones de ese cliente.
      */
-    private function porCargo(array $transaccion, ConfirmadorDeCargo $confirmador, SuscripcionesOpenpay $suscripciones): void
+    private function porCargo(string $plataforma, array $transaccion, ConfirmadorDeCargo $confirmador, SuscripcionesOpenpay $suscripciones): void
     {
         $id = (string) ($transaccion['id'] ?? '');
 
-        $cargo = $id !== '' ? CargoPasarela::where('pasarela', 'openpay')->where('transaccion_id', $id)->first() : null;
+        $cargo = $id !== '' ? CargoPasarela::where('pasarela', $plataforma)->where('transaccion_id', $id)->first() : null;
 
         if ($cargo) {
             $confirmador->confirmar($cargo);
@@ -99,16 +102,16 @@ class OpenpayWebhookController extends Controller
             return;
         }
 
-        $this->porCliente($transaccion['customer_id'] ?? null, $suscripciones);
+        $this->porCliente($plataforma, $transaccion['customer_id'] ?? null, $suscripciones);
     }
 
-    private function porCliente(?string $clienteId, SuscripcionesOpenpay $suscripciones): void
+    private function porCliente(string $plataforma, ?string $clienteId, SuscripcionesOpenpay $suscripciones): void
     {
         if (! $clienteId) {
             return;
         }
 
-        $vivas = SuscripcionPasarela::where('pasarela', 'openpay')
+        $vivas = SuscripcionPasarela::where('pasarela', $plataforma)
             ->where('cliente_id', $clienteId)
             ->where(fn ($q) => $q->vivas()->orWhere('estado', 'unpaid'))
             ->get();
@@ -121,19 +124,27 @@ class OpenpayWebhookController extends Controller
     }
 
     /**
-     * HTTP Basic contra `OPENPAY_WEBHOOK_USUARIO` / `OPENPAY_WEBHOOK_CONTRASENA`.
-     * Sin los dos configurados, nada es auténtico.
+     * HTTP Basic contra `{OPENPAY|BBVA}_WEBHOOK_USUARIO` / `…_CONTRASENA`.
+     * Devuelve la plataforma cuyas credenciales coinciden: es la que mandó el
+     * aviso y la única cuyos cargos y suscripciones se consultan. Una
+     * plataforma sin las dos configuradas no autentica nada.
      */
-    private function autentico(Request $request): bool
+    private function autentico(Request $request): ?string
     {
-        $usuario = (string) config('pagos.openpay.webhook_usuario');
-        $contrasena = (string) config('pagos.openpay.webhook_contrasena');
+        foreach (['openpay', 'bbva'] as $plataforma) {
+            $usuario = (string) config("pagos.{$plataforma}.webhook_usuario");
+            $contrasena = (string) config("pagos.{$plataforma}.webhook_contrasena");
 
-        if ($usuario === '' || $contrasena === '') {
-            return false;
+            if ($usuario === '' || $contrasena === '') {
+                continue;
+            }
+
+            if (hash_equals($usuario, (string) $request->getUser())
+                && hash_equals($contrasena, (string) $request->getPassword())) {
+                return $plataforma;
+            }
         }
 
-        return hash_equals($usuario, (string) $request->getUser())
-            && hash_equals($contrasena, (string) $request->getPassword());
+        return null;
     }
 }

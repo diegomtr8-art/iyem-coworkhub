@@ -54,6 +54,31 @@ class ClienteOpenpay
             && ($this->plataforma !== 'bbva' || filled($this->ajuste('afiliacion')));
     }
 
+    /**
+     * Si en esta plataforma se usa la renovación automática: clientes,
+     * tarjeta guardada, planes, suscripciones y webhook. Siempre en Openpay;
+     * en BBVA, solo con `BBVA_SUSCRIPCIONES` (ver config/pagos.php).
+     */
+    public function conSuscripciones(): bool
+    {
+        return (bool) $this->ajuste('suscripciones', false);
+    }
+
+    /**
+     * Las plataformas configuradas que usan suscripciones: las que hay que
+     * sincronizar y de las que se aceptan webhooks. Incluye la que no está
+     * activa, porque lo ya suscrito sigue su curso aunque se cambie.
+     *
+     * @return list<string>
+     */
+    public static function conSuscripcionesConfiguradas(): array
+    {
+        return array_values(array_filter(
+            ['openpay', 'bbva'],
+            fn (string $p) => ($api = self::para($p))->configurado() && $api->conSuscripciones(),
+        ));
+    }
+
     public function afiliacion(): ?string
     {
         return $this->ajuste('afiliacion') ?: null;

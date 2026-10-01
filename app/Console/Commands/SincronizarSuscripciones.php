@@ -29,14 +29,16 @@ class SincronizarSuscripciones extends Command
 
     public function handle(SuscripcionesOpenpay $suscripciones): int
     {
-        if (! ClienteOpenpay::para('openpay')->configurado()) {
-            $this->line('Openpay no está configurado: nada que sincronizar.');
+        $plataformas = ClienteOpenpay::conSuscripcionesConfiguradas();
+
+        if ($plataformas === []) {
+            $this->line('Ninguna pasarela con suscripciones está configurada: nada que sincronizar.');
 
             return self::SUCCESS;
         }
 
         $altas = 0;
-        CargoPasarela::where('pasarela', 'openpay')
+        CargoPasarela::whereIn('pasarela', $plataformas)
             ->where('suscribir', true)
             ->where('estado', CargoPasarela::COMPLETADO)
             ->where('confirmado_en', '>=', now()->subDays(7))
@@ -53,7 +55,7 @@ class SincronizarSuscripciones extends Command
 
         $revisadas = 0;
         $fallas = 0;
-        SuscripcionPasarela::where('pasarela', 'openpay')
+        SuscripcionPasarela::whereIn('pasarela', $plataformas)
             ->where(fn ($q) => $q->vivas()->orWhere('estado', 'unpaid'))
             ->orderBy('id')
             ->each(function (SuscripcionPasarela $suscripcion) use ($suscripciones, &$revisadas, &$fallas) {
