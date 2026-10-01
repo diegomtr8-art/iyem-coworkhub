@@ -1,0 +1,126 @@
+# ════════════════════════════════════════════════════════════════════════════
+#  .env de PRODUCCIÓN de Nódico (nodico.com.mx) — PLANTILLA
+# ════════════════════════════════════════════════════════════════════════════
+#
+#  Se copia al servidor como `.env` el día del lanzamiento (docs/PRODUCCION.md,
+#  paso 4). Aquí NO van secretos: este archivo está en el repositorio.
+#
+#  Convención:
+#    - Valor escrito       → ya se conoce; dejarlo tal cual.
+#    - __PENDIENTE: …__    → falta; dice quién lo da. El sitio NO debe
+#                            encenderse con ninguno de estos sin llenar.
+#    - __GENERAR: …__      → se genera ese día en el servidor (comando indicado).
+#
+#  Comprobar que no quedó ninguno:  grep -n "__PENDIENTE\|__GENERAR" .env
+# ════════════════════════════════════════════════════════════════════════════
+
+APP_NAME="Nódico"
+# Exactamente `production`: retira el noindex, el Disallow y el distintivo
+# «Ambiente de prueba», y bloquea los comandos de datos demo (que además usan
+# lista blanca: cualquier otro valor también los bloquea).
+APP_ENV=production
+APP_KEY=__GENERAR: php artisan key:generate --show (una sola vez; NO copiar la de pruebas)__
+APP_DEBUG=false
+APP_URL=https://nodico.com.mx
+APP_LOCALE=es
+APP_FALLBACK_LOCALE=es
+APP_FAKER_LOCALE=es_MX
+APP_MAINTENANCE_DRIVER=file
+BCRYPT_ROUNDS=12
+
+# `daily` con 14 días: con `single` el log crece sin tope (en pruebas no rota).
+LOG_CHANNEL=daily
+LOG_DAILY_DAYS=14
+LOG_DEPRECATIONS_CHANNEL=null
+LOG_LEVEL=info
+
+# Base de datos NUEVA, creada en hPanel. No la de pruebas: sus datos no se migran.
+DB_CONNECTION=mysql
+DB_HOST=localhost
+DB_PORT=3306
+DB_DATABASE=__PENDIENTE: nombre de la BD de producción (hPanel → Bases de datos MySQL)__
+DB_USERNAME=__PENDIENTE: usuario de esa BD__
+DB_PASSWORD=__PENDIENTE: contraseña de ese usuario (entre comillas si lleva = o #)__
+
+SESSION_DRIVER=database
+SESSION_LIFETIME=120
+SESSION_ENCRYPT=false
+SESSION_PATH=/
+SESSION_DOMAIN=null
+# Solo HTTPS: la cookie de sesión nunca viaja en claro.
+SESSION_SECURE_COOKIE=true
+
+BROADCAST_CONNECTION=log
+FILESYSTEM_DISK=local
+# Hosting compartido sin trabajador de colas: los correos salen en la misma
+# petición, como en pruebas.
+QUEUE_CONNECTION=sync
+CACHE_STORE=database
+
+# ── Correo ──────────────────────────────────────────────────────────────────
+# Buzón de Hostinger del dominio. Puerto 465 con `smtps` (MAIL_SCHEME; la clave
+# MAIL_ENCRYPTION de pruebas ya no la lee Laravel 11). Verificado el 28-sep-2026.
+MAIL_MAILER=smtp
+MAIL_SCHEME=smtps
+MAIL_HOST=smtp.hostinger.com
+MAIL_PORT=465
+MAIL_USERNAME=contacto@nodico.com.mx
+MAIL_PASSWORD=__PENDIENTE: contraseña del buzón contacto@nodico.com.mx (entre comillas: lleva =)__
+MAIL_FROM_ADDRESS=contacto@nodico.com.mx
+MAIL_FROM_NAME="Nódico"
+NODICO_CONTACTO_EMAIL=contacto@nodico.com.mx
+NODICO_EMAIL_FACTURACION=facturacion@nodico.com.mx
+
+VITE_APP_NAME="${APP_NAME}"
+
+# ── Sitio ───────────────────────────────────────────────────────────────────
+NODICO_CSP_ESTRICTA=false
+NODICO_APERTURA=09:00
+NODICO_CIERRE=19:00
+NODICO_SALON_PRECIO_HORA=600
+
+# ── Acceso ──────────────────────────────────────────────────────────────────
+NODICO_ENLACE_MAGICO_ENABLED=true
+# Google: apagado hasta tener credenciales (docs/AUTH-PROVEEDORES.md). Con el
+# interruptor encendido y sin las tres credenciales, el botón no aparece.
+NODICO_GOOGLE_LOGIN_ENABLED=false
+GOOGLE_CLIENT_ID=
+GOOGLE_CLIENT_SECRET=
+GOOGLE_REDIRECT_URI=https://nodico.com.mx/acceso/google/retorno
+
+# ── Cobro con tarjeta: Ecommerce BBVA ───────────────────────────────────────
+# Decisión del 1-oct-2026: página del banco (VPOS) y sin renovación automática
+# hasta que el ejecutivo autorice el «cargo sin VPOS» (docs/PAGOS-BBVA.md).
+PAGOS_PASARELA=bbva
+BBVA_SANDBOX=false
+BBVA_MERCHANT_ID=__PENDIENTE: ID de comercio de PRODUCCIÓN de Nódico (ejecutivo BBVA)__
+BBVA_LLAVE_PRIVADA=__PENDIENTE: llave privada de PRODUCCIÓN (ejecutivo BBVA; nunca por correo)__
+BBVA_LLAVE_PUBLICA=__PENDIENTE: llave pública de PRODUCCIÓN (ejecutivo BBVA)__
+BBVA_AFILIACION=__PENDIENTE: número de afiliación de PRODUCCIÓN (ejecutivo BBVA)__
+BBVA_CAPTURA=vpos
+BBVA_SUSCRIPCIONES=false
+BBVA_WEBHOOK_USUARIO=
+BBVA_WEBHOOK_CONTRASENA=
+
+# Openpay: no se usa en producción.
+OPENPAY_MERCHANT_ID=
+OPENPAY_LLAVE_PRIVADA=
+OPENPAY_LLAVE_PUBLICA=
+OPENPAY_SANDBOX=true
+OPENPAY_3DS=si_hace_falta
+OPENPAY_WEBHOOK_USUARIO=
+OPENPAY_WEBHOOK_CONTRASENA=
+
+# Stripe: fuera de servicio. Instalado, sin llaves: nunca se activa solo.
+STRIPE_KEY=
+STRIPE_SECRET=
+STRIPE_WEBHOOK_SECRET=
+CASHIER_CURRENCY=mxn
+CASHIER_CURRENCY_LOCALE=es_MX
+
+# ── Control de acceso (agente del torno en la oficina) ──────────────────────
+# Un secreto NUEVO para producción; el mismo valor va en el .env del agente
+# (NODICO_SECRETO) junto con NODICO_URL=https://nodico.com.mx.
+ACCESO_AGENTE_SECRETO=__GENERAR: php -r "echo bin2hex(random_bytes(32));"__
+ACCESO_ANTIRREBOTE_SEGUNDOS=90
+ACCESO_REPLAY_VENTANA_SEGUNDOS=300
