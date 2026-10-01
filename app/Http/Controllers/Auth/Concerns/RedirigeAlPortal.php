@@ -95,7 +95,11 @@ trait RedirigeAlPortal
     private function rutaQueAtiende(string $camino): ?RutaDefinida
     {
         try {
-            return Route::getRoutes()->match(Request::create($camino, 'GET'));
+            $ruta = Route::getRoutes()->match(Request::create($camino, 'GET'));
+
+            // La ruta de respaldo (la pantalla de 404) atiende cualquier
+            // camino, pero no es un destino.
+            return $ruta->isFallback ? null : $ruta;
         } catch (HttpException) {
             // No hay ruta GET para ese camino: no es un destino al que llevar a nadie.
             return null;

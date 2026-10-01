@@ -119,11 +119,24 @@ return Application::configure(basePath: dirname(__DIR__))
          * portal que pidio, asi que no puede ser la pantalla en blanco de
          * Symfony: tiene que explicar que paso y ofrecer una salida.
          *
-         * Se envuelve solo el 403. El resto de codigos siguen con el manejo por
-         * defecto, incluida la pagina de depuracion en local.
+         * Se envuelven el 403 y el 404. El resto de codigos siguen con el
+         * manejo por defecto, incluida la pagina de depuracion en local.
          */
         $exceptions->respond(function (Response $respuesta, Throwable $e, Request $peticion) {
-            if ($respuesta->getStatusCode() !== 403 || $peticion->expectsJson()) {
+            if ($peticion->expectsJson()) {
+                return $respuesta;
+            }
+
+            // El 404 tampoco puede ser la página de Laravel en inglés y sin
+            // salida (hallazgo de pruebas, 29-sep-2026): dice qué pasó y a
+            // dónde ir. Un registro borrado (`findOrFail`) llega aquí igual.
+            if ($respuesta->getStatusCode() === 404) {
+                return Inertia::render('Errors/404')
+                    ->toResponse($peticion)
+                    ->setStatusCode(404);
+            }
+
+            if ($respuesta->getStatusCode() !== 403) {
                 return $respuesta;
             }
 

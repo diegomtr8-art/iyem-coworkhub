@@ -466,3 +466,9 @@ Route::get('pago/desde-app/{token}', [\App\Http\Controllers\PagoDesdeAppControll
 Route::get('pago/banco/regreso-app', \App\Http\Controllers\RegresoDelBancoAppController::class)
     ->middleware('throttle:30,1')
     ->name('pago.banco.regreso-app');
+
+// Una dirección que no existe pasa por el grupo `web` (sesión y datos
+// compartidos de Inertia) para que la pantalla de 404 sepa quién eres y a qué
+// sección mandarte. Sin esto la respuesta salía antes de la sesión. Tiene que
+// ser la última ruta.
+Route::fallback(fn () => abort(404));
