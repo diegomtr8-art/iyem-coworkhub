@@ -5,19 +5,23 @@ setlocal enabledelayedexpansion
 title Nodico - Integrar a main
 
 set "REPO=C:\xampp\htdocs\coworkhub"
-set "ORIGEN=feature/reconexion-terminal"
+set "ORIGEN=feature/arreglos-pruebas"
 
 REM ============================================================
 REM  Lleva a main todo el trabajo acumulado.
 REM
-REM  "feature/reconexion-terminal" contiene a TODAS las demas
-REM  ramas (integracion-staging, tablero, control-acceso,
-REM  pagos-referencia, responsive, fase4 y auth son ancestros
-REM  suyos), y main no tiene ni un commit que ella no tenga.
+REM  "feature/arreglos-pruebas" contiene a TODAS las demas
+REM  ramas (reconexion-terminal, cms-pagina-web y las que ya
+REM  contenia aquella son ancestros suyos), y ni main ni
+REM  origin/main tienen un commit que ella no tenga.
 REM
 REM  Por eso esto es un AVANCE RAPIDO: no hay conflictos
 REM  posibles y no se crea commit de fusion. Se usa --ff-only
 REM  para que git se niegue si algo cambiara esa condicion.
+REM
+REM  Se compara tambien contra origin/main (tras un fetch):
+REM  alguien puede subir a GitHub desde la web, y entonces el
+REM  avance local funciona pero el push se rechaza a medias.
 REM ============================================================
 
 echo.
@@ -83,6 +87,22 @@ if not "%ATRAS%"=="0" (
     echo [ALTO] main tiene %ATRAS% commits que %ORIGEN% no tiene.
     echo Ya NO es un avance rapido y hace falta una fusion real,
     echo que puede traer conflictos. Para aqui y avisa a Claude.
+    goto :fin
+)
+
+git fetch origin
+if errorlevel 1 goto :fallo
+
+set ATRAS_REMOTO=0
+for /f %%n in ('git rev-list --count %ORIGEN%..origin/main 2^>nul') do set ATRAS_REMOTO=%%n
+echo    origin/main aparte   : %ATRAS_REMOTO% commits
+
+if not "%ATRAS_REMOTO%"=="0" (
+    echo.
+    echo [ALTO] origin/main tiene %ATRAS_REMOTO% commits que %ORIGEN% no tiene.
+    echo Alguien subio a GitHub directamente. Hay que traerlos a la
+    echo rama primero ^(git merge origin/main^). Avisa a Claude.
+    git log --oneline %ORIGEN%..origin/main
     goto :fin
 )
 
