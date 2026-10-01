@@ -32,8 +32,11 @@ class DemoAlDia extends Command
 
     public function handle(): int
     {
-        if (app()->environment('production')) {
-            $this->error('nodico:demo-al-dia no corre en producción: borra y rehace las cuentas de demostración.');
+        // Lista blanca y no «todo menos production»: un APP_ENV mal escrito en
+        // el servidor real (`prod`, `produccion`) no puede bastar para que se
+        // borren y rehagan cuentas.
+        if (! app()->environment(['local', 'staging', 'testing'])) {
+            $this->error('nodico:demo-al-dia solo corre en local, staging o pruebas: borra y rehace las cuentas de demostración.');
 
             return self::FAILURE;
         }

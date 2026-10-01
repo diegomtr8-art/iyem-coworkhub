@@ -19,6 +19,16 @@ class DatabaseSeeder extends Seeder
 {
     public function run(): void
     {
+        // Datos de desarrollo con una contraseña escrita en el repositorio:
+        // nunca en producción. Lista blanca, para que un APP_ENV mal escrito
+        // tampoco baste.
+        if (! app()->environment(['local', 'staging', 'testing'])) {
+            throw new \RuntimeException(
+                'DatabaseSeeder no corre fuera de local, staging o pruebas: crea un '
+                . 'administrador con contraseña conocida. Aborta.'
+            );
+        }
+
         // Admin NODICO
         User::create([
             'name'      => 'Admin Nodico',

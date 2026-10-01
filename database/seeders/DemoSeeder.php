@@ -64,10 +64,11 @@ class DemoSeeder extends Seeder
 
     public function run(): void
     {
-        if (app()->environment('production')) {
+        // Lista blanca: un APP_ENV mal escrito en producción no abre la puerta.
+        if (! app()->environment(['local', 'staging', 'testing'])) {
             throw new \RuntimeException(
-                'DemoSeeder no corre en producción. Son datos de prueba y '
-                . 'arrasarían con lo real. Aborta.'
+                'DemoSeeder solo corre en local, staging o pruebas. Son datos de '
+                . 'prueba y arrasarían con lo real. Aborta.'
             );
         }
 

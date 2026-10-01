@@ -141,4 +141,18 @@ class DemoAlDiaTest extends TestCase
         $this->artisan('nodico:demo-al-dia')->assertFailed();
         $this->assertNull($this->idDelAdminDemo());
     }
+
+    /**
+     * Lista blanca, no negra: un `APP_ENV` mal escrito en el servidor de
+     * producción no puede bastar para que se resiembren las cuentas demo.
+     */
+    public function test_un_entorno_desconocido_tambien_se_niega(): void
+    {
+        foreach (['prod', 'produccion', 'Production', ''] as $entorno) {
+            $this->app['env'] = $entorno;
+
+            $this->artisan('nodico:demo-al-dia')->assertFailed();
+            $this->assertNull($this->idDelAdminDemo(), "Corrió con APP_ENV='{$entorno}'.");
+        }
+    }
 }

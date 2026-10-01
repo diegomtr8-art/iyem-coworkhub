@@ -28,4 +28,18 @@ class DemoSeederTest extends TestCase
             $this->assertSame(0, User::where('email', 'like', '%.demo@%')->count());
         }
     }
+
+    /** Lista blanca: un `APP_ENV` mal escrito no abre la puerta a sembrar demo. */
+    public function test_se_niega_con_un_entorno_desconocido(): void
+    {
+        $this->app['env'] = 'prod';
+
+        $this->expectException(\RuntimeException::class);
+
+        try {
+            (new DemoSeeder())->setContainer($this->app)->run();
+        } finally {
+            $this->assertSame(0, User::where('email', 'like', '%.demo@%')->count());
+        }
+    }
 }
