@@ -39,12 +39,20 @@ function esActivo(ruta: string) {
 
 const onScroll = () => (conFondo.value = window.scrollY > 40)
 
-function abrirMenu() {
+/**
+ * Con teclado el foco va al primer enlace, para seguir tabulando desde ahí.
+ * Con el dedo o el ratón va al panel, que no pinta contorno: Safari en iOS
+ * pinta el foco movido por código aunque se haya tocado con el dedo, y quedaba
+ * un «rectángulo flotante» sobre «Inicio» hasta tocar otro punto (pruebas,
+ * 29-sep-2026). El foco sigue dentro del menú en los dos casos.
+ */
+function abrirMenu(conTeclado = false) {
   abierto.value = true
   bloquear()
   nextTick(() => {
     activarInerte(dialogo.value)
-    dialogo.value?.querySelector<HTMLElement>('a, button')?.focus()
+    const destino = conTeclado ? dialogo.value?.querySelector<HTMLElement>('a, button') : dialogo.value
+    destino?.focus()
   })
 }
 
@@ -56,8 +64,9 @@ function cerrarMenu(devolverFoco = true) {
   if (devolverFoco) nextTick(() => botonMenu.value?.focus())
 }
 
-function alternarMenu() {
-  abierto.value ? cerrarMenu() : abrirMenu()
+/** `detail` es el número de clics: 0 cuando el «clic» lo generó Enter o Espacio. */
+function alternarMenu(e?: MouseEvent) {
+  abierto.value ? cerrarMenu() : abrirMenu(e?.detail === 0)
 }
 
 function alPulsarTecla(e: KeyboardEvent) {
@@ -71,7 +80,18 @@ function alPulsarTecla(e: KeyboardEvent) {
     return
   }
 
-  if (abierto.value) atraparFoco(e, dialogo.value)
+  if (!abierto.value) return
+
+  // Con el foco en el propio panel, Mayús+Tab saldría del menú.
+  if (e.key === 'Tab' && e.shiftKey && document.activeElement === dialogo.value) {
+    e.preventDefault()
+    const enfocables = dialogo.value?.querySelectorAll<HTMLElement>('a, button')
+    enfocables?.[enfocables.length - 1]?.focus()
+
+    return
+  }
+
+  atraparFoco(e, dialogo.value)
 }
 
 function alClicarFuera(e: MouseEvent) {
@@ -233,7 +253,8 @@ function cerrarSesion() {
         role="dialog"
         aria-modal="true"
         aria-label="Menú de navegación"
-        class="fixed inset-0 top-0 z-40 h-[100svh] bg-tinta xl:hidden"
+        tabindex="-1"
+        class="fixed inset-0 top-0 z-40 h-[100svh] bg-tinta focus-visible:shadow-none focus-visible:outline-none xl:hidden"
       >
         <div class="absolute inset-0" aria-hidden="true" @click="cerrarMenu()" />
 
