@@ -459,8 +459,12 @@ const estadosReserva: Record<string, 'bien' | 'atencion' | 'problema' | 'neutro'
         @click.self="cerrar"
       >
         <div class="w-full max-w-md border-2 border-dark bg-white">
-          <!-- Ajuste de horas -->
-          <form v-if="dialogo === 'ajuste'" @submit.prevent="enviar(ajuste, route('miembros.ajustar-horas', miembro.id))">
+          <!-- Ajuste de horas. `novalidate`: sin él, un motivo vacío lo frenaba
+               el navegador con un globo de dos segundos (que en iPhone ni sale)
+               y parecía que «no guarda» (pruebas de servicio social,
+               29-sep-2026). Así manda siempre y el motivo del rechazo se lee
+               en el modal, con el texto del servidor. -->
+          <form v-if="dialogo === 'ajuste'" novalidate @submit.prevent="enviar(ajuste, route('miembros.ajustar-horas', miembro.id))">
             <h2 class="border-b border-dark/15 bg-cream-50 px-4 py-3 font-display text-sm font-bold text-dark">
               Ajustar horas de {{ miembro.nombre }}
             </h2>
@@ -484,6 +488,7 @@ const estadosReserva: Record<string, 'bien' | 'atencion' | 'problema' | 'neutro'
 
                   <input
                     id="aj-horas" v-model.number="ajuste.horas" type="number" step="0.5"
+                    :aria-describedby="ajuste.errors.horas ? 'aj-horas-error' : undefined"
                     class="w-full border border-dark/25 px-2.5 py-2 text-center font-mono text-sm focus:border-dark"
                   />
 
@@ -496,24 +501,34 @@ const estadosReserva: Record<string, 'bien' | 'atencion' | 'problema' | 'neutro'
                 <p class="mt-1 text-[0.6875rem] text-dark/55">
                   En positivo le <strong>repones</strong> horas; en negativo se las descuentas.
                 </p>
-                <p v-if="ajuste.errors.horas" class="mt-1 text-xs text-red-700">{{ ajuste.errors.horas }}</p>
+                <p v-if="ajuste.errors.horas" id="aj-horas-error" role="alert" class="mt-1 text-xs text-red-700">{{ ajuste.errors.horas }}</p>
               </div>
 
               <div>
                 <label for="aj-motivo" class="mb-1 block text-xs font-bold text-dark">Motivo (obligatorio)</label>
                 <textarea
-                  id="aj-motivo" v-model="ajuste.motivo" rows="3" required
+                  id="aj-motivo" v-model="ajuste.motivo" rows="3"
+                  :aria-describedby="ajuste.errors.motivo ? 'aj-motivo-error' : undefined"
                   placeholder="Ej.: se cayó el internet y no pudo usar la sala."
                   class="w-full border border-dark/25 px-2.5 py-2 text-sm placeholder:text-dark/35 focus:border-dark"
                 />
-                <p v-if="ajuste.errors.motivo" class="mt-1 text-xs text-red-700">{{ ajuste.errors.motivo }}</p>
+                <p v-if="ajuste.errors.motivo" id="aj-motivo-error" role="alert" class="mt-1 text-xs text-red-700">{{ ajuste.errors.motivo }}</p>
                 <p class="mt-1 text-[0.6875rem] text-dark/55">Queda en la bitácora con tu nombre.</p>
               </div>
+
+              <!-- Lo que no tiene campo propio (la bolsa que el plan no incluye,
+                   la membresía): antes se rechazaba sin que el modal lo dijera. -->
+              <p
+                v-for="(msg, campo) in ajuste.errors" v-show="!['horas', 'motivo'].includes(String(campo))" :key="campo"
+                role="alert" class="text-xs text-red-700"
+              >{{ msg }}</p>
             </div>
 
             <div class="flex justify-end gap-2 border-t border-dark/15 bg-cream-50 px-4 py-3">
               <button type="button" class="min-h-[36px] border border-dark/25 px-4 font-display text-xs font-bold text-dark" @click="cerrar">Cancelar</button>
-              <button type="submit" :disabled="ajuste.processing" class="min-h-[36px] border border-dark bg-nodo-400 px-4 font-display text-xs font-bold text-dark">Aplicar</button>
+              <button type="submit" :disabled="ajuste.processing" class="min-h-[36px] border border-dark bg-nodo-400 px-4 font-display text-xs font-bold text-dark disabled:opacity-60">
+                {{ ajuste.processing ? 'Aplicando…' : 'Aplicar' }}
+              </button>
             </div>
           </form>
 

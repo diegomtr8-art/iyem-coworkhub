@@ -203,7 +203,7 @@ class PanelOperativoTest extends TestCase
                 'bolsa'          => BolsaDeHoras::Sala->value,
                 'horas'          => 2,
                 'motivo'         => '',
-            ])->assertSessionHasErrors('motivo');
+            ])->assertSessionHasErrors(['motivo' => 'Escribe por qué ajustas las horas. Queda en la bitácora.']);
 
         $this->assertSame(0, MovimientoHoras::count());
     }
