@@ -11,8 +11,12 @@
 #
 set -euo pipefail
 
-RAIZ="/home/u489236361/domains/prueba.nodico.com.mx/public_html"
-cd "$RAIZ"
+# La raíz la pasa `deploy_prueba.py` según `--dominio`. Antes estaba fija en
+# la de pruebas: un despliegue a producción subía el código a nodico.com.mx y
+# luego instalaba, migraba y cacheaba **en pruebas**. Sin variable, pruebas.
+RAIZ="${RAIZ:-/home/u489236361/domains/prueba.nodico.com.mx/public_html}"
+cd "$RAIZ" || { echo "ERROR: no existe $RAIZ"; exit 1; }
+echo "==> Raíz: $RAIZ"
 
 echo "==> Manifiestos compilados fuera antes de instalar"
 # `composer install --no-dev` los regenera sin los paquetes de dev, pero si por
@@ -27,15 +31,34 @@ composer install --no-dev --optimize-autoloader --no-interaction
 echo "==> Migraciones"
 php artisan migrate --force
 
-echo "==> Contenido público del sitio (idempotente)"
-php artisan db:seed --class=NodicoWebSeeder --force
+# El entorno decide lo que sigue. Este script corre igual en pruebas y en
+# producción (deploy_prueba.py --dominio … --si-produccion).
+ENTORNO="$(php artisan env --no-ansi | sed -n 's/.*\[\(.*\)\].*/\1/p')"
+echo "==> Entorno: ${ENTORNO}"
 
-echo "==> Cuentas de demostración al día (este script es del servidor de pruebas)"
-# DemoSeeder siembra fechas relativas al día en que corre; si no se vuelve a
-# sembrar, las membresías demo vencen y el calendario de reservas sale vacío
-# (pruebas de servicio social, 29-sep-2026). Solo resiembra si ya envejeció, y
-# va antes del control de saldos: el demo nuevo nace cuadrado.
-php artisan nodico:demo-al-dia
+if [ "$ENTORNO" = "staging" ]; then
+    echo "==> Contenido público del sitio"
+    php artisan db:seed --class=NodicoWebSeeder --force
+
+    echo "==> Cuentas de demostración al día (solo pruebas)"
+    # DemoSeeder siembra fechas relativas al día en que corre; si no se vuelve a
+    # sembrar, las membresías demo vencen y el calendario de reservas sale vacío
+    # (pruebas de servicio social, 29-sep-2026). Solo resiembra si ya envejeció,
+    # y va antes del control de saldos: el demo nuevo nace cuadrado.
+    php artisan nodico:demo-al-dia
+else
+    # NodicoWebSeeder reescribe precios de planes y salones e Instagram: en
+    # producción pisaría lo que el administrador cambie en el panel. Solo se
+    # siembra el primer despliegue, cuando aún no hay planes. Y nada de demo:
+    # nodico:demo-al-dia se niega fuera de local/staging y cortaría el script.
+    PLANES="$(php artisan tinker --execute='echo \App\Models\Plane::count();' 2>/dev/null | tail -n 1)"
+    if [ "$PLANES" = "0" ]; then
+        echo "==> Contenido público inicial (primer despliegue: no hay planes)"
+        php artisan db:seed --class=NodicoWebSeeder --force
+    else
+        echo "==> Contenido público: ya existe (${PLANES} planes); no se toca"
+    fi
+fi
 
 echo "==> Libro de horas: saldo de arranque (solo la primera vez)"
 # Sin esto, la primera consulta al libro devuelve cero para todo el mundo y
@@ -102,4 +125,4 @@ php artisan config:cache
 php artisan route:cache
 php artisan view:cache
 
-echo "==> Listo. Verifica con: curl -sI https://prueba.nodico.com.mx/"
+echo "==> Listo. Verifica con: curl -sI https://$(basename "$(dirname "$RAIZ")")/"

@@ -45,6 +45,9 @@ LOCAL_ROOT = os.path.dirname(os.path.abspath(__file__))
 # a todas solo para esto habria tocado mas codigo del que arregla.
 DOMINIO_PRUEBA = "prueba.nodico.com.mx"
 REMOTE_ROOT = f"/home/{SSH_USER}/domains/{DOMINIO_PRUEBA}/public_html"
+# El dominio que se comprueba por HTTP al terminar. Antes las comprobaciones
+# iban siempre contra pruebas: un despliegue a producción se «verificaba» ahí.
+DOMINIO = DOMINIO_PRUEBA
 
 # Código de la aplicación: origen local -> destino remoto.
 DIRS_APP = [
@@ -363,7 +366,7 @@ def comprobar_manifiestos(cliente, sello: dict) -> bool:
         manifiesto = json.load(fh)
     archivo = manifiesto["resources/js/app.js"]["file"]
 
-    estado, cuerpo = pedir(f"https://prueba.nodico.com.mx/build/{archivo}", binario=True)
+    estado, cuerpo = pedir(f"https://{DOMINIO}/build/{archivo}", binario=True)
     if estado == 200 and cuerpo:
         print(f"    ok  /build/{archivo} -> 200, {len(cuerpo) // 1024} KB")
     else:
@@ -371,7 +374,7 @@ def comprobar_manifiestos(cliente, sello: dict) -> bool:
         todo_bien = False
 
     # Y el sello debe ser el de este despliegue, no el de uno anterior.
-    estado, cuerpo = pedir("https://prueba.nodico.com.mx/build/version.json")
+    estado, cuerpo = pedir(f"https://{DOMINIO}/build/version.json")
     if estado == 200 and cuerpo:
         publicado = json.loads(cuerpo)
         if publicado.get("commit") == sello["commit"]:
@@ -408,8 +411,9 @@ def main():
     )
     args = parser.parse_args()
 
-    global REMOTE_ROOT
+    global REMOTE_ROOT, DOMINIO
     REMOTE_ROOT = f"/home/{SSH_USER}/domains/{args.dominio}/public_html"
+    DOMINIO = args.dominio
 
     if args.dominio != DOMINIO_PRUEBA and not args.si_produccion:
         print(f"ERROR: --dominio {args.dominio} no es el destino de prueba.")
@@ -493,7 +497,9 @@ def main():
     with open(os.path.join(LOCAL_ROOT, "deploy.sh"), encoding="utf-8") as fh:
         script = fh.read()
 
-    codigo, _, _ = correr(cliente, f"bash -s <<'FIN_DEPLOY'\n{script}\nFIN_DEPLOY")
+    # La raíz va explícita: deploy.sh trae la de pruebas por defecto, y antes
+    # un despliegue a producción instalaba y migraba en pruebas.
+    codigo, _, _ = correr(cliente, f"RAIZ={REMOTE_ROOT} bash -s <<'FIN_DEPLOY'\n{script}\nFIN_DEPLOY")
 
     if codigo != 0:
         sys.exit(f"\nERROR: los pasos de servidor terminaron con código {codigo}")
@@ -523,7 +529,7 @@ def comprobar_cierre() -> bool:
     todo_bien = True
 
     for ruta in COMPROBAR_CERRADAS:
-        url = f"https://prueba.nodico.com.mx{ruta}"
+        url = f"https://{DOMINIO}{ruta}"
         peticion = urllib.request.Request(url, method="HEAD")
         try:
             with urllib.request.urlopen(peticion, timeout=20) as resp:
@@ -543,7 +549,7 @@ def comprobar_cierre() -> bool:
     # Blindar de mas es tan roto como blindar de menos.
     print("\n--> Comprobando que el sitio sigue en pie")
     for ruta in COMPROBAR_ABIERTAS:
-        url = f"https://prueba.nodico.com.mx{ruta}"
+        url = f"https://{DOMINIO}{ruta}"
         peticion = urllib.request.Request(url, method="HEAD")
         try:
             with urllib.request.urlopen(peticion, timeout=20) as resp:
