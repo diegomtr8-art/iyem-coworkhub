@@ -102,6 +102,27 @@
     border-radius: 2px;
   }
 
+  /*
+   * El autocompletado del navegador pinta su propio fondo azul claro y su
+   * color de letra, por encima del diseño (se veía en la captura de los
+   * probadores). No hay propiedad para quitarlo: se tapa con una sombra
+   * interior del color del campo, y se restituye el color del texto.
+   */
+  input:-webkit-autofill,
+  input:-webkit-autofill:hover {
+    -webkit-box-shadow: 0 0 0 1000px theme('colors.cream.50') inset;
+    -webkit-text-fill-color: theme('colors.dark.DEFAULT');
+    caret-color: theme('colors.dark.DEFAULT');
+  }
+  /* Enfocado el campo aclara a blanco. Esta regla pesa más que la del foco
+     visible: sin repetir aquí el halo amarillo, se perdería. */
+  input:-webkit-autofill:focus {
+    -webkit-box-shadow: 0 0 0 1000px #fff inset;
+  }
+  input:-webkit-autofill:focus-visible {
+    -webkit-box-shadow: 0 0 0 1000px #fff inset, 0 0 0 4px theme('colors.nodo.400');
+  }
+
   /* En iOS un input de menos de 16px provoca zoom automático al enfocar. */
   input, textarea, select { font-size: max(16px, 1rem); }
 }

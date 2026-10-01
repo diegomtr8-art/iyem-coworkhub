@@ -10,6 +10,10 @@
  * Detalles que no son opcionales:
  * - `placeholder=" "` (un espacio) es lo que hace funcionar la etiqueta
  *   flotante con `:not(:placeholder-shown)`. Sin él, la etiqueta nunca sube.
+ * - La etiqueta sube también con `:autofill`. El autocompletado del navegador
+ *   no quita `:placeholder-shown` ni avisa al `v-model` hasta que la persona
+ *   toca la página, y la etiqueta se quedaba encima del correo y la contraseña
+ *   («los datos quedaron raros», pruebas del 29-sep-2026).
  * - `min-h-[60px]` cubre de sobra el área táctil de 44 px.
  * - El tamaño de letra lo fuerza `app.css` a 16 px mínimo: por debajo, iOS hace
  *   zoom al enfocar y descoloca la pantalla.
@@ -89,7 +93,9 @@ const descritoPor = computed(() => {
                peer-focus:top-3 peer-focus:translate-y-0 peer-focus:text-xs
                peer-[:not(:placeholder-shown)]:top-3
                peer-[:not(:placeholder-shown)]:translate-y-0
-               peer-[:not(:placeholder-shown)]:text-xs"
+               peer-[:not(:placeholder-shown)]:text-xs
+               peer-[:-webkit-autofill]:top-3 peer-[:-webkit-autofill]:translate-y-0 peer-[:-webkit-autofill]:text-xs
+               peer-[:autofill]:top-3 peer-[:autofill]:translate-y-0 peer-[:autofill]:text-xs"
       >
         {{ etiqueta }}<span v-if="requerido" aria-hidden="true"> *</span>
       </label>
