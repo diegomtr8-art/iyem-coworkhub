@@ -369,6 +369,32 @@ Grupo aparte: `auth:sanctum`, `ability:reportes`, `can:ver-reportes`, `movil.ver
 - `en-riesgo` y `no-show` traen nombre, correo y teléfono de miembros: cada consulta queda en la bitácora (`EntradaBitacora`), agrupada por hora como ya se hace con los datos fiscales.
 - En la app, esta cara tiene su propia navegación (Resumen · Ocupación · Ingresos · Miembros) y **no** muestra las pestañas del miembro. Si un admin también fuera miembro con otra cuenta, entra con esa otra cuenta.
 
+#### Cuenta de servicio del IYEM ERP (03/10/2026)
+
+El ERP del instituto (`iyemyucatan`) pinta estos reportes en su propio tablero de dirección. No se cuelga de la cuenta de una persona —si esa persona se va, la integración se cae con ella—: usa una **cuenta de servicio**.
+
+| | |
+|---|---|
+| Cuenta | `erp@iyemyucatan.com`, «IYEM ERP (integración)», rol `admin` (hoy es el único rol con `ver-reportes`). Marcada en `notas_admin` como cuenta de servicio. |
+| Contraseña | Aleatoria y desconocida. **No se usa para entrar al panel.** |
+| Token | Uno solo, habilidad `reportes`, `dispositivo_id = iyem-erp`. Vive en el `.env` del ERP como `NODICO_TOKEN`, del lado del servidor: nunca llega a un navegador. |
+| Quién llama | Solo el servidor del ERP (`ClienteDeModulo`), sin `X-App-Version`, con caché de 10 min por consulta. |
+| Qué usa | `GET /reportes/resumen`, `ocupacion`, `ingresos`, `consumo`, `no-show`, `en-riesgo` y `/{informe}/csv`. Nada más: la cara `reportes` no escribe. |
+
+**Emitir o rotar** (en el servidor de Nódico): `php artisan nodico:token-integracion`. Crea la cuenta si no existe, revoca el token anterior y muestra el nuevo **una sola vez**; la emisión queda en `eventos_autenticacion` y en el log, sin el token.
+
+**Cortar la integración:**
+
+- `php artisan nodico:token-integracion --revocar` — borra el token; el ERP deja de ver datos en su siguiente consulta.
+- O quitarle el rol de administración desde el panel: `CaraDelToken` revisa el permiso en cada petición, así que corta al instante sin esperar a que caduque.
+
+**Rastro de datos personales.** `no-show` y `en-riesgo` quedan en la bitácora a nombre de «IYEM ERP (integración)», no de la persona que miró. Quién fue lo registra el ERP en su tabla `accesos` (usuario, informe y fecha).
+
+**Pendientes de decidir:**
+
+- Los tokens de `reportes` caducan a los **15 días sin uso** (`NODICO_APP_DIAS_INACTIVIDAD_REPORTES`). Si nadie abre el tablero del ERP en 15 días, la integración deja de autenticar (el ERP lo avisa como «no está autenticada») y hay que volver a emitir el token.
+- La cuenta es `admin`: si alguien controlara el buzón `erp@iyemyucatan.com`, podría usar «Olvidé mi contraseña» y entrar al panel con todos los permisos. Ese buzón no debe existir o debe estar solo en manos de Informática.
+
 ### 6.12 Sin autenticación
 
 | Método | Ruta | Respuesta `data` |
